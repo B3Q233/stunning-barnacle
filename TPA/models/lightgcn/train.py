@@ -120,14 +120,22 @@ def load_checkpoint(model, path):
 def main():
     resume = "--resume" in sys.argv
 
-    # 加载配置
+    # 加载配置（展平嵌套 YAML）
     config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
     if not os.path.exists(config_path):
         print(f"[train] config not found: {config_path}, using defaults")
         config = TrainingConfig()
         config['dataset'] = 'gowalla'
     else:
-        config = TrainingConfig.from_yaml(config_path)
+        import yaml
+        with open(config_path, 'r', encoding='utf-8') as f:
+            raw = yaml.safe_load(f)
+        # 展平 {data:{dataset:gowalla}, model:{emb_dim:64}, training:{lr:0.001}} → {dataset:gowalla, emb_dim:64, lr:0.001, ...}
+        flat = {}
+        for section in ['data', 'model', 'training', 'evaluation']:
+            if section in raw:
+                flat.update(raw[section])
+        config = TrainingConfig(overrides=flat)
 
     os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
