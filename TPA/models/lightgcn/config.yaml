@@ -1,0 +1,23 @@
+# LightGCN 配置文件
+# 来源标注: [paper]=论文明确写出  [ai]=AI推断  [unreported]=未提及
+
+data:
+  dataset: gowalla        # [paper] Table 2: Gowalla / yelp2018 / amazon-book
+
+model:
+  emb_dim: 64             # [paper] Section 4.1.2
+  n_layers: 3             # [paper] Section 4.1.2, K=3 satisfactory
+
+training:
+  lr: 0.001               # [paper] Section 4.1.2, Adam default
+  epochs: 1000            # [paper] Section 4.1.2
+  batch_size: 1024        # [paper] Section 4.1.2 (2048 for Amazon-Book)
+  weight_decay: 0.0001    # [paper] Section 4.5, 1e-4 optimal for Gowalla/Amazon
+  device: cuda
+  checkpoint_dir: models/lightgcn/outputs/checkpoints
+  save_every_n_epochs: 100
+  shuffle: true
+
+evaluation:
+  metrics: [recall@20, ndcg@20]   # [paper] Section 4.1
+  k: 20                            # [paper]
