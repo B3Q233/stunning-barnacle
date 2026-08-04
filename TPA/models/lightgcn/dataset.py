@@ -75,13 +75,16 @@ class LightGCNDataLoader:
         self.test_pairs = meta["test_pairs"]
         self.user_items = meta["user_items"]
 
-        # 验证集：从训练集中划出最后 5%（简单划分，与 NGCF 不同但可用于 early stopping）
+        # 验证集：从训练集中划出最后 5%
         random.seed(42)
         shuffled = self.train_pairs.copy()
         random.shuffle(shuffled)
         split = int(len(shuffled) * 0.95)
         self._train_pairs = shuffled[:split]
         self._val_pairs = shuffled[split:]
+
+        # 完整训练集（用于构建邻接矩阵等不需要验证划分的场景）
+        self.all_train_pairs = self.train_pairs
 
         print(f"[LightGCNDataLoader] {dataset_name}: "
               f"users={self.num_users}, items={self.num_items}, "

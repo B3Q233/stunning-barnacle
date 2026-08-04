@@ -2,6 +2,7 @@ data:
   dataset: gowalla
 evaluation:
   k: 20
+  eval_every: 10              # [ai] 全量评估间隔(epoch)，10=每10个epoch计算recall/ndcg
   metrics:
   - recall@20
   - ndcg@20

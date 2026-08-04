@@ -29,8 +29,11 @@ data/raw/*
 data/processed/*
 !data/processed/.gitkeep
 
-# Outputs (generated files)
-outputs/
+# Outputs (generated files — track scripts and logs, ignore large binaries)
+outputs/*.png
+outputs/*.pt
+outputs/*.pth
+outputs/checkpoints/
 *.png
 *.pth
 *.pt
