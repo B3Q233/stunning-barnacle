@@ -13,8 +13,7 @@ import torch
 import numpy as np
 
 from training.framework import (
-    TrainingConfig, Experiment, Trainer,
-    LoggerCallback, CheckpointCallback, MetricAccumulator, Callback
+    TrainingConfig, Callback
 )
 from models.lightgcn.dataset import LightGCNDataLoader, KEY_NUM_USERS, KEY_NUM_ITEMS, KEY_DATASET
 from models.lightgcn.model import LightGCN
@@ -139,6 +138,10 @@ def main():
 
     os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
+    # 清空旧的训练历史，避免残留数据混淆
+    with open(HISTORY_PATH, 'w') as f:
+        json.dump([], f)
+
     # 数据
     loader = LightGCNDataLoader(config)
     params = loader.get_init_params()
@@ -155,25 +158,15 @@ def main():
     elif resume:
         print("[train] 未找到 latest.pt，从头训练")
 
-    # 实验
-    experiment = Experiment(config, model)
-    # 替换 dataloader 为我们的实现
-    experiment.dataloader = loader
-
-    metric_log = MetricAccumulator()
+    # 全量评估回调
     full_rank = FullRankingCallback(loader, model, config)
-
-    trainer = Trainer(callbacks=[
-        LoggerCallback(),
-        metric_log,
-        full_rank,
-    ])
 
     print(f"[train] dataset={config.get(KEY_DATASET)}, epochs={config.epochs}, "
           f"lr={config.lr}, batch={config.batch_size}, "
           f"resume={resume}, start_epoch={start_epoch}")
 
-    # 手动训练循环（而非 Trainer.run），支持 epoch 级别的 checkpoint 保存
+    # 手动训练循环
+    history = []
     try:
         for epoch in range(start_epoch + 1, config.epochs + 1):
             # === Train ===
@@ -196,20 +189,17 @@ def main():
             print(f"[epoch {epoch}/{config.epochs}] train_loss={avg_loss:.4f} "
                   f"val_loss={avg_val:.4f}")
 
-            metric_log.history.append({
-                "epoch": epoch, "loss": avg_loss, "val_loss": avg_val,
+            history.append({
+                "epoch": epoch, "train_loss": avg_loss, "val_loss": avg_val,
             })
 
-            # 定期保存 checkpoint
             if epoch % config.save_every_n_epochs == 0:
                 save_checkpoint(model, epoch, LATEST_CKPT)
 
-            # 全量评估
             full_rank.on_epoch_end(epoch, {})
 
-            # 保存训练历史
             with open(HISTORY_PATH, 'w') as f:
-                json.dump(metric_log.history, f, indent=2)
+                json.dump(history, f, indent=2)
 
     except KeyboardInterrupt:
         print("\n[train] 训练中断，保存 checkpoint...")

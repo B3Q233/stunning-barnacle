@@ -33,7 +33,7 @@ def plot_training_history(history_path: str, output_path: str):
 
     # 1) 训练 loss
     ax = axes[0]
-    losses = [h.get('loss', 0) for h in history]
+    losses = [h.get('train_loss', 0) for h in history]
     ax.plot(epochs, losses, linewidth=0.5, alpha=0.7)
     ax.set_xlabel('Epoch')
     ax.set_ylabel('Train Loss')
