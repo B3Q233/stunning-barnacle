@@ -186,6 +186,14 @@ def main():
 
             avg_loss = sum(epoch_losses) / len(epoch_losses)
             avg_val = sum(epoch_val_losses) / len(epoch_val_losses)
+
+            # 诊断：前几个 epoch 检查梯度和参数是否更新
+            if epoch <= 2:
+                grad_norm = model.embedding.weight.grad.norm().item() if model.embedding.weight.grad is not None else 0
+                emb_norm = model.embedding.weight.norm(p=2).item()
+                print(f"  [diag] grad_norm={grad_norm:.6f} emb_norm={emb_norm:.1f} "
+                      f"lr={config.lr} wd={config.get('weight_decay', 0)}")
+
             print(f"[epoch {epoch}/{config.epochs}] train_loss={avg_loss:.4f} "
                   f"val_loss={avg_val:.4f}")
 
