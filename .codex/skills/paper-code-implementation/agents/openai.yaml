@@ -1,0 +1,4 @@
+interface:
+  display_name: "Paper Code Implementation"
+  short_description: "Build runnable paper reproduction code (model or attack) from an understanding doc"
+  default_prompt: "Use $paper-code-implementation to implement the model (or the attack-imp-direct-poison attack template) from the confirmed understanding document."
