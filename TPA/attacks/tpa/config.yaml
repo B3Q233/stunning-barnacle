@@ -1,0 +1,65 @@
+# TPA（传递式路径投毒攻击）配置
+# 已冻结决策：无 PGD（纯图路径注入）；路径策略=最短路径；数据集=当前 ml100k（与基线同口径）
+# 假用户画像 = 平庸基座（高流行度采样）+ 传递路径（共现图最短路径）+ 目标物品
+
+dataset: ml100k                  # 受害数据集（ml100k / gowalla / yelp2018 / amazon-book）
+mode: all                        # classify | paths | data | model | both | all
+seed: 42
+
+# 被攻击 / 用于打分的模型（注册表见本目录 registry.py）
+model:
+  name: lightgcn                 # 当前仅 lightgcn；新增模型在 registry.py 登记
+  overrides: {}                  # 可选：覆盖模型超参（emb_dim / n_layers / init_method ...）
+
+# 代理模型（黑盒迁移）：路径构造 / 频次分类只用代理模型嵌入，受害模型仅参与评估
+surrogate:
+  enabled: true                  # false=白盒（用受害模型嵌入，v1 上限）；true=代理（黑盒）
+  model_name: lightgcn           # 代理架构（可在 registry.py 换成其他模型）
+  checkpoint: models/lightgcn/outputs/surrogate/latest.pt  # 由 train_surrogate.py 训练产出
+  training:
+    epochs: 30                   # 代理模型训练轮数
+    split_seed_offset: 1         # 与受害模型不同的训练/验证划分种子（seed+offset）
+    eval_every: 5
+
+# 第 1 步：基于模型推荐频次的物品分类（流行/普通/冷门）
+classification:
+  k: 10                          # 每用户取 Top-K 推荐（默认取 training.k）
+  popular_ratio: 0.2             # 流行物品 = 推荐频次前 20%
+  batch_size: 1024               # 评分矩阵分批大小（大数据集防爆显存）
+  checkpoint: models/lightgcn/outputs/checkpoints/latest.pt  # 打分用干净模型
+
+attack:
+  name: tpa  # 攻击名（模块目录 attacks/{name}/、输出路径、日志前缀均用此值）
+  # 假用户数量：二选一（num_fake_users 优先，其次按 ratio 计算）
+  ratio: 0.03                    # 假用户数 = ratio × 真实用户数
+  base_size: 10                   # 平庸基座物品数（从高流行度池 P(i) 采样）
+  path:
+    strategy: shortest            # 路径策略：shortest（最短路径；random_walk 预留）
+    max_bridge_items: 3           # 中间桥接物品数上限（IndirectAD=1，TPA 多跳）
+    per_hop_tau: null             # 每跳距离阈值（语义融合阶段再启用；null=不限制）
+    fallback: direct              # 无可行路径时回退：direct=基座+目标
+  target_items:
+    strategy: specified          # specified=手动指定 | category=按分类挑 | coldest | random
+    category: cold               # strategy=category 时：popular | ordinary | cold
+    count: 1                    # 目标物品数量（假用户均分给各目标）
+    ids: [251]          # strategy=specified 时填写（目标物品由你自行确定）
+
+warm_start:
+  enabled: true                  # 用干净模型参数初始化中毒模型（原用户/物品嵌入迁移）
+  checkpoint: models/lightgcn/outputs/checkpoints/latest.pt
+
+training:
+  epochs: 30
+  batch_size: 256
+  lr: 0.001 
+  weight_decay: 0.0001
+  neg_ratio: 1
+  eval_every: 5
+  k: 10
+  device: cuda
+
+evaluation:
+  report_model_utility: true     # 是否对比 clean/poisoned 的模型效用（投毒代价检查）
+
+output:
+  dir: attacks/tpa/outputs
