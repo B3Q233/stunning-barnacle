@@ -1,0 +1,4 @@
+interface:
+  display_name: "Knowledge Point Visualization"
+  short_description: "Paper md → knowledge graph JSON → learning-cost editor → HTML (derivation + graph)"
+  default_prompt: "Use $knowledge-point-visualization to turn this paper Markdown into meta.json, all.json, learning-cost.json, learning-path.json, knowledge-graph.html, cost-editor.html, and derivation.html (all paper formulas, high-school-level step-by-step explanations, interactive demos). Then run scripts/verify_outputs.py --browser-check and iterate until it passes."
