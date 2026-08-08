@@ -72,8 +72,14 @@
     container.appendChild(el("div", { "class": "kpy-info" }, [
       el("div", {}, [el("b", {}, ["这是什么："]), document.createTextNode(what)]),
       el("div", {}, [el("b", {}, ["怎么玩："]), document.createTextNode(how)]),
-      el("div", { html: "对应公式：" + formula }),
     ]));
+    if (formula) {
+      var fdiv = el("div", { "class": "kpy-formula", html: "\\[" + formula + "\\]" });
+      container.appendChild(fdiv);
+      if (window.MathJax && MathJax.typesetPromise) {
+        MathJax.typesetPromise([fdiv]).catch(function () {});
+      }
+    }
   }
   function register(id, factory) { demos[id] = factory; }
   function initAll(root) {
