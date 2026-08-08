@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>论文推导可视化（Knowledge Point Visualization）</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script src="mathjax/tex-svg.js"></script>
+<script src="interactive-components.js"></script>
+<style>
+:root{--bg:#f5f6fa;--card:#fff;--ink:#20242f;--muted:#5b6472;--line:#e2e5ee;--accent:#4f46e5;--green:#16a34a;--blue:#0ea5e9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;line-height:1.75}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+header{background:linear-gradient(135deg,#312e81,#4f46e5 55%,#0ea5e9);color:#fff;padding:30px 0 24px}
+header h1{margin:0 0 8px;font-size:1.5rem}
+nav{margin:12px 0 0}
+nav a{color:#fff;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:3px 14px;margin-right:8px;text-decoration:none;font-size:.85rem;display:inline-block;margin-bottom:6px}
+section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 26px;margin:20px 0}
+h2{margin:0 0 12px;font-size:1.18rem;border-left:5px solid var(--accent);padding-left:10px}
+h3{margin:18px 0 8px;font-size:1rem;color:#312e81}
+.eq{background:#fafbff;border:1px dashed #c7cde8;border-radius:10px;padding:10px 16px;margin:10px 0;overflow-x:auto}
+.step{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:14px 0}
+.step .num{display:inline-block;background:var(--accent);color:#fff;border-radius:999px;width:26px;height:26px;line-height:26px;text-align:center;font-size:.85rem;margin-right:8px}
+.step h3{display:inline;border:0;padding:0;margin:0}
+.goal{background:#eef7ff;border-left:4px solid var(--blue);padding:8px 12px;border-radius:8px;margin:8px 0;font-size:.92rem}
+.micro{background:#fbfcfe;border-left:3px solid var(--accent);padding:8px 12px;margin:8px 0;border-radius:6px;font-size:.93rem}
+.micro .why{color:var(--muted);font-size:.88rem}
+.tag{display:inline-block;background:#eef0fe;color:#4338ca;border:1px solid #d6daf6;border-radius:6px;padding:0 8px;font-size:.76rem;margin:2px 3px 2px 0}
+.demo{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:12px 0;background:#fafbff}
+.kpy-demo-title{font-weight:600;margin-bottom:6px}
+.kpy-info{font-size:.88rem;color:var(--muted);margin-bottom:8px}
+.kpy-ctls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px}
+.kpy-ctl{display:inline-flex;gap:6px;align-items:center;font-size:.85rem}
+.kpy-btn{background:var(--accent);color:#fff;border:0;border-radius:6px;padding:5px 12px;cursor:pointer}
+.kpy-tip{position:absolute;z-index:10;background:#20242f;color:#fff;padding:6px 10px;border-radius:6px;font-size:.8rem;max-width:280px}
+.kpy-demo-error{outline:2px solid #dc2626}
+.kpy-grid{border-collapse:collapse;margin:4px}
+.kpy-grid td{border:1px solid var(--line);padding:6px 10px;text-align:center;min-width:44px}
+.kpy-matrix-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.kpy-eq-symbol{font-size:1.3rem;color:var(--muted)}
+.ok{color:var(--green);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:.87rem;margin:10px 0}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:#f1f3f9}
+code{background:#eef1f7;border-radius:5px;padding:1px 5px;font-family:Consolas,monospace;font-size:.85em}
+footer{color:var(--muted);font-size:.82rem;padding:18px 0 34px;text-align:center}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1>论文推导可视化</h1>
+  <p>公式全覆盖 · 逐步推导 · 通俗解释 · 交互演示</p>
+  <nav>
+    <a href="knowledge-graph.html">知识图谱</a>
+    <a href="cost-editor.html">学习代价编辑器</a>
+    <a href="#toolbox">基础工具箱</a>
+    <a href="#chain">推导主线</a>
+    <a href="#formulas">公式索引</a>
+    <a href="#check">覆盖自检</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+<section id="toolbox">
+  <h2>1.0 基础工具箱（高中生水平）</h2>
+  <p class="muted">公式里出现的每个概念都能在这里找到“一句话 + 生活例子 + 最小公式 + 论文位置”。</p>
+  <table>
+    <thead><tr><th>概念</th><th>通俗解释（生活例子）</th><th>最小公式</th><th>论文哪里用到</th></tr></thead>
+    <tbody>
+      <tr><td>梯度</td><td>“蒙眼下山”：每一步都往脚底最陡的方向迈，梯度就是那个方向。</td>
+          <td>\(\nabla f=(\partial f/\partial x,\partial f/\partial y)\)</td><td>梯度下降、PGA 更新</td></tr>
+      <tr><td>投影/clamp</td><td>把跑出操场围栏的点拉回围栏内最近的位置。</td>
+          <td>\(\mathrm{clamp}(x,a,b)=\min(b,\max(a,x))\)</td><td>可行域约束</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="chain">
+  <h2>2. 推导主线（Step by Step）</h2>
+  <div class="step" id="step1">
+    <span class="num">1</span><h3>示例步骤：问题设定</h3>
+    <div class="goal">目标：用少量观测恢复完整矩阵。</div>
+    <div class="micro">
+      <div class="eq">\[ \min_{\mathbf X}\|\mathcal R_\Omega(\mathbf M-\mathbf X)\|_F^2,\quad \mathrm{s.t.}\ \mathrm{rank}(\mathbf X)\le k. \tag{1} \]</div>
+      <div class="why">为什么：让观测位置的误差最小，同时限制矩阵不太复杂（低秩）。</div>
+    </div>
+    <p><span class="tag">c_matrix_completion</span></p>
+    <div class="demo" data-demo="gradient-descent" data-config='{"lr":0.25,"x0":2.0,"y0":1.6}'></div>
+  </div>
+</section>
+
+<section id="formulas">
+  <h2>3. 公式索引</h2>
+  <table>
+    <thead><tr><th>编号</th><th>含义</th><th>所在步骤</th></tr></thead>
+    <tbody>
+      <tr><td>(1)</td><td>矩阵补全目标函数</td><td><a href="#step1">步骤 1</a></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="check">
+  <h2>4. 覆盖自检</h2>
+  <table>
+    <thead><tr><th>公式/概念</th><th>所在步骤</th><th>工具箱位置</th></tr></thead>
+    <tbody>
+      <tr><td>(1) 矩阵补全</td><td>步骤 1</td><td>工具箱：投影</td></tr>
+    </tbody>
+  </table>
+  <p class="ok">✓ 全部覆盖，无跳步。</p>
+</section>
+
+</main>
+<footer>由 knowledge-point-visualization 技能生成 · MathJax 离线渲染 · 交互演示离线可用</footer>
+
+<script>
+(function () {
+  var mj = "missing", finished = false;
+  function finish() {
+    if (finished) return;
+    finished = true;
+    document.documentElement.setAttribute("data-mathjax", mj);
+    var demos = window.KPV ? KPV.initAll(document) : { total: 0, ok: 0, failed: ["KPV missing"] };
+    document.documentElement.setAttribute("data-demos-total", String(demos.total));
+    document.documentElement.setAttribute("data-demos-ok", String(demos.ok));
+    document.documentElement.setAttribute("data-demos-failed", demos.failed.join("|") || "none");
+    document.documentElement.setAttribute("data-kpv-ready",
+      (mj === "ok" && demos.failed.length === 0 && demos.total > 0) ? "ok" : "errors");
+  }
+  function waitForMathJax(tries) {
+    if (window.MathJax && MathJax.startup && MathJax.startup.promise) {
+      MathJax.startup.promise.then(function () { mj = "ok"; finish(); },
+                                   function () { mj = "error"; finish(); });
+    } else if (tries > 0) {
+      setTimeout(function () { waitForMathJax(tries - 1); }, 200);
+    } else {
+      finish();
+    }
+  }
+  waitForMathJax(50);
+})();
+</script>
+</body>
+</html>

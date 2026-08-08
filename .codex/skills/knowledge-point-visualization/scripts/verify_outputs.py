@@ -167,8 +167,8 @@ def main() -> int:
                     "--dump-dom", derivation.resolve().as_uri(),
                 ]
                 try:
-                    dom = subprocess.run(cmd, capture_output=True, text=True,
-                                         timeout=90).stdout
+                    result = subprocess.run(cmd, capture_output=True, timeout=90)
+                    dom = result.stdout.decode("utf-8", errors="replace")
                 except Exception as e:
                     dom = ""
                     errors.append(f"browser check crashed: {e}")
