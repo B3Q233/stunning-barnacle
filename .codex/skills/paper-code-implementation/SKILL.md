@@ -67,7 +67,10 @@ description: 基于固定的松耦合训练框架模板（TrainableModel / Datas
   （如 `2026-08-07-14-20`），日志/元数据中的 run_tag 与目录名保持一致。
   统一工具：`assets/run_tag.py`（`default_run_tag` / `sanitize_run_tag` /
   `resolve_run_tag` / `save_config_snapshot` / `write_latest_pointer` /
-  `read_latest_tag`），落地到项目 `training/run_tag.py`，所有实验代码从这里导入。
+  `read_latest_tag`），落地到项目 `training/run_tag.py`；编排工具
+  `assets/modes.py`（`stages_for_mode`，run.py 的 classify/data/model 三阶段
+  分发，`all` 必须同时跑三阶段），落地到项目 `training/modes.py`。
+  所有实验代码从这两个模块导入，禁止各自重写。
 
   run_tag 优先级：CLI `--tag` > config `run_tag` > `latest.json` 指针
   （fit 阶段用于衔接最近一次 data 生成） > 自动当前时间。

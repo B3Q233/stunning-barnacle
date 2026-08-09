@@ -1,4 +1,4 @@
-"""攻击模板编排入口
+"""Bandwagon（从众）攻击编排入口
 
 攻击流程（与确认后的口径一致）：
   1. classify: 加载干净模型 → 全量评分 → 每用户 Top-K → 统计推荐频次
@@ -7,11 +7,11 @@
   3. model:    选择模型（config model.name）→ 投毒训练 → 对比评估
 
 用法:
-  python attacks/attack_imp_direct_poison/run.py --mode classify  # 第 1 步：推荐频次分类
-  python attacks/attack_imp_direct_poison/run.py --mode data      # 第 2 步：只生成中毒数据
-  python attacks/attack_imp_direct_poison/run.py --mode model     # 第 3 步：拟合中毒模型 + 评估
-  python attacks/attack_imp_direct_poison/run.py --mode both      # data + model（默认）
-  python attacks/attack_imp_direct_poison/run.py --mode all       # classify + data + model 全流程
+  python attacks/bandwagon/run.py --mode classify  # 第 1 步：推荐频次分类
+  python attacks/bandwagon/run.py --mode data      # 第 2 步：只生成中毒数据
+  python attacks/bandwagon/run.py --mode model     # 第 3 步：拟合中毒模型 + 评估
+  python attacks/bandwagon/run.py --mode both      # data + model（默认）
+  python attacks/bandwagon/run.py --mode all       # classify + data + model 全流程
 
 模块分离：
 - classify 模式只调用 classify.py（依赖模型 checkpoint，产出频次分类缓存）
@@ -29,16 +29,16 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]  # G:\Idea\TPA
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from attacks.attack_imp_direct_poison.generate import load_yaml_config, main as gen_main
-from attacks.attack_imp_direct_poison.fit import main as fit_main
-from attacks.attack_imp_direct_poison.classify import main as classify_main
+from attacks.bandwagon.generate import load_yaml_config, main as gen_main
+from attacks.bandwagon.fit import main as fit_main
+from attacks.bandwagon.classify import main as classify_main
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="攻击模板编排")
+    parser = argparse.ArgumentParser(description="Bandwagon 攻击编排")
     parser.add_argument(
         "--config", type=str,
-        default=str(PROJECT_ROOT / "attacks" / "attack_imp_direct_poison" / "config.yaml"),
+        default=str(PROJECT_ROOT / "attacks" / "bandwagon" / "config.yaml"),
     )
     parser.add_argument(
         "--mode", type=str, default=None,

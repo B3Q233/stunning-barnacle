@@ -46,17 +46,27 @@ def main() -> None:
         help="classify=推荐频次分类；data=只生成中毒数据；"
              "model=拟合中毒模型；both=data+model；all=全流程（默认按配置）",
     )
+    parser.add_argument(
+        "--tag", type=str, default=None,
+        help="实验标签 run_tag（优先于 config.run_tag；缺省=当前时间）",
+    )
     args = parser.parse_args()
 
     cfg = load_yaml_config(Path(args.config))
+    if args.tag:
+        cfg["run_tag"] = args.tag
     mode = args.mode or cfg.get("mode", "both")
-    print(f"[run] mode={mode}, dataset={cfg.get('dataset')}")
+    from training.run_tag import resolve_run_tag
+    print(f"[run] mode={mode}, dataset={cfg.get('dataset')}, "
+          f"run_tag={resolve_run_tag(cfg)}")
 
-    if mode in ("classify", "all"):
+    from training.modes import stages_for_mode
+    run_classify, run_data, run_model = stages_for_mode(mode)
+    if run_classify:
         classify_main(cfg)
-    if mode in ("data", "both"):
+    if run_data:
         gen_main(cfg)
-    if mode in ("model", "both"):
+    if run_model:
         fit_main(cfg)
 
 
