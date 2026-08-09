@@ -5,6 +5,8 @@
 #   [unreported]  论文完全未提及，使用社区/框架默认值
 # 严禁将 [ai] / [unreported] 的值标注为 [paper]
 
+run_tag: null                                 # 实验标签（--tag 或此处指定；null=自动当前时间 2026-08-07-14:20）
+
 data:
   raw_data_path: "data/raw/dataset_name"        # [unreported] 用户本地路径，需用户手动下载后填写
   processed_data_path: "data/processed"          # [unreported] 由①数据处理脚本生成
@@ -25,6 +27,9 @@ training:
   device: "cuda"                                   # [unreported]，可选 cuda/cpu，自动回退见框架代码
 
 evaluation:
-  metrics: ["recall@20", "ndcg@20"]                # [paper] 见论文 Table 4
+  metrics:                                          # [paper] 见论文 Table 4
+  - recall@20: upper                                # upper=越高越好 / lower=越低越好（显式标注优先）
+  - ndcg@20: upper
+  checkpoint_mode: per_metric                       # per_metric=每指标一份最优（默认）| single=仅第一指标
   eval_negative_sampling: "full_ranking"           # [ai] 论文描述模糊，推断依据：常见做法是全量排序而非采样
   filter_seen_items: true                          # [paper]

@@ -45,6 +45,12 @@ from attacks.attack_imp_direct_poison.generate import (
     raw_meta_path,
 )
 from attacks.attack_imp_direct_poison.evaluate import compare_models, ranking_scores, save_report
+from training.run_tag import (
+    read_latest_tag,
+    resolve_run_tag,
+    save_config_snapshot,
+)
+from training.metrics import BestTracker, safe_checkpoint_name
 
 
 def build_training_config(config: Dict[str, Any], dataset: str,
@@ -88,6 +94,20 @@ def build_training_config(config: Dict[str, Any], dataset: str,
     # 显式模型 overrides 最后生效
     overrides.update(config.get("model", {}).get("overrides", {}))
     return TrainingConfig(overrides=overrides)
+
+
+def resolve_metrics_cfg(config: Dict[str, Any], model_name: str) -> list:
+    """攻击配置 evaluation.metrics 优先；缺省取模型自身 config 的 metrics。"""
+    ev = config.get("evaluation", {})
+    metrics = ev.get("metrics")
+    if metrics is None:
+        model_cfg = load_model_config(
+            model_name,
+            overrides=config.get("model", {}).get("overrides"),
+        )
+        metrics = model_cfg.get("evaluation", {}).get(
+            "metrics", ["recall@20", "ndcg@20"])
+    return metrics
 
 
 def transfer_clean_embeddings(model, ckpt_path: Path,
@@ -145,7 +165,8 @@ def _split_train_val(pairs: List[Tuple[int, int]], seed: int = 42
 def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
                          out_dir: Path, warm_start: bool,
                          warm_ckpt: Path | None, clean_num_users: int | None,
-                         model_cls, dataset_cls
+                         model_cls, dataset_cls, metrics_cfg,
+                         checkpoint_mode: str = "per_metric"
                          ) -> Tuple[Any, List[Dict[str, Any]]]:
     """训练中毒模型，返回 (model, history)。"""
     num_users = poisoned_meta["num_users"]
@@ -154,6 +175,7 @@ def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
     neg_ratio = cfg.get("neg_ratio", 1)
     k = cfg.get("k", 20)
     eval_every = cfg.get("eval_every", 5)
+    tracker = BestTracker(metrics_cfg, checkpoint_mode)
 
     model = build_model(cfg, poisoned_meta, model_cls,
                         warm_start, warm_ckpt, clean_num_users)
@@ -174,8 +196,6 @@ def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
 
     ckpt_dir = out_dir / "checkpoints"
     ckpt_dir.mkdir(parents=True, exist_ok=True)
-    best_recall = -1.0
-    best_path = ckpt_dir / "best.pt"
     history: List[Dict[str, Any]] = []
 
     print(f"[fit] 中毒模型训练: users={num_users}, items={num_items}, "
@@ -203,19 +223,20 @@ def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
         if epoch % eval_every == 0 or epoch == 1:
             scores, users, test_pos_local = ranking_scores(model, poisoned_meta["test_pairs"])
             res = compute_metrics(scores, user_items, test_pos_local, k=k)
-            entry[f"recall@{k}"] = res[f"recall@{k}"]
-            entry[f"ndcg@{k}"] = res[f"ndcg@{k}"]
+            entry.update(res)
             print(f"    [eval] {f'recall@{k}'}={res[f'recall@{k}']:.4f}, "
                   f"{f'ndcg@{k}'}={res[f'ndcg@{k}']:.4f}")
-            if res[f"recall@{k}"] > best_recall:
-                best_recall = res[f"recall@{k}"]
-                torch.save({
+            improved = tracker.update(res, epoch)
+            for name in improved:
+                ckpt_path = ckpt_dir / f"{safe_checkpoint_name(name)}-best-model.pt"
+                payload = {
                     "epoch": epoch,
                     "model_state_dict": model.state_dict(),
-                    "recall": res[f"recall@{k}"],
-                    "ndcg": res[f"ndcg@{k}"],
-                }, best_path)
-                print(f"    [ckpt] best → {best_path} (recall@{k}={best_recall:.4f})")
+                    "metrics": dict(res),
+                }
+                payload.update(res)
+                torch.save(payload, ckpt_path)
+                print(f"    [ckpt] best → {ckpt_path} ({name}={res[name]:.4f})")
 
         history.append(entry)
 
@@ -224,7 +245,10 @@ def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
         "model_state_dict": model.state_dict(),
     }, ckpt_dir / "latest.pt")
     (out_dir / "history.json").write_text(
-        json.dumps(history, ensure_ascii=False, indent=2), encoding="utf-8"
+        json.dumps({
+            "history": history,
+            "best": tracker.best_results(),
+        }, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     print(f"[fit] 训练完成 → {out_dir}")
     return model, history
@@ -241,7 +265,8 @@ def load_clean_model(cfg: TrainingConfig, clean_meta: Dict[str, Any],
     return model
 
 
-def main(config: Dict[str, Any], skip_train: bool = False) -> Dict[str, Any]:
+def main(config: Dict[str, Any], skip_train: bool = False,
+         tag: str | None = None) -> Dict[str, Any]:
     dataset = config["dataset"]
     attack_cfg = config["attack"]
     model_name = config.get("model", {}).get("name", "lightgcn")
@@ -250,14 +275,24 @@ def main(config: Dict[str, Any], skip_train: bool = False) -> Dict[str, Any]:
     dataset_cls = get_dataset_cls(model_name) or LightGCNDataset
     out_root_cfg = config.get("output", {}).get("dir")
     out_root = Path(out_root_cfg) if out_root_cfg else Path("attacks") / attack_name / "outputs"
-    out_dir = (PROJECT_ROOT / out_root / dataset).resolve()
+    poisoned_base = poisoned_data_dir(config)
 
-    poisoned_path = poisoned_data_dir(config) / "meta.pkl"
+    if tag or config.get("run_tag"):
+        run_tag = resolve_run_tag(config, cli_tag=tag)
+    else:
+        run_tag = read_latest_tag(poisoned_base) or resolve_run_tag(config)
+
+    out_dir = (PROJECT_ROOT / out_root / dataset / model_name / run_tag).resolve()
+    poisoned_path = poisoned_base / run_tag / "meta.pkl"
     if not poisoned_path.exists():
         raise FileNotFoundError(
-            f"未找到中毒数据 {poisoned_path}，请先运行 generate.py 生成"
+            f"未找到中毒数据 {poisoned_path}\n"
+            f"run_tag={run_tag}，请先运行 generate.py 生成该实验的中毒数据，"
+            f"或检查 {poisoned_base} 下已有的 tag"
         )
+    save_config_snapshot(config, out_dir)
     poisoned_meta = load_meta(poisoned_path)
+    print(f"[fit] run_tag: {run_tag}")
 
     clean_meta = load_meta(raw_meta_path(config))
 
@@ -269,6 +304,8 @@ def main(config: Dict[str, Any], skip_train: bool = False) -> Dict[str, Any]:
 
     cfg = build_training_config(config, dataset, model_name)
     k = cfg.get("k", 20)
+    metrics_cfg = resolve_metrics_cfg(config, model_name)
+    checkpoint_mode = config.get("evaluation", {}).get("checkpoint_mode", "per_metric")
 
     warm_cfg = config.get("warm_start", {})
     warm_start = bool(warm_cfg.get("enabled", True))
@@ -280,7 +317,13 @@ def main(config: Dict[str, Any], skip_train: bool = False) -> Dict[str, Any]:
         # 复用已训练的 checkpoint（--skip-train）
         model = build_model(cfg, poisoned_meta, model_cls,
                             warm_start=False, warm_ckpt=None)
-        ckpt_path = out_dir / "checkpoints" / "best.pt"
+        primary = BestTracker(metrics_cfg).primary_metric
+        ckpt_path = None
+        if primary:
+            ckpt_path = out_dir / "checkpoints" / \
+                f"{safe_checkpoint_name(primary)}-best-model.pt"
+        if ckpt_path is None or not ckpt_path.exists():
+            ckpt_path = out_dir / "checkpoints" / "best.pt"
         if not ckpt_path.exists():
             ckpt_path = out_dir / "checkpoints" / "latest.pt"
         ckpt = torch.load(ckpt_path, map_location=model._device, weights_only=True)
@@ -293,6 +336,8 @@ def main(config: Dict[str, Any], skip_train: bool = False) -> Dict[str, Any]:
             clean_num_users=clean_meta["num_users"] if warm_start else None,
             model_cls=model_cls,
             dataset_cls=dataset_cls,
+            metrics_cfg=metrics_cfg,
+            checkpoint_mode=checkpoint_mode,
         )
 
     # 对比用的干净模型：独立于 warm_start 开关，取 clean_checkpoint（缺省用 warm_start.checkpoint）
@@ -324,5 +369,8 @@ if __name__ == "__main__":
                         default=str(PROJECT_ROOT / "attacks" / "attack_imp_direct_poison" / "config.yaml"))
     parser.add_argument("--skip-train", action="store_true",
                         help="跳过训练，直接加载已有 checkpoint 做对比评估")
+    parser.add_argument("--tag", type=str, default=None,
+                        help="实验标签 run_tag（优先于 config.run_tag 与 latest.json）")
     args = parser.parse_args()
-    main(load_yaml_config(Path(args.config)), skip_train=args.skip_train)
+    main(load_yaml_config(Path(args.config)), skip_train=args.skip_train,
+         tag=args.tag)

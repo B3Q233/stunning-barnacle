@@ -69,10 +69,21 @@
   由攻击模板交付；两者通过 `registry.py` 解耦。
 - 攻击模板默认画像 = "流行 filler + 指定目标"（bandwagon 语义）；
   换攻击语义只改 `generate.py` 的 `generate_fake_profiles`，其余流程不动。
+- 实验隔离：所有实验必须带 run_tag（CLI `--tag` > config `run_tag` > 自动当前时间），
+  数据/输出目录为 `data/poisoned/{dataset}/{model}/{tag}/` 与
+  `outputs/{dataset}/{model}/{tag}/`，目录内保存 config.yaml 快照；
+  data 阶段写 `latest.json` 指针，model 阶段无 tag 时自动读取（详见 SKILL.md
+  "实验隔离 run_tag" 与 `assets/run_tag.py`）。
 
 ## 6. 交付清单
 
 - [ ] `attacks/{attack_name}/` 下 9 个模板文件（代码 + 配置 + 文档）已就位且可运行
+- [ ] run_tag 实验隔离已实现：`--tag` 参数、默认当前时间、
+      `data/poisoned/{dataset}/{model}/{tag}/` + `outputs/{dataset}/{model}/{tag}/`、
+      config.yaml 快照、`latest.json` 指针（两阶段分开运行时能衔接）
+- [ ] 多指标最优 checkpoint：`evaluation.metrics` 支持 upper/lower 标注与
+      `checkpoint_mode: per_metric|single`；per_metric 按 `{指标}-best-model.pt`
+      每指标各存一份（同 epoch 不去重）；`history.json` 含 `best` 段
 - [ ] classify / data / model 三阶段各跑通一次，验证门禁全部通过
 - [ ] `docs/DESIGN.md` 的 TODO 已按论文填写（攻击定义、参数来源等级）
 - [ ] `docs/USAGE.md` 已按实际攻击名/数据集更新

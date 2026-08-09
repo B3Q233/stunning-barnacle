@@ -60,6 +60,50 @@ description: 基于固定的松耦合训练框架模板（TrainableModel / Datas
 
   每个子文件夹只放该阶段对应的代码，不要把不同阶段的逻辑混进同一个文件——这本身也是"最小爆炸半径"原则的延伸：出问题时能通过文件夹定位到是哪个阶段的逻辑出了错。
 
+  ## 实验隔离 run_tag（所有实验必须执行）
+
+  每次实验必须带一个 run_tag 实验标签，默认取当前时间（`%Y-%m-%d-%H:%M`，
+  例：`2026-08-07-14:20`）。Windows 目录名不允许 `:`，写入路径时替换为 `-`
+  （如 `2026-08-07-14-20`），日志/元数据中的 run_tag 与目录名保持一致。
+  统一工具：`assets/run_tag.py`（`default_run_tag` / `sanitize_run_tag` /
+  `resolve_run_tag` / `save_config_snapshot` / `write_latest_pointer` /
+  `read_latest_tag`），落地到项目 `training/run_tag.py`，所有实验代码从这里导入。
+
+  run_tag 优先级：CLI `--tag` > config `run_tag` > `latest.json` 指针
+  （fit 阶段用于衔接最近一次 data 生成） > 自动当前时间。
+
+  攻击模板目录约定：
+  - 数据：`attacks/{attack_name}/data/poisoned/{dataset}/{model}/{tag}/`，
+    目录内保存 config.yaml 快照；基础目录写 `latest.json` 指针
+  - 输出：`attacks/{attack_name}/outputs/{dataset}/{model}/{tag}/`
+    （checkpoints / history.json / 对比报告 + config.yaml 快照）
+  - 共享缓存（classify 的 rec_freq、tpa 的 path 缓存）不隔离
+  - `--mode data` 与 `--mode model` 分开运行时，model 阶段无 tag 时自动读取
+    `latest.json`，保证两阶段落在同一实验目录
+
+  六步模型训练同样执行：`models/{model}/outputs/{tag}/`（checkpoints / history /
+  eval_log / config.yaml 快照），训练结束后复制最新 checkpoint 到原有稳定指针
+  `outputs/checkpoints/latest.pt`（供攻击流程引用），并在 `outputs/latest.json`
+  记录本次 run_tag。
+
+  ## 多指标最优 checkpoint（所有实验必须执行）
+
+  - `evaluation.metrics` 支持方向标注：YAML 字典 `recall@20: upper`、
+    字符串 `"ndcg@20 lower"`、裸字符串（按默认方向）；`upper`=越高越好，
+    `lower`=越低越好。默认方向内置表：recall/ndcg/precision/hit/hr/map/auc/acc/f1
+    → upper；loss/rmse/mae/mse/err → lower；未标注未命中默认 upper。
+  - `evaluation.checkpoint_mode`：`per_metric`（默认，N 指标 → N 份最优）|
+    `single`（仅第一指标一份）。per_metric 时每个指标独立跟踪最优，
+    即使多指标最优 epoch 相同也各保存一份（不去重）。
+  - 最优 checkpoint 命名：`{指标}-best-model.pt`（如 `recall@20-best-model.pt`），
+    便于后续导入；`latest.pt`（最终 epoch）不变。
+  - `history.json` 结构：`{"best": {指标: {epoch, value, metrics(全量快照),
+    checkpoint}}, "history": [...]}`。
+  - `--skip-train` 加载顺序：`{首指标}-best-model.pt` → `best.pt`（旧）→
+    `latest.pt`。
+  - 统一实现：`training/metrics.py`（parse_metrics / BestTracker），所有实验代码
+    从这里导入，禁止各自重写。
+
   ## 虚拟环境与依赖管理（必须执行，不可省略）
 
   **不要**把依赖安装到用户的系统默认环境或全局 Python 环境。具体步骤：
