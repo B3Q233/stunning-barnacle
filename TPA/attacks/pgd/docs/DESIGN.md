@@ -168,7 +168,7 @@ compute"），因此纯 integrity 效用下 filler 评分的梯度恒为 0，PGD
 - `training`：`lr` / `epochs` / `batch_size` / `weight_decay` / `neg_ratio` /
   `device` / `k` / `eval_every`
 - `evaluation`：`report_model_utility` / `metrics`（支持 upper/lower 方向标注，
-  @K 需与 training.k 一致）/ `checkpoint_mode`（per_metric 默认 | single）
+  指标名中的 @K 是评估 K 的唯一权威）/ `checkpoint_mode`（per_metric 默认 | single）
 
 `models/mf` 的键（`data.dataset` / `model.emb_dim` / `model.init_method` /
 `training.*` / `evaluation.k|eval_every`）同样与 `models/mf/config.yaml` 一致。

@@ -92,6 +92,9 @@ description: 基于固定的松耦合训练框架模板（TrainableModel / Datas
     字符串 `"ndcg@20 lower"`、裸字符串（按默认方向）；`upper`=越高越好，
     `lower`=越低越好。默认方向内置表：recall/ndcg/precision/hit/hr/map/auc/acc/f1
     → upper；loss/rmse/mae/mse/err → lower；未标注未命中默认 upper。
+  - 指标名中的 `@K` 是评估 K 的唯一权威（如配置 `recall@20` 就按 Top-20 评估），
+    `evaluation.k` 仅在没有 `@K` 的指标时作为回退；评估结果必须按配置指标名
+    精确匹配，否则 BestTracker 会显式报错而不是静默失效。
   - `evaluation.checkpoint_mode`：`per_metric`（默认，N 指标 → N 份最优）|
     `single`（仅第一指标一份）。per_metric 时每个指标独立跟踪最优，
     即使多指标最优 epoch 相同也各保存一份（不去重）。

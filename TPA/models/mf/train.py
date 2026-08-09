@@ -17,7 +17,12 @@ import torch
 
 from training.framework import TrainingConfig, Callback
 from training.run_tag import resolve_run_tag, save_config_snapshot, write_latest_pointer
-from training.metrics import BestTracker, safe_checkpoint_name
+from training.metrics import (
+    BestTracker,
+    eval_ks_from_metrics,
+    match_metric_values,
+    safe_checkpoint_name,
+)
 from models.mf.dataset import MFDataLoader, KEY_NUM_USERS, KEY_NUM_ITEMS, KEY_DATASET
 from models.mf.model import MatrixFactorization
 from evaluation.metrics import compute_metrics
@@ -47,6 +52,8 @@ class FullRankingCallback(Callback):
             config.get("metrics"),
             config.get("checkpoint_mode", "per_metric"),
         )
+        self.metric_names = list(self.tracker.directions) or [
+            f"recall@{self.eval_k}", f"ndcg@{self.eval_k}"]
 
         self.test_pos = {}
         for u, i in loader.test_pairs:
@@ -58,7 +65,7 @@ class FullRankingCallback(Callback):
         if not os.path.exists(self.tag_eval_log):
             with open(self.tag_eval_log, "w", newline="") as f:
                 writer = csv.writer(f)
-                writer.writerow(["epoch", f"recall@{self.eval_k}", f"ndcg@{self.eval_k}"])
+                writer.writerow(["epoch"] + self.metric_names)
 
     def on_epoch_end(self, epoch: int, metrics: Dict[str, float]) -> None:
         if epoch % self.eval_every != 0 and epoch != 1:
@@ -77,15 +84,20 @@ class FullRankingCallback(Callback):
                 scores_list.append((user_emb[batch] @ item_emb.T).cpu())
             scores = torch.cat(scores_list, dim=0)
 
-        result = compute_metrics(scores, self.train_pos, self.test_pos, k=self.eval_k)
-        recall_key = f"recall@{self.eval_k}"
-        ndcg_key = f"ndcg@{self.eval_k}"
+        ks = eval_ks_from_metrics(self.config.get("metrics"), self.eval_k)
+        res_by_k = {
+            K: compute_metrics(scores, self.train_pos, self.test_pos, k=K)
+            for K in ks
+        }
+        result = match_metric_values(self.metric_names, res_by_k)
         with open(self.tag_eval_log, "a", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([epoch, result[recall_key], result[ndcg_key]])
+            writer.writerow(
+                [epoch] + [result.get(n, float("nan")) for n in self.metric_names])
 
-        print(f"  [eval] epoch {epoch}: {recall_key}={result[recall_key]:.4f}, "
-              f"{ndcg_key}={result[ndcg_key]:.4f}")
+        eval_str = ", ".join(
+            f"{n}={result.get(n, float('nan')):.4f}" for n in self.metric_names)
+        print(f"  [eval] epoch {epoch}: {eval_str}")
 
         improved = self.tracker.update(result, epoch)
         for name in improved:

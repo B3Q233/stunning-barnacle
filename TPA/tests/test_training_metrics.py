@@ -4,6 +4,9 @@ import unittest
 from training.metrics import (
     BestTracker,
     default_direction,
+    eval_ks_from_metrics,
+    match_metric_values,
+    metric_k,
     parse_metrics,
     safe_checkpoint_name,
 )
@@ -73,6 +76,41 @@ class BestTrackerTest(unittest.TestCase):
     def test_safe_name(self):
         self.assertEqual(safe_checkpoint_name("recall@20"), "recall@20")
         self.assertNotIn("/", safe_checkpoint_name("a/b"))
+
+    def test_update_raises_on_total_mismatch(self):
+        """配置指标名与传入指标键完全不匹配时必须显式报错（防静默失效）。"""
+        t = BestTracker([{"recall@20": "upper"}])
+        with self.assertRaises(ValueError):
+            t.update({"recall@10": 0.1}, 1)
+
+
+class MetricKTest(unittest.TestCase):
+    def test_metric_k_parsing(self):
+        self.assertEqual(metric_k("recall@20"), 20)
+        self.assertEqual(metric_k("ndcg@10"), 10)
+        self.assertIsNone(metric_k("loss"))
+
+    def test_eval_ks_from_metrics(self):
+        ks = eval_ks_from_metrics(
+            [{"recall@20": "upper"}, "ndcg@10 lower"], fallback_k=5)
+        self.assertEqual(ks, [10, 20])
+        # 无 @K 时回退 fallback_k
+        self.assertEqual(eval_ks_from_metrics(["recall"], fallback_k=5), [5])
+
+    def test_match_metric_values(self):
+        res_by_k = {
+            10: {"recall@10": 0.1, "ndcg@10": 0.2},
+            20: {"recall@20": 0.3, "ndcg@20": 0.4},
+        }
+        self.assertEqual(
+            match_metric_values(["recall@20", "ndcg@20"], res_by_k),
+            {"recall@20": 0.3, "ndcg@20": 0.4},
+        )
+        # 裸名按前缀匹配
+        self.assertEqual(
+            match_metric_values(["recall"], res_by_k),
+            {"recall": 0.1},
+        )
 
 
 if __name__ == "__main__":

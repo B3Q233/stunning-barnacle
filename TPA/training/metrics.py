@@ -86,6 +86,42 @@ def safe_checkpoint_name(metric: str) -> str:
     return re.sub(r'[\\/:*?"<>|\s]', "_", metric).strip("._")
 
 
+def metric_k(name: str) -> Optional[int]:
+    """解析指标名末尾的 @K（recall@20 → 20）；无 @K 返回 None。"""
+    m = re.search(r"@(\d+)\s*$", name)
+    return int(m.group(1)) if m else None
+
+
+def eval_ks_from_metrics(metrics_cfg: Optional[List[Any]],
+                         fallback_k: int) -> List[int]:
+    """评估 K 的唯一权威来源：指标名中的 @K（去重升序）。
+    所有指标都无 @K 时回退 fallback_k。"""
+    directions = parse_metrics(metrics_cfg)
+    ks = {metric_k(name) for name in directions if metric_k(name) is not None}
+    if not ks:
+        return [fallback_k]
+    return sorted(ks)
+
+
+def match_metric_values(names: List[str],
+                        res_by_k: Dict[int, Dict[str, float]]) -> Dict[str, float]:
+    """把按 K 计算的评估结果映射为以配置指标名为 key 的字典。
+    - 带 @K 的指标名：直接取 res_by_k[K][name]
+    - 裸指标名：按前缀匹配（如 "recall" 匹配 recall@10）"""
+    out: Dict[str, float] = {}
+    for name in names:
+        k = metric_k(name)
+        if k is not None and k in res_by_k and name in res_by_k[k]:
+            out[name] = res_by_k[k][name]
+        elif k is None:
+            for res in res_by_k.values():
+                matched = [rk for rk in res if rk.startswith(name)]
+                if matched:
+                    out[name] = res[matched[0]]
+                    break
+    return out
+
+
 class BestTracker:
     """按方向独立跟踪每个指标的最优结果。"""
 
@@ -108,6 +144,13 @@ class BestTracker:
 
     def update(self, metrics: Dict[str, float], epoch: int) -> List[str]:
         """用本 epoch 的指标快照更新各指标最优；返回本次刷新的指标名列表。"""
+        present = [name for name in self.directions if name in metrics]
+        if self.directions and not present:
+            raise ValueError(
+                f"BestTracker.update 收到的指标键 {sorted(metrics)} 与配置指标 "
+                f"{sorted(self.directions)} 完全不匹配。请检查 evaluation.metrics 的 "
+                f"@K 是否与评估使用的 K 一致（指标名中的 @K 现在是评估 K 的唯一权威）。"
+            )
         improved: List[str] = []
         for name, direction in self.directions.items():
             if name not in metrics:

@@ -5,7 +5,7 @@ evaluation:
   k: 20                         # Top-K 评估（recall@K, ndcg@K）
   eval_every: 1               # [ai] 全量评估间隔(epoch)
   metrics:
-  - recall@20: upper            # upper=越高越好 / lower=越低越好（显式标注优先于内置默认表）
+  - recall@20: upper            # upper=越高越好 / lower=越低越好；指标名中的 @K 是评估 K 的唯一权威
   - ndcg@20: upper
   checkpoint_mode: per_metric   # per_metric=每个指标各存一份最优（默认）| single=仅第一指标
 model:

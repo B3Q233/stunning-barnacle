@@ -50,7 +50,12 @@ from training.run_tag import (
     resolve_run_tag,
     save_config_snapshot,
 )
-from training.metrics import BestTracker, safe_checkpoint_name
+from training.metrics import (
+    BestTracker,
+    eval_ks_from_metrics,
+    match_metric_values,
+    safe_checkpoint_name,
+)
 
 
 def build_training_config(config: Dict[str, Any], dataset: str,
@@ -222,10 +227,15 @@ def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
 
         if epoch % eval_every == 0 or epoch == 1:
             scores, users, test_pos_local = ranking_scores(model, poisoned_meta["test_pairs"])
-            res = compute_metrics(scores, user_items, test_pos_local, k=k)
+            ks = eval_ks_from_metrics(metrics_cfg, k)
+            res_by_k = {
+                K: compute_metrics(scores, user_items, test_pos_local, k=K)
+                for K in ks
+            }
+            res = match_metric_values(list(tracker.directions), res_by_k)
             entry.update(res)
-            print(f"    [eval] {f'recall@{k}'}={res[f'recall@{k}']:.4f}, "
-                  f"{f'ndcg@{k}'}={res[f'ndcg@{k}']:.4f}")
+            eval_str = ", ".join(f"{n}={res[n]:.4f}" for n in res)
+            print(f"    [eval] {eval_str}")
             improved = tracker.update(res, epoch)
             for name in improved:
                 ckpt_path = ckpt_dir / f"{safe_checkpoint_name(name)}-best-model.pt"
