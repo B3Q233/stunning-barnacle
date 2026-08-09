@@ -1,15 +1,14 @@
-"""Random（随机）攻击 —— 数据层生成模块
+"""Bandwagon（从众）攻击 —— 数据层生成模块
 
 纯数据操作，不依赖 torch / 任何模型代码：
 1. （可选前置）读取 classify.py 产出的推荐频次分类缓存
 2. 选择目标物品（默认 strategy=specified，由用户自行指定 ID）
-3. 为每个目标构造假用户画像：[K 个随机物品 + 目标物品]
-   （经典 random attack：filler 从全量物品中均匀随机采样，不依赖流行度；
-   参考 Lam & Riedl, Shilling Recommender Systems for Fun and Profit, WWW 2004）
+3. 为每个目标构造假用户画像：[K 个流行物品 + 目标物品]
+   （filler 池 = 模型推荐频次 Top 20% 的流行物品，无缓存时回退训练集热门）
 4. 注入训练集 → 产出 poisoned meta.pkl + 注入统计
 
 用法:
-  python attacks/random/generate.py --config attacks/random/config.yaml
+  python attacks/bandwagon/generate.py --config attacks/bandwagon/config.yaml
 """
 from __future__ import annotations
 
@@ -27,24 +26,10 @@ from typing import Any, Dict, List, Tuple
 PROJECT_ROOT = Path(__file__).resolve().parents[2]  # G:\Idea\TPA
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+DEFAULT_RAW_META = PROJECT_ROOT / "models" / "lightgcn" / "data" / "processed" / "{dataset}" / "meta.pkl"
+DEFAULT_OUT_DIR = PROJECT_ROOT / "attacks" / "bandwagon" / "data" / "poisoned" / "{dataset}" / "{model}"
 
-
-def raw_meta_path(config: Dict[str, Any]) -> Path:
-    """干净数据 meta.pkl：models/{model.name}/data/processed/{dataset}/meta.pkl。"""
-    dataset = config["dataset"]
-    model_name = config.get("model", {}).get("name", "lightgcn")
-    return PROJECT_ROOT / "models" / model_name / "data" / "processed" / dataset / "meta.pkl"
-
-
-def poisoned_data_dir(config: Dict[str, Any]) -> Path:
-    """中毒数据基础目录（不含 run_tag）：attacks/{attack.name}/data/poisoned/{dataset}/{model}。"""
-    dataset = config["dataset"]
-    attack_name = config["attack"]["name"]
-    model_name = config.get("model", {}).get("name", "lightgcn")
-    return PROJECT_ROOT / "attacks" / attack_name / "data" / "poisoned" / dataset / model_name
-
-
-from training.run_tag import (  # noqa: E402
+from training.run_tag import (
     resolve_run_tag,
     save_config_snapshot,
     write_latest_pointer,
@@ -54,7 +39,7 @@ from training.run_tag import (  # noqa: E402
 def load_rec_freq_cache(config: Dict[str, Any], model_name: str, k: int,
                         required: bool = False) -> Dict[str, Any] | None:
     """读取推荐频次分类缓存（classify.py 产出）。"""
-    from attacks.random.classify import load_cache
+    from attacks.bandwagon.classify import load_cache
     return load_cache(config, model_name, k, required=required)
 
 
@@ -108,7 +93,7 @@ def select_target_items(popularity: Counter, num_items: int, strategy: str,
         if categories is None:
             raise FileNotFoundError(
                 "strategy=category 需要推荐频次分类缓存，"
-                "请先运行 python attacks/random/run.py --mode classify"
+                "请先运行 python attacks/bandwagon/run.py --mode classify"
             )
         if category not in categories:
             raise ValueError(
@@ -148,12 +133,10 @@ def select_target_items(popularity: Counter, num_items: int, strategy: str,
 
 
 def generate_fake_profiles(num_fake_users: int, filler_size: int,
-                           targets: List[int], filler_pool: List[int],
+                           targets: List[int], hot_pool: List[int],
                            rng: random.Random) -> List[Tuple[int, int, List[int]]]:
-    """为每个目标生成假用户画像（random 攻击语义）。
+    """为每个目标生成假用户画像。
 
-    每个假用户画像 = 目标物品 + filler_size 个从 filler_pool（全量物品）
-    中均匀随机采样的物品，与物品流行度无关。
     返回 profiles: [(fake_user_id, target_item, [filler_items + target])]
     假用户 ID 从 0 起顺序分配（与真实用户 ID 不冲突，由调用方传入起始值语义保证：
     这里返回的是组内序号，注入时统一偏移到 num_users 之后）。
@@ -163,9 +146,9 @@ def generate_fake_profiles(num_fake_users: int, filler_size: int,
     if filler_size <= 0:
         raise ValueError("filler_size 必须为正")
 
-    if len(filler_pool) < filler_size:
+    if len(hot_pool) < filler_size:
         raise ValueError(
-            f"filler 池仅 {len(filler_pool)} 个，小于 filler_size={filler_size}"
+            f"热门物品池仅 {len(hot_pool)} 个，小于 filler_size={filler_size}"
         )
 
     # 假用户均分给各目标（余数分配给前几个目标）
@@ -177,7 +160,7 @@ def generate_fake_profiles(num_fake_users: int, filler_size: int,
     for t_idx, target in enumerate(targets):
         n = per_target + (1 if t_idx < remainder else 0)
         for _ in range(n):
-            pool = [i for i in filler_pool if i != target]
+            pool = [i for i in hot_pool if i != target]
             fillers = rng.sample(pool, min(filler_size, len(pool)))
             items = [target] + fillers
             rng.shuffle(items)  # 交互顺序无关紧要（隐式反馈），仅增加画像多样性
@@ -208,7 +191,7 @@ def inject(meta: Dict[str, Any], profiles: List[Tuple[int, int, List[int]]]
 # ── 主流程 ───────────────────────────────────────────────
 def main(config: Dict[str, Any], raw_meta: Path | None = None,
          out_dir: Path | None = None) -> Dict[str, Any]:
-    """执行攻击数据注入，产出 poisoned meta.pkl。
+    """执行 Bandwagon 数据注入，产出 poisoned meta.pkl。
 
     返回注入统计字典（同时写入 stats.json）。
     """
@@ -217,11 +200,10 @@ def main(config: Dict[str, Any], raw_meta: Path | None = None,
     seed = config.get("seed", 42)
     rng = random.Random(seed)
     model_name = config.get("model", {}).get("name", "lightgcn")
+    tag = resolve_run_tag(config)
     k = config.get("training", {}).get("k") or 20
-    attack_name = config["attack"]["name"]
-    run_tag = resolve_run_tag(config)
 
-    meta_path = raw_meta or raw_meta_path(config)
+    meta_path = raw_meta or Path(str(DEFAULT_RAW_META).format(dataset=dataset))
     meta = load_meta(meta_path)
 
     num_users, num_items = meta["num_users"], meta["num_items"]
@@ -246,16 +228,22 @@ def main(config: Dict[str, Any], raw_meta: Path | None = None,
         rec_counts=rec_cache["counts"] if rec_cache else None,
     )
 
-    # random 攻击：filler 池 = 全量物品，均匀随机采样（与流行度无关）
-    filler_pool = list(range(num_items))
-    print(f"[generate] filler 池 = 全量物品（random 攻击，共 "
-          f"{len(filler_pool)} 个，均匀随机采样）")
+    # filler 池：优先用模型推荐频次 Top 20% 的流行物品；无缓存时回退训练集热门
+    if rec_cache is not None:
+        hot_pool = categories["popular"][:]
+        print(f"[generate] filler 池 = 模型推荐频次流行物品 "
+              f"({len(hot_pool)} 个，来自 classify 缓存)")
+    else:
+        hot_pool = [i for i, _ in popularity.most_common(
+            attack_cfg.get("filler_size", 20) * 5)]
+        print(f"[generate] [!] 无 classify 缓存，filler 池回退为训练集热门物品 "
+              f"Top-{len(hot_pool)}；建议先运行 --mode classify")
 
     profiles = generate_fake_profiles(
         num_fake,
         attack_cfg.get("filler_size", 20),
         targets,
-        filler_pool,
+        hot_pool,
         rng,
     )
 
@@ -275,9 +263,9 @@ def main(config: Dict[str, Any], raw_meta: Path | None = None,
 
     stats = {
         "dataset": dataset,
-        "attack": attack_name,
+        "attack": "bandwagon",
         "model": model_name,
-        "run_tag": run_tag,
+        "run_tag": tag,
         "seed": seed,
         "num_users_before": num_users,
         "num_users_after": poisoned["num_users"],
@@ -303,7 +291,8 @@ def main(config: Dict[str, Any], raw_meta: Path | None = None,
         "injected_pairs": added,
     }
 
-    out = out_dir or poisoned_data_dir(config) / run_tag
+    out = out_dir or Path(str(DEFAULT_OUT_DIR).format(
+        dataset=dataset, model=model_name)) / tag
     save_meta(poisoned, out / "meta.pkl")
     save_json(
         [{"fake_user": u, "target": t, "items": items} for u, t, items in profiles],
@@ -311,23 +300,23 @@ def main(config: Dict[str, Any], raw_meta: Path | None = None,
     )
     save_json(stats, out / "stats.json")
     save_config_snapshot(config, out)
-    write_latest_pointer(out.parent, run_tag)
+    write_latest_pointer(out.parent, tag)
 
-    print(f"[{attack_name}] 数据集: {dataset}（{num_users} 用户 / {num_items} 物品）")
-    print(f"[{attack_name}] run_tag: {run_tag}")
-    print(f"[{attack_name}] 目标物品: {targets}，流行度: "
+    print(f"[bandwagon] 数据集: {dataset}（{num_users} 用户 / {num_items} 物品）")
+    print(f"[bandwagon] run_tag: {tag}")
+    print(f"[bandwagon] 目标物品: {targets}，流行度: "
           f"{[popularity[t] for t in targets]}")
     if rec_cache:
-        print(f"[{attack_name}] 目标物品分类: "
+        print(f"[bandwagon] 目标物品分类: "
               f"{[stats['targets'][j]['category'] for j in range(len(targets))]}")
-    print(f"[{attack_name}] 假用户: {len(profiles)}，每个交互 "
-          f"{attack_cfg.get('filler_size', 20)} 随机 + 1 目标")
-    print(f"[{attack_name}] 注入前训练交互: {before_cnt} → 注入后: {after_cnt} "
+    print(f"[bandwagon] 假用户: {len(profiles)}，每个交互 "
+          f"{attack_cfg.get('filler_size', 20)} 热门 + 1 目标")
+    print(f"[bandwagon] 注入前训练交互: {before_cnt} → 注入后: {after_cnt} "
           f"（+{added}）")
     for t in targets:
         print(f"  [target {t}] 假用户数={per_target_counts[t]}，"
               f"注入后该物品交互数 = {popularity[t] + per_target_counts[t]}")
-    print(f"[{attack_name}] 输出 → {out / 'meta.pkl'}")
+    print(f"[bandwagon] 输出 → {out / 'meta.pkl'}")
     return stats
 
 
@@ -338,8 +327,8 @@ def load_yaml_config(path: Path) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="攻击数据注入")
+    parser = argparse.ArgumentParser(description="Bandwagon 数据注入")
     parser.add_argument("--config", type=str,
-                        default=str(PROJECT_ROOT / "attacks" / "random" / "config.yaml"))
+                        default=str(PROJECT_ROOT / "attacks" / "bandwagon" / "config.yaml"))
     args = parser.parse_args()
     main(load_yaml_config(Path(args.config)))

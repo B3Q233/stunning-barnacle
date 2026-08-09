@@ -16,6 +16,7 @@ import argparse
 import json
 import pickle
 import random
+import sys
 from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -24,6 +25,8 @@ from attacks.tpa.registry import active_model_name
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]  # G:\Idea\TPA
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def raw_meta_path(config: Dict[str, Any]) -> Path:
@@ -34,14 +37,23 @@ def raw_meta_path(config: Dict[str, Any]) -> Path:
 
 
 def poisoned_data_dir(config: Dict[str, Any]) -> Path:
-    """中毒数据输出目录：attacks/{attack.name}/data/poisoned{_proxy}/{dataset}。
+    """中毒数据基础目录（不含 run_tag）：attacks/{attack.name}/data/poisoned{_proxy}/{dataset}/{model}。
 
     代理模式带 _proxy 后缀，与白盒毒化数据隔离，避免互相覆盖。
+    实际实验目录 = 基础目录 / run_tag。
     """
     dataset = config["dataset"]
     attack_name = config["attack"]["name"]
+    model_name = config.get("model", {}).get("name", "lightgcn")
     tag = "_proxy" if config.get("surrogate", {}).get("enabled", False) else ""
-    return PROJECT_ROOT / "attacks" / attack_name / "data" / f"poisoned{tag}" / dataset
+    return PROJECT_ROOT / "attacks" / attack_name / "data" / f"poisoned{tag}" / dataset / model_name
+
+
+from training.run_tag import (  # noqa: E402
+    resolve_run_tag,
+    save_config_snapshot,
+    write_latest_pointer,
+)
 
 
 def load_paths_cache(config: Dict[str, Any],
@@ -176,6 +188,7 @@ def main(config: Dict[str, Any], raw_meta: Path | None = None,
     victim_model_name = config.get("model", {}).get("name", "lightgcn")
     embedding_model_name = active_model_name(config)
     attack_name = config["attack"]["name"]
+    run_tag = resolve_run_tag(config)
     k = config.get("training", {}).get("k") or 20
 
     meta = load_meta(raw_meta or raw_meta_path(config))
@@ -207,6 +220,7 @@ def main(config: Dict[str, Any], raw_meta: Path | None = None,
         "dataset": dataset,
         "attack": attack_name,
         "model": victim_model_name,
+        "run_tag": run_tag,
         "embedding_model": embedding_model_name,
         "surrogate": {
             "enabled": bool(config.get("surrogate", {}).get("enabled", False)),
@@ -240,12 +254,15 @@ def main(config: Dict[str, Any], raw_meta: Path | None = None,
         "path_stats": path_stats,
     }
 
-    out = out_dir or poisoned_data_dir(config)
+    out = out_dir or poisoned_data_dir(config) / run_tag
     save_meta(poisoned, out / "meta.pkl")
     save_json(profiles, out / "profiles.json")
     save_json(stats, out / "stats.json")
+    save_config_snapshot(config, out)
+    write_latest_pointer(out.parent, run_tag)
 
     print(f"[{attack_name}] 数据集: {dataset}（{num_users} 用户 / {num_items} 物品）")
+    print(f"[{attack_name}] run_tag: {run_tag}")
     print(f"[{attack_name}] 目标物品: {targets}，流行度: "
           f"{[popularity[t] for t in targets]}")
     if rec_cache:

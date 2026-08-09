@@ -1,12 +1,12 @@
 data:
-  dataset: ml100k
+  dataset: yelp2018
 run_tag: null                    # 实验标签（--tag 或此处指定；null=自动当前时间 2026-08-07-14:20）
 evaluation:
-  k: 20                         # Top-K 评估（recall@K, ndcg@K）
+  k: 10                         # Top-K 评估（recall@K, ndcg@K）
   eval_every: 1               # [ai] 全量评估间隔(epoch)
   metrics:
-  - recall@20: upper            # upper=越高越好 / lower=越低越好；指标名中的 @K 是评估 K 的唯一权威
-  - ndcg@20: upper
+  - recall@10: upper            # upper=越高越好 / lower=越低越好；指标名中的 @K 是评估 K 的唯一权威
+  - ndcg@10: upper
   checkpoint_mode: per_metric   # per_metric=每个指标各存一份最优（默认）| single=仅第一指标
 model:
   emb_dim: 64
@@ -16,7 +16,7 @@ training:
   batch_size: 256
   checkpoint_dir: models/lightgcn/outputs/checkpoints
   device: cuda
-  epochs: 100
+  epochs: 300
   lr: 0.001
   save_every_n_epochs: 10
   neg_ratio: 1                  # 负采样比例：每个正样本对应的负样本数量（增大需同步降低 weight_decay）

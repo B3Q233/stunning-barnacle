@@ -1031,7 +1031,7 @@ git commit -m "feat(kpv): 新增推导页标准模板 derivation-template.html�
 
 在 `## Step 6 — Learning path` 小节之后、`## Conventions` 之前插入：
 
-```markdown
+````markdown
 ## Step 7 — 校验与交付（不过不交付）
 
 运行：
@@ -1041,7 +1041,7 @@ python <skill>/scripts/verify_outputs.py <paper>.md . --browser-check
 ```
 
 校验 6 项：产物齐全 / MathJax 生效 / 公式全覆盖 / 无跳步词 / demo 注册完整 / 浏览器真实渲染。失败则修复后重跑，直到输出 `VERIFY PASSED` 才能交付。
-```
+````
 
 - [ ] **Step 4: 强化基础概念覆盖章节**
 

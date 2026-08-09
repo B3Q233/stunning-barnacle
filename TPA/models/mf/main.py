@@ -1,20 +1,19 @@
-r"""LightGCN 训练入口
+r"""MF 训练入口
 用法（在任意目录下执行）:
-  G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\models\lightgcn\main.py
-  G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\models\lightgcn\main.py --resume
+  G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\models\mf\main.py
+  G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\models\mf\main.py --resume
 """
 import sys
 import os
 
-# 确保项目根目录在 sys.path 中（无论从哪里启动）
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 if __name__ == "__main__":
-    from models.lightgcn.train import main
+    from models.mf.train import main
     import argparse
-    parser = argparse.ArgumentParser(description="LightGCN 训练入口")
+    parser = argparse.ArgumentParser(description="MF 训练入口")
     parser.add_argument("--resume", action="store_true", help="断点续训")
     parser.add_argument("--tag", type=str, default=None,
                         help="实验标签 run_tag（缺省=当前时间）")

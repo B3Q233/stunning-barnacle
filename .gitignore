@@ -23,20 +23,29 @@ env/
 .DS_Store
 Thumbs.db
 
+# 私人/本地内容（不入库）
+.claude/
+.codex/
+.chrome-headless-test/
+tmp/
+papers/
+MinerU-Skill/
+
 # Data (keep structure, ignore large files)
+data/
 data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
 
 # Outputs (generated files — track scripts and logs, ignore large binaries)
-outputs/*.png
-outputs/*.pt
-outputs/*.pth
+outputs/
+checkpoints/
 outputs/checkpoints/
-*.png
-*.pth
+*.pkl
 *.pt
+*.pth
+*.png
 
 # Logs
 *.log
