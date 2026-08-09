@@ -2,23 +2,22 @@ data:
   dataset: ml100k
 run_tag: null                    # 实验标签（--tag 或此处指定；null=自动当前时间 2026-08-07-14:20）
 evaluation:
-  k: 20                         # Top-K 评估（recall@K, ndcg@K）
-  eval_every: 1               # [ai] 全量评估间隔(epoch)
+  k: 10                         # Top-K 评估（recall@K, ndcg@K）
+  eval_every: 1                 # [ai] 全量评估间隔(epoch)
   metrics:
   - recall@20: upper            # upper=越高越好 / lower=越低越好（显式标注优先于内置默认表）
   - ndcg@20: upper
   checkpoint_mode: per_metric   # per_metric=每个指标各存一份最优（默认）| single=仅第一指标
 model:
   emb_dim: 64
-  n_layers: 3
-  init_method: normal            # 嵌入初始化方式（原始论文: N(0,0.1)）: normal | xavier_uniform | xavier_normal | kaiming_uniform | kaiming_normal | uniform
+  init_method: normal            # 嵌入初始化方式（与 LightGCN 默认一致: N(0,0.1)）
 training:
   batch_size: 256
-  checkpoint_dir: models/lightgcn/outputs/checkpoints
+  checkpoint_dir: models/mf/outputs/checkpoints
   device: cuda
   epochs: 100
   lr: 0.001
   save_every_n_epochs: 10
-  neg_ratio: 1                  # 负采样比例：每个正样本对应的负样本数量（增大需同步降低 weight_decay）
+  neg_ratio: 1
   shuffle: true
   weight_decay: 0.0001

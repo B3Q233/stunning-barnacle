@@ -1,34 +1,28 @@
-"""LightGCN 训练组装车间
+"""MF 训练组装车间
 用法:
-  python models/lightgcn/main.py              # 新训练
-  python models/lightgcn/main.py --resume      # 断点续训
+  python models/mf/main.py              # 新训练
+  python models/mf/main.py --resume      # 断点续训
 """
 import sys
 import os
 import csv
-import pickle
 import json
 from typing import Dict
 
-# 确保项目根目录 G:\Idea\TPA 在 sys.path 中（支持从任意目录直接运行本脚本）
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 import torch
-import numpy as np
 
-from training.framework import (
-    TrainingConfig, Callback
-)
+from training.framework import TrainingConfig, Callback
 from training.run_tag import resolve_run_tag, save_config_snapshot, write_latest_pointer
 from training.metrics import BestTracker, safe_checkpoint_name
-from models.lightgcn.dataset import LightGCNDataLoader, KEY_NUM_USERS, KEY_NUM_ITEMS, KEY_DATASET
-from models.lightgcn.model import LightGCN
+from models.mf.dataset import MFDataLoader, KEY_NUM_USERS, KEY_NUM_ITEMS, KEY_DATASET
+from models.mf.model import MatrixFactorization
 from evaluation.metrics import compute_metrics
 
 
-# 输出目录
 OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__)) + "/outputs"
 CHECKPOINT_DIR = os.path.join(OUTPUT_DIR, "checkpoints")
 HISTORY_PATH = os.path.join(OUTPUT_DIR, "history.json")
@@ -37,9 +31,9 @@ LATEST_CKPT = os.path.join(CHECKPOINT_DIR, "latest.pt")
 
 
 class FullRankingCallback(Callback):
-    """定期全量排名评估，记录到 eval_log.csv"""
+    """定期全量排序评估，记录到 eval_log.csv"""
 
-    def __init__(self, loader: LightGCNDataLoader, model: LightGCN,
+    def __init__(self, loader: MFDataLoader, model: MatrixFactorization,
                  config, tag_dir: str):
         self.loader = loader
         self.model = model
@@ -54,18 +48,15 @@ class FullRankingCallback(Callback):
             config.get("checkpoint_mode", "per_metric"),
         )
 
-        # 测试集正样本
         self.test_pos = {}
         for u, i in loader.test_pairs:
             self.test_pos.setdefault(u, set()).add(i)
-        # 训练集（过滤用）
         self.train_pos = loader.user_items
 
-        # 创建 csv 表头
         os.makedirs(OUTPUT_DIR, exist_ok=True)
         os.makedirs(self.tag_checkpoint_dir, exist_ok=True)
         if not os.path.exists(self.tag_eval_log):
-            with open(self.tag_eval_log, 'w', newline='') as f:
+            with open(self.tag_eval_log, "w", newline="") as f:
                 writer = csv.writer(f)
                 writer.writerow(["epoch", f"recall@{self.eval_k}", f"ndcg@{self.eval_k}"])
 
@@ -80,7 +71,6 @@ class FullRankingCallback(Callback):
             item_emb = self.model.get_item_embeddings()
             test_users = sorted(self.test_pos.keys())
             test_user_ids = torch.LongTensor(test_users).to(user_emb.device)
-
             scores_list = []
             for i in range(0, len(test_user_ids), 1024):
                 batch = test_user_ids[i:i + 1024]
@@ -90,7 +80,7 @@ class FullRankingCallback(Callback):
         result = compute_metrics(scores, self.train_pos, self.test_pos, k=self.eval_k)
         recall_key = f"recall@{self.eval_k}"
         ndcg_key = f"ndcg@{self.eval_k}"
-        with open(self.tag_eval_log, 'a', newline='') as f:
+        with open(self.tag_eval_log, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow([epoch, result[recall_key], result[ndcg_key]])
 
@@ -111,7 +101,7 @@ class FullRankingCallback(Callback):
             }
             payload.update(result)
             torch.save(payload, ckpt_path)
-            print(f"  [ckpt] best → {ckpt_path} ({name}={result[name]:.4f})")
+            print(f"  [ckpt] best -> {ckpt_path} ({name}={result[name]:.4f})")
 
     def on_train_end(self, metrics: Dict[str, float]) -> None:
         print("\n[best]")
@@ -121,39 +111,34 @@ class FullRankingCallback(Callback):
 
 
 def save_checkpoint(model, epoch, path):
-    """保存完整训练状态，支持断点续训"""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     torch.save({
-        'epoch': epoch,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': model._optimizer.state_dict(),
+        "epoch": epoch,
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": model._optimizer.state_dict(),
     }, path)
-    print(f"[ckpt] epoch {epoch} → {path}")
+    print(f"[ckpt] epoch {epoch} -> {path}")
 
 
 def load_checkpoint(model, path):
-    """恢复训练状态"""
     ckpt = torch.load(path, map_location=model._device)
-    model.load_state_dict(ckpt['model_state_dict'])
-    model._optimizer.load_state_dict(ckpt['optimizer_state_dict'])
-    return ckpt['epoch']
+    model.load_state_dict(ckpt["model_state_dict"])
+    model._optimizer.load_state_dict(ckpt["optimizer_state_dict"])
+    return ckpt["epoch"]
 
 
 def main(tag: str | None = None, resume: bool = False):
 
-    # 加载配置（展平嵌套 YAML）
     config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
     if not os.path.exists(config_path):
-        print(f"[train] config not found: {config_path}, using defaults")
         config = TrainingConfig()
-        config['dataset'] = 'gowalla'
+        config["dataset"] = "ml100k"
     else:
         import yaml
-        with open(config_path, 'r', encoding='utf-8') as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             raw = yaml.safe_load(f)
-        # 展平 {data:{dataset:gowalla}, model:{emb_dim:64}, training:{lr:0.001}} → {dataset:gowalla, emb_dim:64, lr:0.001, ...}
         flat = {}
-        for section in ['data', 'model', 'training', 'evaluation']:
+        for section in ["data", "model", "training", "evaluation"]:
             if section in raw:
                 flat.update(raw[section])
         if "run_tag" in raw:
@@ -169,57 +154,43 @@ def main(tag: str | None = None, resume: bool = False):
     os.makedirs(tag_checkpoint_dir, exist_ok=True)
 
     os.makedirs(CHECKPOINT_DIR, exist_ok=True)
-
-    # 清空旧的训练历史，避免残留数据混淆
-    with open(tag_history_path, 'w') as f:
+    with open(tag_history_path, "w") as f:
         json.dump({"history": [], "best": {}}, f)
 
-    # 数据
-    loader = LightGCNDataLoader(config)
+    loader = MFDataLoader(config)
     params = loader.get_init_params()
 
-    # 模型
-    print("[train] Building adjacency matrix...")
-    edge_index = torch.LongTensor([[u, i] for u, i in loader.all_train_pairs]).T
-    model = LightGCN(config, params[KEY_NUM_USERS], params[KEY_NUM_ITEMS], edge_index)
-
+    model = MatrixFactorization(config, params[KEY_NUM_USERS], params[KEY_NUM_ITEMS])
     start_epoch = 0
     if resume and os.path.exists(LATEST_CKPT):
         start_epoch = load_checkpoint(model, LATEST_CKPT)
         print(f"[train] 从 epoch {start_epoch} 恢复训练")
-    elif resume:
-        print("[train] 未找到 latest.pt，从头训练")
 
-    # 全量评估回调
     full_rank = FullRankingCallback(loader, model, config, tag_dir)
 
     print(f"[train] dataset={config.get(KEY_DATASET)}, epochs={config.epochs}, "
           f"lr={config.lr}, batch={config.batch_size}, "
           f"resume={resume}, start_epoch={start_epoch}, run_tag={run_tag}")
 
-    # 手动训练循环
     history = []
     try:
         for epoch in range(start_epoch + 1, config.epochs + 1):
-            # === Train ===
             model.set_train()
             epoch_losses = []
             for batch in loader.train_loader():
                 m = model.train_step(batch)
-                epoch_losses.append(m['loss'])
+                epoch_losses.append(m["loss"])
 
-            # === Val ===
             model.set_eval()
             epoch_val_losses = []
             with torch.no_grad():
                 for batch in loader.val_loader():
                     m = model.eval_step(batch)
-                    epoch_val_losses.append(m['val_loss'])
+                    epoch_val_losses.append(m["val_loss"])
 
             avg_loss = sum(epoch_losses) / len(epoch_losses)
             avg_val = sum(epoch_val_losses) / len(epoch_val_losses)
 
-            # 诊断：前几个 epoch 检查梯度和参数是否更新
             if epoch <= 2:
                 grad_norm = model.embedding.weight.grad.norm().item() if model.embedding.weight.grad is not None else 0
                 emb_norm = model.embedding.weight.norm(p=2).item()
@@ -238,7 +209,7 @@ def main(tag: str | None = None, resume: bool = False):
 
             full_rank.on_epoch_end(epoch, {})
 
-            with open(tag_history_path, 'w') as f:
+            with open(tag_history_path, "w") as f:
                 json.dump({
                     "history": history,
                     "best": full_rank.tracker.best_results(),
@@ -247,12 +218,10 @@ def main(tag: str | None = None, resume: bool = False):
     except KeyboardInterrupt:
         print("\n[train] 训练中断，保存 checkpoint...")
         save_checkpoint(model, epoch, tag_latest_ckpt)
-        print(f"[train] 已保存至 {LATEST_CKPT}，下次 --resume 从此恢复")
 
-    # 最终保存
     save_checkpoint(model, config.epochs, tag_latest_ckpt)
 
-    # 实验归档完成：复制到稳定指针路径（供攻击流程使用）
+    # 实验归档完成：把本次实验的产物复制到稳定指针路径（供攻击流程使用）
     import shutil
     shutil.copyfile(tag_latest_ckpt, LATEST_CKPT)
     shutil.copyfile(tag_history_path, HISTORY_PATH)
@@ -261,11 +230,10 @@ def main(tag: str | None = None, resume: bool = False):
     write_latest_pointer(Path(OUTPUT_DIR), run_tag)
     save_config_snapshot(config.as_dict(), Path(tag_dir))
 
-    print(f"[train] 完成。history → {tag_history_path}")
-    print(f"[train] eval_log → {tag_eval_log_path}")
-    print(f"[train] 实验归档 → {tag_dir}")
-    print(f"[train] 稳定指针 → {LATEST_CKPT}（run_tag={run_tag}）")
-    print(f"[train] 运行 python models/lightgcn/outputs/plot_results.py {config.get(KEY_DATASET)} 生成图表")
+    print(f"[train] 完成。history -> {tag_history_path}")
+    print(f"[train] eval_log -> {tag_eval_log_path}")
+    print(f"[train] 实验归档 -> {tag_dir}")
+    print(f"[train] 稳定指针 -> {LATEST_CKPT}（run_tag={run_tag}）")
 
 
 if __name__ == "__main__":
