@@ -1,0 +1,74 @@
+# PGD（Projected Gradient Descent / 投影梯度上升投毒攻击）配置
+# 论文：Li et al., "Data Poisoning Attacks on Factorization-Based Collaborative
+#       Filtering" (NIPS 2016)，§4.1 PGA 算法（Eq.10-11、Algorithm 1）
+# 参考实现：fuying-wang/Data-poisoning-attacks-on-factorization-based-collaborative-filtering
+# 配置结构与 bandwagon 攻击保持一致：dataset / model / classification / attack /
+# warm_start / training / evaluation / output
+dataset: ml100k                  # 受害数据集（ml100k / gowalla / yelp2018 / amazon-book）
+mode: all                        # classify | data | model | both | all
+seed: 42
+run_tag: null                    # 实验标签（--tag 或此处指定；null=自动当前时间 2026-08-07-14:20）
+
+# 受害/打分模型（注册表见 attacks/pgd/registry.py：lightgcn | mf）
+model:
+  name: lightgcn                 # 指定被攻击模型：lightgcn 或 mf
+  overrides: {}                  # 可选：覆盖模型超参（emb_dim / n_layers / init_method ...）
+
+# 第 1 步：基于模型推荐频次的物品分类（流行/普通/冷门）
+classification:
+  k: 10                          # 每用户取 Top-K 推荐（默认取 training.k）
+  popular_ratio: 0.2             # 流行物品 = 推荐频次前 20%
+  batch_size: 1024               # 评分矩阵分批大小（大数据集防爆显存）
+  checkpoint: models/lightgcn/outputs/checkpoints/latest.pt  # 打分用干净模型
+
+attack:
+  name: pgd
+  # 假用户数量：二选一（num_fake_users 优先，其次按 ratio 计算）
+  ratio: 0.03                    # 假用户数 = ratio × 真实用户数
+  filler_size: 20                # B：每个假用户交互的物品数（PGD 物品预算）
+  target_items:
+    strategy: specified          # specified=手动指定 | category=按分类挑 | coldest | random
+    category: cold               # strategy=category 时：popular | ordinary | cold
+    count: 1                     # 目标物品数量（假用户均分给各目标）
+    ids: [251]                   # strategy=specified 时填写（目标物品由你自行确定）
+  pgd:
+    iterations: 50               # PGD 外层迭代数（论文/参考实现 m_iters=10）
+    step_size: 0.2               # 梯度上升步长 s_t（参考实现 s_t=0.2）
+    lambda_rating: 1.0           # Λ：评分 l∞ 约束 [−Λ, Λ]（参考实现 Lamda=1）
+    lambda_u: 0.05               # 用户侧正则 λ_U（参考实现 lamda_u=5e-2）
+    lambda_v: 0.05               # 物品侧正则 λ_V（参考实现 lamda_v=5e-2）
+    als_iterations: 10           # ALS 代理求解迭代数（engine=als 时）
+    engine: auto                 # auto（mf→als，lightgcn→neighbor）| als | neighbor
+    init: popularity             # M̃ 初始化：popularity（热门池采样 filler）| random
+    include_target: true         # 每个假用户画像固定包含目标物品（push 攻击）
+    utility:
+      mu1: -1.0                  # availability 权重 μ1（论文 Eq.9；Fig.1(d) light-trace：μ1=-1, μ2=1）
+      mu2: 1.0                   # integrity 权重 μ2（论文 Eq.9，push 目标物品）
+      w_target: 2.0              # 目标物品权重 w(j0)（论文实验 w=2）
+      cross_target: true         # [ai] 一阶交叉项：filler 评分对目标物品嵌入的链式梯度
+
+warm_start:
+  enabled: true                  # 用干净模型参数初始化中毒模型（原用户/物品嵌入迁移）
+  checkpoint: models/lightgcn/outputs/checkpoints/latest.pt
+
+clean_checkpoint: models/lightgcn/outputs/checkpoints/latest.pt  # 对比用干净模型（缺省取 warm_start.checkpoint）
+
+training:
+  epochs: 30
+  batch_size: 256
+  lr: 0.001
+  weight_decay: 0.0001
+  neg_ratio: 1
+  eval_every: 5
+  k: 10
+  device: cuda                   # 无 CUDA 时自动回退 CPU
+
+evaluation:
+  report_model_utility: true     # 是否对比 clean/poisoned 的模型效用（投毒代价检查）
+  metrics:                       # 方向标注：upper=越高越好 / lower=越低越好（@K 需与 training.k 一致）
+  - recall@10: upper
+  - ndcg@10: upper
+  checkpoint_mode: per_metric    # per_metric=每个指标各存一份最优（默认）| single=仅第一指标
+
+output:
+  dir: attacks/pgd/outputs

@@ -5,6 +5,7 @@
 dataset: ml100k                  # 受害数据集（ml100k / gowalla / yelp2018 / amazon-book）
 mode: all                        # classify | paths | data | model | both | all
 seed: 42
+run_tag: null                    # 实验标签（--tag 或此处指定；null=自动当前时间 2026-08-07-14:20）
 
 # 被攻击 / 用于打分的模型（注册表见本目录 registry.py）
 model:
@@ -60,6 +61,10 @@ training:
 
 evaluation:
   report_model_utility: true     # 是否对比 clean/poisoned 的模型效用（投毒代价检查）
+  metrics:                       # 方向标注：upper=越高越好 / lower=越低越好（@K 需与 training.k 一致）
+  - recall@10: upper
+  - ndcg@10: upper
+  checkpoint_mode: per_metric    # per_metric=每个指标各存一份最优（默认）| single=仅第一指标
 
 output:
   dir: attacks/tpa/outputs

@@ -1,15 +1,15 @@
-"""攻击模板 —— 中毒模型拟合模块（模式 1）
+"""Bandwagon 攻击 —— 中毒模型拟合模块（模式 1）
 
 职责：
 - 在中毒数据上【新建】一个受害模型实例（模型由 config ``model.name`` 指定，
-  当前注册表见本目录 registry.py，不覆盖干净模型）
+  当前注册表见 attacks/bandwagon/registry.py，不覆盖干净模型）
 - 可选 warm-start：把干净模型 checkpoint 中重叠的用户/物品嵌入迁移过来，
   新增的假用户行保持随机初始化，然后继续训练
 - 训练完成后与干净模型做对比评估，产出 Markdown 报告
 
 不修改 models/* 下的任何代码，只通过注册表 import 复用。
 用法:
-  python attacks/random/fit.py --config attacks/random/config.yaml
+  python attacks/bandwagon/fit.py --config attacks/bandwagon/config.yaml
 """
 from __future__ import annotations
 
@@ -33,18 +33,18 @@ from training.framework import TrainingConfig
 from models.lightgcn.dataset import LightGCNDataset
 from evaluation.metrics import compute_metrics
 
-from attacks.random.registry import (
+from attacks.bandwagon.registry import (
     get_dataset_cls,
     get_model_cls,
     load_model_config,
 )
-from attacks.random.generate import (
+from attacks.bandwagon.generate import (
+    DEFAULT_OUT_DIR as POISONED_OUT_DIR,
+    DEFAULT_RAW_META as RAW_META_PATH,
     load_meta,
     load_yaml_config,
-    poisoned_data_dir,
-    raw_meta_path,
 )
-from attacks.random.evaluate import compare_models, ranking_scores, save_report
+from attacks.bandwagon.evaluate import compare_models, ranking_scores, save_report
 from training.run_tag import (
     read_latest_tag,
     resolve_run_tag,
@@ -270,12 +270,11 @@ def main(config: Dict[str, Any], skip_train: bool = False,
     dataset = config["dataset"]
     attack_cfg = config["attack"]
     model_name = config.get("model", {}).get("name", "lightgcn")
-    attack_name = config["attack"]["name"]
     model_cls = get_model_cls(model_name)
     dataset_cls = get_dataset_cls(model_name) or LightGCNDataset
-    out_root_cfg = config.get("output", {}).get("dir")
-    out_root = Path(out_root_cfg) if out_root_cfg else Path("attacks") / attack_name / "outputs"
-    poisoned_base = poisoned_data_dir(config)
+    out_root = Path(config.get("output", {}).get("dir", "attacks/bandwagon/outputs"))
+    poisoned_base = PROJECT_ROOT / str(POISONED_OUT_DIR).format(
+        dataset=dataset, model=model_name)
 
     if tag or config.get("run_tag"):
         run_tag = resolve_run_tag(config, cli_tag=tag)
@@ -288,13 +287,14 @@ def main(config: Dict[str, Any], skip_train: bool = False,
         raise FileNotFoundError(
             f"未找到中毒数据 {poisoned_path}\n"
             f"run_tag={run_tag}，请先运行 generate.py 生成该实验的中毒数据，"
-            f"或检查 {poisoned_base} 下已有的 tag"
+            f"或检查 attacks/bandwagon/data/poisoned/{dataset}/{model_name}/ 下已有的 tag"
         )
     save_config_snapshot(config, out_dir)
     poisoned_meta = load_meta(poisoned_path)
     print(f"[fit] run_tag: {run_tag}")
 
-    clean_meta = load_meta(raw_meta_path(config))
+    clean_meta_path = Path(str(RAW_META_PATH).format(dataset=dataset))
+    clean_meta = load_meta(clean_meta_path)
 
     # 目标物品（来自生成阶段的 stats.json）
     stats_path = poisoned_path.parent / "stats.json"
@@ -364,9 +364,9 @@ def main(config: Dict[str, Any], skip_train: bool = False,
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="中毒模型拟合（攻击模板第 3 步）")
+    parser = argparse.ArgumentParser(description="Bandwagon 中毒模型拟合")
     parser.add_argument("--config", type=str,
-                        default=str(PROJECT_ROOT / "attacks" / "random" / "config.yaml"))
+                        default=str(PROJECT_ROOT / "attacks" / "bandwagon" / "config.yaml"))
     parser.add_argument("--skip-train", action="store_true",
                         help="跳过训练，直接加载已有 checkpoint 做对比评估")
     parser.add_argument("--tag", type=str, default=None,

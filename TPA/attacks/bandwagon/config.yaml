@@ -1,14 +1,13 @@
-# Random（随机）攻击配置（基于 attack-imp-direct-poison 模板）
-# 本文件是生成攻击项目时的唯一配置入口：改 attack.name / dataset / 目标 / 模型即可
-# 本攻击实现：假用户画像 = K 个随机物品（filler，全量物品均匀采样）+ 1 个目标物品
-# 参考：Lam & Riedl, Shilling Recommender Systems for Fun and Profit, WWW 2004
+# Bandwagon（从众）攻击配置
+# 经典定义：假用户画像 = K 个流行物品（filler）+ 1 个目标物品
+# 参考：Mobasher et al. 2007（bandwagon attack 提出）
 
 dataset: ml100k                  # 受害数据集（ml100k / gowalla / yelp2018 / amazon-book）
 mode: all                        # classify | data | model | both | all
 seed: 42
 run_tag: null                    # 实验标签（--tag 或此处指定；null=自动当前时间 2026-08-07-14:20）
 
-# 被攻击 / 用于打分的模型（注册表见本目录 registry.py）
+# 被攻击 / 用于打分的模型（注册表见 attacks/bandwagon/registry.py）
 model:
   name: lightgcn                 # 当前仅 lightgcn；新增模型在 registry.py 登记
   overrides: {}                  # 可选：覆盖模型超参（emb_dim / n_layers / init_method ...）
@@ -21,10 +20,10 @@ classification:
   checkpoint: models/lightgcn/outputs/checkpoints/latest.pt  # 打分用干净模型
 
 attack:
-  name: random  # 攻击名（模块目录 attacks/{name}/、输出路径、日志前缀均用此值）
+  name: bandwagon
   # 假用户数量：二选一（num_fake_users 优先，其次按 ratio 计算）
   ratio: 0.03                    # 假用户数 = ratio × 真实用户数
-  filler_size: 20                # 每个假用户交互的随机物品数（从全量物品均匀采样）
+  filler_size: 20                # 每个假用户交互的热门物品数
   target_items:
     strategy: specified          # specified=手动指定 | category=按分类挑 | coldest | random
     category: cold               # strategy=category 时：popular | ordinary | cold
@@ -53,4 +52,4 @@ evaluation:
   checkpoint_mode: per_metric    # per_metric=每个指标各存一份最优（默认）| single=仅第一指标
 
 output:
-  dir: attacks/random/outputs
+  dir: attacks/bandwagon/outputs
