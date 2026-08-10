@@ -277,6 +277,7 @@ def main(config: Dict[str, Any], skip_train: bool = False,
          tag: str | None = None) -> Dict[str, Any]:
     dataset = config["dataset"]
     attack_cfg = config["attack"]
+    attack_name = config["attack"]["name"]
     model_name = config.get("model", {}).get("name", "lightgcn")
     model_cls = get_model_cls(model_name)
     dataset_cls = get_dataset_cls(model_name) or LightGCNDataset
