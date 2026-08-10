@@ -122,14 +122,16 @@ PGD 引擎自动切换：`mf → engine=als`（论文 §4.1 精确 KKT 梯度）
 | warm_start.enabled / checkpoint | true / lightgcn latest.pt | 嵌入迁移初始化 |
 | training.* | 30 epoch / 256 / 1e-3 | 投毒训练超参 |
 | evaluation.report_model_utility | true | 是否报告投毒代价 |
-| evaluation.metrics | recall@10: upper 等 | 指标与方向标注（upper=越高越好 / lower=越低越好；指标名中的 @K 是评估 K 的唯一权威）|
+| evaluation.metrics | target_ndcg@10: upper 等 | 指标与方向标注（upper=越高越好 / lower=越低越好；指标名中的 @K 是评估 K 的唯一权威；target_* 为攻击选优指标，整体 recall/ndcg 仅作投毒代价参考）|
 | evaluation.checkpoint_mode | per_metric | 每个指标各存一份 `{指标}-best-model.pt`（默认）\| single=仅第一指标 |
 
 训练完成后，`outputs/{dataset}/{model}/{tag}/checkpoints/` 下会出现
+`target_ndcg@10-best-model.pt`、`target_hr@10-best-model.pt`、
 `recall@10-best-model.pt`、`ndcg@10-best-model.pt` 等多份最优模型
 （每指标一份，同 epoch 不去重），`history.json` 的 `best` 段记录每个指标最优时的
 完整指标快照与对应 checkpoint 文件名；`--skip-train` 会按
-`{首指标}-best-model.pt` → `best.pt`（旧）→ `latest.pt` 顺序加载。
+`{首指标}-best-model.pt`（主指标 = `target_ndcg@10`）→ `best.pt`（旧）→
+`latest.pt` 顺序加载。
 
 ### 目标物品怎么确定？
 

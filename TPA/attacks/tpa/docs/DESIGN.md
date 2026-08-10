@@ -76,6 +76,9 @@ clean meta.pkl ──generate（读缓存注入）──▶ poisoned meta.pkl
 
 - 模型效用：all-ranking recall@K / ndcg@K，投毒代价检查
 - 攻击效果：目标物品 Clean/Poisoned 的 **HR@K** 与 **NDCG@K**，外加平均排名
+- checkpoint 选优：中毒模型按目标物品 `target_ndcg@K` / `target_hr@K` 选优
+  （主指标 `target_ndcg@K`，`--skip-train` 与对比报告加载它），
+  整体 recall/ndcg 仅作投毒代价参考
 - 对比口径：与 bandwagon / random 相同（同一干净模型、同配置、同数据集）
 - 路径质量（paths 阶段产出）：路径命中率、平均跳数、起终点平均 CF 距离
 

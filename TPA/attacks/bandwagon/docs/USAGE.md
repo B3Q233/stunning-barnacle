@@ -123,6 +123,11 @@ training:
 evaluation:
   report_model_utility: true    # 是否对比 clean/poisoned 的模型效用（投毒代价检查）
 
+> 攻击选优：`evaluation.metrics` 的 `target_ndcg@K` / `target_hr@K` 是中毒模型
+> checkpoint 的选优指标（主指标 = `target_ndcg@K`，`--skip-train` 与对比报告
+> 都加载按它选出的最优模型）；整体 `recall@K` / `ndcg@K` 仅作投毒代价参考。
+> 每个评估 epoch 的目标物品明细（hr/ndcg/命中人数/平均排名）写入 `history.json`。
+
 output:
   dir: attacks/bandwagon/outputs
 ```
