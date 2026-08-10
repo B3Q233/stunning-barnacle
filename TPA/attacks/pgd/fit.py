@@ -30,7 +30,6 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from training.framework import TrainingConfig
 from models.lightgcn.dataset import LightGCNDataset
-from evaluation.metrics import compute_metrics
 
 from attacks.pgd.registry import (
     get_dataset_cls,
@@ -43,7 +42,12 @@ from attacks.pgd.generate import (
     load_meta,
     load_yaml_config,
 )
-from attacks.pgd.evaluate import compare_models, ranking_scores, save_report
+from attacks.pgd.evaluate import (
+    build_attack_eval_metrics,
+    compare_models,
+    ranking_scores,
+    save_report,
+)
 from training.run_tag import (
     read_latest_tag,
     resolve_run_tag,
@@ -52,7 +56,6 @@ from training.run_tag import (
 from training.metrics import (
     BestTracker,
     eval_ks_from_metrics,
-    match_metric_values,
     safe_checkpoint_name,
 )
 
@@ -167,7 +170,9 @@ def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
                          out_dir: Path, warm_start: bool,
                          warm_ckpt: Path | None, clean_num_users: int | None,
                          model_cls, dataset_cls, metrics_cfg,
-                         checkpoint_mode: str = "per_metric"
+                         checkpoint_mode: str = "per_metric",
+                         targets: List[int] | None = None,
+                         clean_user_items: Dict[int, set] | None = None,
                          ) -> Tuple[Any, List[Dict[str, Any]]]:
     num_users = poisoned_meta["num_users"]
     num_items = poisoned_meta["num_items"]
@@ -220,12 +225,14 @@ def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
             scores, users, test_pos_local = ranking_scores(
                 model, poisoned_meta["test_pairs"])
             ks = eval_ks_from_metrics(metrics_cfg, k)
-            res_by_k = {
-                K: compute_metrics(scores, user_items, test_pos_local, k=K)
-                for K in ks
-            }
-            res = match_metric_values(list(tracker.directions), res_by_k)
+            res, target_details = build_attack_eval_metrics(
+                scores, users, user_items, test_pos_local,
+                clean_user_items or {}, targets or [], ks,
+                list(tracker.directions),
+            )
             entry.update(res)
+            if target_details:
+                entry["targets"] = target_details
             eval_str = ", ".join(f"{n}={res[n]:.4f}" for n in res)
             print(f"    [eval] {eval_str}")
             improved = tracker.update(res, epoch)
@@ -338,6 +345,8 @@ def main(config: Dict[str, Any], skip_train: bool = False,
             dataset_cls=dataset_cls,
             metrics_cfg=metrics_cfg,
             checkpoint_mode=checkpoint_mode,
+            targets=targets,
+            clean_user_items=clean_meta["user_items"],
         )
 
     clean_ckpt_cfg = config.get("clean_checkpoint") or warm_cfg.get("checkpoint")
@@ -357,7 +366,7 @@ def main(config: Dict[str, Any], skip_train: bool = False,
         clean_model, model, clean_meta, poisoned_meta, targets, k,
         report_utility=report_utility,
     )
-    md_path = save_report(report, out_dir)
+    md_path = save_report(report, out_dir, name=attack_name)
     print(f"[fit] 对比报告 -> {md_path}")
     return report
 

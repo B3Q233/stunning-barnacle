@@ -62,7 +62,9 @@ training:
 evaluation:
   report_model_utility: true     # 是否对比 clean/poisoned 的模型效用（投毒代价检查）
   metrics:                       # 方向标注：upper=越高越好 / lower=越低越好；@K 是评估 K 的唯一权威
-  - recall@10: upper
+  - target_ndcg@10: upper        # 攻击主选优指标：目标物品 NDCG@10（多目标取均值）
+  - target_hr@10: upper          # 攻击辅助选优指标：目标物品 HR@10（多目标取均值）
+  - recall@10: upper             # 模型效用（投毒代价参考）
   - ndcg@10: upper
   checkpoint_mode: per_metric    # per_metric=每个指标各存一份最优（默认）| single=仅第一指标
 
