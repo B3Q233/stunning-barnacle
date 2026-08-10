@@ -254,10 +254,11 @@ def format_report(report: Dict[str, Any], title: str = "投毒攻击对比报告
         cr = ca[t]
         pr = pa[t]
         hr_delta = pr["hr@k"] - cr["hr@k"]
+        exposure_trend = "投毒后目标物品曝光提升" if hr_delta > 0 else "投毒后目标物品曝光未提升"
         lines.append(
             f"- 目标物品 {t}：HR@{k} {cr['hr@k']:.4f} → {pr['hr@k']:.4f} "
             f"（{hr_delta:+.4f}），平均排名 {cr['mean_rank_all']:.1f} → "
-            f"{pr['mean_rank_all']:.1f}；投毒显著提升了目标物品曝光。"
+            f"{pr['mean_rank_all']:.1f}；{exposure_trend}。"
         )
     if cu is not None:
         rec_keys = [key for key in cu if key.startswith("recall@")]

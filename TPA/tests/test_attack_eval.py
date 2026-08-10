@@ -158,7 +158,7 @@ class FormatReportTest(unittest.TestCase):
         md = format_report(self.REPORT, title="PGD（投影梯度上升投毒）攻击对比报告")
         self.assertIn("# PGD（投影梯度上升投毒）攻击对比报告（Top-3）", md)
         self.assertIn("## 结论", md)
-        self.assertIn("投毒显著提升了目标物品曝光", md)
+        self.assertIn("投毒后目标物品曝光提升", md)
         self.assertIn("recall@3", md)
 
     def test_missing_recall_does_not_crash(self):
