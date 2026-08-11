@@ -62,16 +62,24 @@ AGENTS.md / CLAUDE.md / GEMINI.md，`README.md` 仅为占位）。agent 每次�
   `.venv/`、`tmp/`、`papers/`、`MinerU-Skill/`、`.claude/`、`.codex/`。
 - 中间过程文件放 `tmp/` 或 `.superpowers/sdd/` 会话目录，不入库。
 
-### 3.5 提交与文档规范（必须）
+### 3.5 Git 与提交规范（必须）
 
 - Conventional Commits：`type(scope): 中文描述`；type ∈
   feat/fix/docs/chore/refactor/impl；scope 如 attacks/eval/models/tpa/skill/
   docs。
-- 改实现必须同步更新 USAGE.md / DESIGN.md；提交按任务拆分，每个任务结束
-  跑测试。
+- 提交粒度：一个逻辑变更一个提交，不混入无关改动；提交前用
+  `git status` / `git diff --stat` 自查。
+- 索引卫生：只用 `git add` 加明确路径；禁止 `git add -f`，禁止不检查就
+  `git add -A`（生成物一律不入库，见 3.4）。
+- 历史安全：禁止对已推送的共享分支 force-push 或改写历史；不提交未验证的
+  改动（验证门禁见 3.2）。
+- 文档同步：改实现必须同步更新 USAGE.md / DESIGN.md；每个任务结束跑测试。
 
 ### 3.6 建议条目（软性，待确认）
 
+- 分支与隔离：特性开发用独立分支或 git worktree（对应仓库中的
+  using-git-worktrees 技能）；大改动合并前走 requesting-code-review。现状
+  无实证（历史提交直接落在 main），归为软性条目。
 - 攻击/模型实现遵循 paper-code-implementation 模板的
   TrainableModel / DatasetProtocol / Experiment / Trainer 结构（现状 attacks
   使用 classify/data/model 三阶段 + 六件套，是否升级为硬规范待确认）。
