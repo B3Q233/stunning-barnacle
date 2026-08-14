@@ -17,14 +17,14 @@ models/mf/
 
 ## 2. 环境准备
 
-使用项目虚拟环境 `G:\Idea\.venv`（Python 3.12.8，torch 2.5.1+cu121）。
+使用仓库根虚拟环境（如 Windows 下 `G:\Idea\.venv`，Linux 下 `.venv/bin/python`）。
 
 ## 3. 数据准备
 
-把数据集放到 `G:\Idea\TPA\data\raw\{dataset}\train.txt / test.txt`，然后：
+把数据集放到 `<仓库>/TPA/data/raw/{dataset}/train.txt / test.txt`，然后：
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\models\mf\scripts\preprocess.py --dataset ml100k
+python TPA/models/mf/scripts/preprocess.py --dataset ml100k
 ```
 
 支持 `ml100k / gowalla / yelp2018 / amazon-book`。
@@ -32,7 +32,7 @@ G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\models\mf\scripts\preprocess.py --d
 ## 4. 训练
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\models\mf\main.py
+python TPA/models/mf/main.py
 ```
 
 断点续训：加 `--resume`。训练完成后查看 `outputs/eval_log.csv` 与 `outputs/history.json`。

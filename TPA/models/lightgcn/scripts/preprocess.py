@@ -6,6 +6,13 @@
 import os
 import argparse
 
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]  # TPA 项目根
+DEFAULT_RAW_DIR = PROJECT_ROOT / "data" / "raw"
+DEFAULT_OUT_DIR = PROJECT_ROOT / "models" / "lightgcn" / "data" / "processed"
+
+
 def parse_ngcf_file(filepath):
     """解析 NGCF 格式文件: user_id item1 item2 ..."""
     pairs = []
@@ -47,8 +54,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, required=True,
                         choices=['gowalla', 'yelp2018', 'amazon-book'])
-    parser.add_argument('--raw_dir', type=str, default='g:/Idea/TPA/data/raw')
-    parser.add_argument('--out_dir', type=str, default='g:/Idea/TPA/models/lightgcn/data/processed')
+    parser.add_argument('--raw_dir', type=str, default=str(DEFAULT_RAW_DIR))
+    parser.add_argument('--out_dir', type=str, default=str(DEFAULT_OUT_DIR))
     args = parser.parse_args()
 
     raw_dir = os.path.join(args.raw_dir, args.dataset)

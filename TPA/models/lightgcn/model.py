@@ -8,7 +8,7 @@
 import os
 import sys
 
-# 确保项目根目录 G:\Idea\TPA 在 sys.path 中（支持直接 import/运行本模块）
+# 确保项目根目录（TPA）在 sys.path 中（支持直接 import/运行本模块）
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)

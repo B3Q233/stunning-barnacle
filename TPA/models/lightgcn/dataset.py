@@ -5,6 +5,7 @@
 """
 import pickle
 import random
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import torch
@@ -15,6 +16,8 @@ from torch.utils.data import DataLoader as TorchDataLoader, Dataset
 KEY_NUM_USERS = "num_users"
 KEY_NUM_ITEMS = "num_items"
 KEY_DATASET = "dataset"
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]  # TPA 项目根
 
 
 class LightGCNDataset(Dataset):
@@ -70,7 +73,10 @@ class LightGCNDataLoader:
         dataset_name = config.get(KEY_DATASET, "gowalla")
 
         # 加载预处理后的数据
-        meta_path = f"g:/Idea/TPA/models/lightgcn/data/processed/{dataset_name}/meta.pkl"
+        meta_path = (
+            PROJECT_ROOT / "models" / "lightgcn" / "data" / "processed"
+            / dataset_name / "meta.pkl"
+        )
         with open(meta_path, "rb") as f:
             meta = pickle.load(f)
 

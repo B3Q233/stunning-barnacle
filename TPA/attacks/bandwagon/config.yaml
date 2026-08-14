@@ -17,7 +17,7 @@ classification:
   k: 10                          # 每用户取 Top-K 推荐（默认取 training.k）
   popular_ratio: 0.2             # 流行物品 = 推荐频次前 20%
   batch_size: 1024               # 评分矩阵分批大小（大数据集防爆显存）
-  checkpoint: models/lightgcn/outputs/checkpoints/latest.pt  # 打分用干净模型
+  checkpoint: models/lightgcn/outputs/2026-08-09-23-01/checkpoints/ndcg@10-best-model.pt  # 打分用干净模型（相对 TPA 根）
 
 attack:
   name: bandwagon
@@ -32,7 +32,7 @@ attack:
 
 warm_start:
   enabled: true                  # 用干净模型参数初始化中毒模型（原用户/物品嵌入迁移）
-  checkpoint: models/lightgcn/outputs/checkpoints/latest.pt
+  checkpoint: models/lightgcn/outputs/2026-08-09-23-01/checkpoints/ndcg@10-best-model.pt
 
 training:
   epochs: 30

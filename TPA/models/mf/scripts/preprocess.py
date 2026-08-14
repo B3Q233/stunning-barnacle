@@ -6,6 +6,12 @@ models/mf/data/processed/{dataset}/meta.pkl。
 """
 import os
 import argparse
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]  # TPA 项目根
+DEFAULT_RAW_DIR = PROJECT_ROOT / "data" / "raw"
+DEFAULT_OUT_DIR = PROJECT_ROOT / "models" / "mf" / "data" / "processed"
 
 
 def parse_pairs_file(filepath):
@@ -33,8 +39,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, required=True,
                         choices=["ml100k", "gowalla", "yelp2018", "amazon-book"])
-    parser.add_argument("--raw_dir", type=str, default="g:/Idea/TPA/data/raw")
-    parser.add_argument("--out_dir", type=str, default="g:/Idea/TPA/models/mf/data/processed")
+    parser.add_argument("--raw_dir", type=str, default=str(DEFAULT_RAW_DIR))
+    parser.add_argument("--out_dir", type=str, default=str(DEFAULT_OUT_DIR))
     args = parser.parse_args()
 
     raw_dir = os.path.join(args.raw_dir, args.dataset)

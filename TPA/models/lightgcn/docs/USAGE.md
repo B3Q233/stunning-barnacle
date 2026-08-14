@@ -3,7 +3,7 @@
 ## 1. 项目结构
 
 ```
-g:/Idea/TPA/
+TPA/
 ├── data/raw/                          ← 原始数据集（需手动下载）
 │   ├── gowalla/  (train.txt, test.txt, user_list.txt, item_list.txt)
 │   ├── yelp2018/ (同上)
@@ -35,13 +35,11 @@ g:/Idea/TPA/
 
 ## 2. 环境准备
 
-项目使用 `G:\Idea\.venv` 共享虚拟环境。首次使用：
+项目使用仓库根共享虚拟环境（如 Windows 下 `G:\Idea\.venv`，Linux 下 `.venv/bin/python`）。首次使用：
 
 ```bash
-# 激活环境
-G:\Idea\.venv\Scripts\activate
-# 或直接用完整路径
-G:\Idea\.venv\Scripts\python.exe models/lightgcn/main.py
+# 激活环境（Linux: source .venv/bin/activate）
+python models/lightgcn/main.py
 ```
 
 ## 3. 数据集准备
@@ -67,7 +65,7 @@ data/raw/gowalla/
 ② 修改 config.yaml 中的 dataset 字段选择数据集
 
 ③ 开始训练
-   cd g:/Idea/TPA
+   cd TPA
    python models/lightgcn/main.py
 
 ④ 断点续训（从上次 checkpoint 恢复）

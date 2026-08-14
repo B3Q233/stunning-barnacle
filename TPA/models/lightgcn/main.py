@@ -1,7 +1,7 @@
 r"""LightGCN 训练入口
-用法（在任意目录下执行）:
-  G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\models\lightgcn\main.py
-  G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\models\lightgcn\main.py --resume
+用法（在仓库根下执行）:
+  python TPA/models/lightgcn/main.py
+  python TPA/models/lightgcn/main.py --resume
 """
 import sys
 import os

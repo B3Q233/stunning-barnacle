@@ -53,6 +53,7 @@ from training.run_tag import (
     resolve_run_tag,
     save_config_snapshot,
 )
+from training.paths import resolve_from_root
 from training.metrics import (
     BestTracker,
     eval_ks_from_metrics,
@@ -320,7 +321,7 @@ def main(config: Dict[str, Any], skip_train: bool = False,
     warm_start = bool(warm_cfg.get("enabled", True))
     warm_ckpt = warm_cfg.get("checkpoint")
     if warm_ckpt:
-        warm_ckpt = PROJECT_ROOT / warm_ckpt
+        warm_ckpt = resolve_from_root(warm_ckpt, PROJECT_ROOT)
 
     if skip_train:
         model = build_model(cfg, poisoned_meta, model_cls,
@@ -351,7 +352,7 @@ def main(config: Dict[str, Any], skip_train: bool = False,
         )
 
     clean_ckpt_cfg = config.get("clean_checkpoint") or warm_cfg.get("checkpoint")
-    clean_ckpt = PROJECT_ROOT / clean_ckpt_cfg if clean_ckpt_cfg else None
+    clean_ckpt = resolve_from_root(clean_ckpt_cfg, PROJECT_ROOT) if clean_ckpt_cfg else None
     if clean_ckpt is None:
         print("[fit] [!] 未配置干净 checkpoint（clean_checkpoint / warm_start.checkpoint），跳过对比评估")
         return {"dataset": dataset, "targets": targets, "history": history}

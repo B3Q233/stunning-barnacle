@@ -49,9 +49,9 @@ attack:
 
 warm_start:
   enabled: true                  # 用干净模型参数初始化中毒模型（原用户/物品嵌入迁移）
-  checkpoint: G:\Idea\TPA\models\lightgcn\outputs\2026-08-09-23-01\checkpoints\ndcg@10-best-model.pt
+  checkpoint: models/lightgcn/outputs/2026-08-09-23-01/checkpoints/ndcg@10-best-model.pt
 
-clean_checkpoint: G:\Idea\TPA\models\lightgcn\outputs\2026-08-09-23-01\checkpoints\ndcg@10-best-model.pt  # 对比用干净模型（缺省取 warm_start.checkpoint）
+clean_checkpoint: models/lightgcn/outputs/2026-08-09-23-01/checkpoints/ndcg@10-best-model.pt  # 对比用干净模型（相对 TPA 根，缺省取 warm_start.checkpoint）
 
 training:
   epochs: 30

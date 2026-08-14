@@ -10,7 +10,7 @@ import pickle
 import json
 from typing import Dict
 
-# 确保项目根目录 G:\Idea\TPA 在 sys.path 中（支持从任意目录直接运行本脚本）
+# 确保项目根目录（TPA）在 sys.path 中（支持从任意目录直接运行本脚本）
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
