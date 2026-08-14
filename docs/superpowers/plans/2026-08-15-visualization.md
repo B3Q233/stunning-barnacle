@@ -336,6 +336,7 @@ git commit -m "feat(visualization): parser 路径识别与实验产物解析（�
   - `buildLineSeries(experiments, metric, xKey='epoch'): {xAxis, series[]}`
   - `buildMetricBars(experiments, metrics): {xAxis, series[]}`
   - `buildComparisonSeries(experiments, metric, mode): {xAxis, series[]}`
+  - `buildExportFilename(chartType, metric, now=new Date()): string`
 
 - [ ] **Step 1: 写失败测试**
 
@@ -396,6 +397,11 @@ test('对比图：clean/poisoned 两组柱', () => {
   assert.strictEqual(out.series.length, 2);
   assert.deepStrictEqual(out.series[0].data, [0.1]);
   assert.deepStrictEqual(out.series[1].data, [0.2]);
+});
+
+test('导出文件名自动生成', () => {
+  const name = buildExportFilename('line', 'ndcg@10', new Date(2026, 7, 15, 14, 30));
+  assert.strictEqual(name, 'tpa-line-ndcg@10-20260815-1430.png');
 });
 ```
 
@@ -505,15 +511,26 @@ function buildComparisonSeries(experiments, metric, mode = 'model') {
   };
 }
 
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function buildExportFilename(chartType, metric, now = new Date()) {
+  const safeMetric = String(metric || 'summary').replace(/[^\w@%.-]/g, '-');
+  const stamp = `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}-${pad2(now.getHours())}${pad2(now.getMinutes())}`;
+  return `tpa-${chartType}-${safeMetric}-${stamp}.png`;
+}
+
 module.exports = {
-  PALETTE, assignPalette, listMetrics, buildLineSeries, buildMetricBars, buildComparisonSeries,
+  PALETTE, assignPalette, listMetrics, buildLineSeries, buildMetricBars,
+  buildComparisonSeries, buildExportFilename,
 };
 ```
 
 - [ ] **Step 4: 运行确认通过**
 
 Run: `node --test TPA/visualization/tests/test_transforms.js`
-Expected: PASS（5 个用例）。
+Expected: PASS（6 个用例）。
 
 - [ ] **Step 5: 提交**
 
@@ -690,7 +707,8 @@ curl -L -o TPA/visualization/lib/echarts.min.js https://cdn.jsdelivr.net/npm/ech
     <div class="toolbar">
       <button id="btn-import">导入数据</button>
       <input id="file-input" type="file" webkitdirectory multiple hidden>
-      <button id="btn-export">导出快照</button>
+      <button id="btn-export">导出图片</button>
+      <button id="btn-export-snapshot">导出快照</button>
       <button id="btn-load-snapshot">导入快照</button>
       <input id="snapshot-input" type="file" accept="application/json" hidden>
     </div>
@@ -767,6 +785,25 @@ function renderChart() {
   }
   chart.setOption(option, true);
 }
+
+function exportChart() {
+  const chart = echarts.getInstanceByDom(document.getElementById('chart'));
+  if (!chart) {
+    showMessage('当前无图表可导出');
+    return;
+  }
+  const url = chart.getDataURL({
+    type: 'png', pixelRatio: 2, backgroundColor: '#fff',
+  });
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = buildExportFilename(state.chartType, state.metric);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+document.getElementById('btn-export').addEventListener('click', exportChart);
 ```
 
 - [ ] **Step 4: 手动验证（README 清单）**
@@ -776,6 +813,8 @@ function renderChart() {
 3. 直方图显示多指标分组柱；对比图（攻击实验）显示 Clean/Poisoned 两组柱。
 4. 编辑标签/颜色、隐藏一条、改标题，刷新页面后状态保留。
 5. 导出快照 → 清空 → 导入快照恢复。
+6. 点击「导出图片」，下载 `tpa-line-ndcg@10-*.png`（或其他图表类型），
+   图片可打开、内容为当前图表（2x 分辨率、白底）。
 
 - [ ] **Step 5: 提交**
 
@@ -794,7 +833,8 @@ git commit -m "feat(visualization): HTML 页面与 ECharts 渲染集成"
 - [ ] **Step 1: 写 README**
 
 内容：功能简介、目录结构、打开方式（file:// 或 `python -m http.server`）、导入方式、
-图表说明、编辑与快照说明、Node 单测命令、手动验证清单、已知限制
+图表说明、图片导出（PNG、2x、文件名规则）、编辑与快照说明、Node 单测命令、
+手动验证清单、已知限制
 （纯前端不修改原始数据；localStorage 容量上限）。
 
 - [ ] **Step 2: 全量回归**

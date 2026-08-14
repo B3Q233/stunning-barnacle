@@ -31,6 +31,7 @@
 - 识别与命名：根据路径段自动识别 kind / method / dataset / model / run_tag，
   run_tag 格式化为中文日期时间。
 - 三类图表（折线/直方/对比）+ 多选 + 配色 + 图例。
+- 导出当前图表为 PNG 图片（2x 分辨率、白底），文件名自动生成。
 - 编辑展示元数据，localStorage 持久化，支持导出/导入快照 JSON。
 
 ### 不包含（YAGNI）
@@ -136,6 +137,7 @@ TPA/visualization/
 4. 选择图表类型与指标，右侧渲染图表；多选实验按颜色区分。
 5. 编辑：改标签/颜色、隐藏/删除、改图表标题；状态自动存 localStorage。
 6. 「导出快照」下载 JSON；「导入快照」恢复。
+7. 点击「导出图片」下载当前图表 PNG（折线/直方/对比均可）。
 
 ## 6. 图表设计（ECharts）
 
@@ -145,6 +147,10 @@ TPA/visualization/
    指标多选；y=指标值。
 3. **对比图**：仅攻击实验可用；x=实验，每组柱含 Clean / Poisoned 两个柱
    （可切换指标：模型效用指标或目标物品平均 HR/NDCG）。
+- 每张图表提供「导出图片」：调用 ECharts `getDataURL({type:'png',
+  pixelRatio:2, backgroundColor:'#fff'})` 下载 PNG，文件名规则
+  `tpa-{chartType}-{metric}-{YYYYMMDD-HHmm}.png`（如
+  `tpa-line-ndcg@10-20260815-1430.png`）。
 
 ## 7. 编辑功能（默认假设，待确认）
 
