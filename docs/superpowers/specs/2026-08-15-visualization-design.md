@@ -183,3 +183,37 @@ TPA/visualization/
 1. 编辑范围：A) 只编辑展示元数据（推荐）；B) 还要允许编辑数据点。
 2. 图表库：A) 内置 ECharts 离线可用（推荐）；B) 仅 CDN 引用。
 3. 存放位置：A) `TPA/visualization/`（推荐）；B) 仓库根 `visualization/`。
+
+## 11. 设计修订 v2（2026-08-15 用户确认，覆盖 v1 冲突项）
+
+### 11.1 导入范围（严格）
+
+- 导入一个「outputs 实验目录」时，只识别其下形如 `YYYY-MM-DD-HH-MM` 的子实验
+  目录；忽略 output 根目录及其他非子实验数据（`xx.py`、`xx.json`、checkpoints、
+  surrogate 等）。
+- 直接选择某个子实验目录时，按单个实验导入。
+- 取消 v1 的 output 根部稳定副本（latest.json）归并逻辑。
+
+### 11.2 实验数据构成
+
+每个子实验目录由以下产物组成：
+
+- `history.json`：`history` 列表，每项解析 `epoch`（x 下标）与
+  `train_loss / val_loss / recall@10 / ndcg@10` 等数值；`best` 供直方图。
+- `{attack}_comparison.json`：供对比直方图（Clean vs Poisoned）。
+
+### 11.3 单实验折线图（数据点可编辑）
+
+- x=epoch，y=所选指标；多实验多色叠加。
+- 因 epoch 数量多，每个实验支持「编辑数据点」：勾选/反选要显示的 epoch
+  （提供全选、清空、区间快速选择），只有被选中的 epoch 才绘制。
+
+### 11.4 直方图
+
+- 「best 直方图」：用 `history.json` 的 best 值做单/多实验指标对比。
+- 「对比直方图」：用 `{attack}_comparison.json` 的 Clean vs Poisoned 对比。
+
+### 11.5 状态
+
+- 每个实验新增 `selectedEpochs: number[] | null`（null=全部显示），
+  随 localStorage / 快照持久化。

@@ -863,3 +863,17 @@ git commit -m "docs(visualization): 使用文档与手动验证清单"
 - 无占位符：所有代码步骤给出可运行代码或明确逻辑。
 - 类型一致：`Experiment`、`parseExperiment(segments, files)`、
   `buildLineSeries(experiments, metric)` 等签名在任务间一致。
+
+## 设计修订 v2 执行说明（2026-08-15 用户确认）
+
+对应 spec 第 11 节，改动如下：
+
+- **Task 3（app.js）**：分组只保留含 run_tag 的子实验分组；删除 output 根部
+  latest.json 归并与非实验产物过滤逻辑（由「只认子实验目录」取代）；直接选择
+  run_tag 目录仍按单实验导入。
+- **Task 2（transforms.js）**：`buildLineSeries(experiments, metric)` 增加
+  对 `exp.selectedEpochs`（`number[] | null`）的支持，null=全部；新增单测。
+- **Task 4（页面）**：实验列表每项增加「编辑数据点」入口，弹层勾选 epoch
+  （全选/清空/区间快速选择）；`index.html` 脚本标签加版本号参数防缓存；
+  直方图/对比图沿用既有 best 与 comparison 数据。
+- **Task 5（README）**：按 v2 导入范围与数据点编辑说明更新。
