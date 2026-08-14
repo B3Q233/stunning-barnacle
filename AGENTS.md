@@ -40,10 +40,12 @@ evaluation / tests）；论文资料见 `papers/`；流程文档见
 
 ## 4. 数据与产物卫生（必须）
 
+- 数据集允许入库：原始数据 `data/raw/` 与预处理产物 `models/*/data/processed/`
+  随代码提交，保证克隆后可复现；新增/更新数据集时同步提交。
 - 以下内容一律不入库（.gitignore 已定义，禁止 `git add -f` 绕过）：
-  `data/`、`outputs/`、`checkpoints/`、`*.pkl / *.pt / *.pth / *.png /
-  *.log`、`.venv/`、`tmp/`、`papers/`、`MinerU-Skill/`、`.claude/`、
-  `.codex/`。
+  `attacks/*/data/`（poisoned / rec_freq 等实验产物）、`outputs/`、`checkpoints/`、
+  `*.pt / *.pth / *.png / *.log`、`.venv/`、`tmp/`、`papers/`、`MinerU-Skill/`、
+  `.claude/`、`.codex/`。
 - 中间过程文件放 `tmp/` 或 `.superpowers/sdd/` 会话目录，不入库。
 
 ## 5. Git 与提交规范（必须）
