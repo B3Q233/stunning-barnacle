@@ -69,6 +69,34 @@ test('直接选择模型 run_tag 目录时按 config.yaml 补全识别', () => {
   assert.strictEqual(exp.runTag, '2026-08-09-23-01');
 });
 
+test('扁平模型 config 快照识别为模型实验（checkpoint_dir 推断模型名）', () => {
+  const exp = parseExperiment(
+    ['2026-08-09-21-39'],
+    [{
+      name: 'config.yaml',
+      text: [
+        'lr: 0.001',
+        'epochs: 10',
+        'dataset: ml100k',
+        'emb_dim: 64',
+        'checkpoint_dir: models/lightgcn/outputs/checkpoints',
+        'metrics:',
+        '- recall@20: upper',
+        '- ndcg@20: upper',
+      ].join('\n'),
+    }],
+  );
+  assert.strictEqual(exp.kind, 'model');
+  assert.strictEqual(exp.model, 'lightgcn');
+  assert.strictEqual(exp.dataset, 'ml100k');
+  assert.strictEqual(exp.runTag, '2026-08-09-21-39');
+  assert.strictEqual(
+    exp.label, 'model-ml100k-lightgcn-2026年08月09日21时39分',
+  );
+  assert.deepStrictEqual(exp.meta.metrics, ['recall@20', 'ndcg@20']);
+  assert.strictEqual(exp.meta.epochs, 10);
+});
+
 test('解析 history.json', () => {
   const rows = parseHistoryJson(
     JSON.stringify({ history: [{ epoch: 1, train_loss: 0.5, val_loss: 0.4 }] }),

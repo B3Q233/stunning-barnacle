@@ -212,7 +212,7 @@
   }
 
   function renderChart() {
-    const exps = transforms.assignPalette(
+    let exps = transforms.assignPalette(
       state.experiments.filter((e) => state.selected.has(e.id)),
     );
     const chart = chartInstance();
@@ -223,7 +223,37 @@
       });
       return;
     }
-    chart.setOption(buildOption(exps), true);
+    if (state.chartType === 'compare' && !exps.some((e) => e.comparison)) {
+      state.chartType = 'line';
+      $('chart-type').value = 'line';
+      $('chart-hint').textContent = '所选实验缺少 *_comparison.json，已切换为折线图';
+      refreshMetrics();
+      exps = transforms.assignPalette(
+        state.experiments.filter((e) => state.selected.has(e.id)),
+      );
+    }
+    try {
+      chart.setOption(buildOption(exps), true);
+    } catch (e) {
+      showMessage(`图表渲染失败：${e.message}`, true);
+    }
+  }
+
+  function clearAll() {
+    state.experiments = [];
+    state.selected = new Set();
+    state.metric = null;
+    state.chartType = 'line';
+    state.title = 'TPA 实验数据可视化';
+    try {
+      localStorage.removeItem(app.STORAGE_KEY);
+    } catch (e) { /* 忽略 */ }
+    $('title-input').value = state.title;
+    $('chart-type').value = 'line';
+    refreshMetrics();
+    renderList();
+    renderChart();
+    showMessage('已清空全部数据与本地缓存');
   }
 
   // ---- 导出图片 ----
@@ -324,6 +354,7 @@
     $('btn-export').addEventListener('click', exportChart);
     $('btn-export-snapshot').addEventListener('click', exportSnapshot);
     $('btn-load-snapshot').addEventListener('click', () => $('snapshot-input').click());
+    $('btn-clear').addEventListener('click', clearAll);
     $('snapshot-input').addEventListener('change', (e) => {
       const file = e.target.files && e.target.files[0];
       if (file) handleSnapshotImport(file);

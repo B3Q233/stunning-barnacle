@@ -12,6 +12,7 @@
   对比图（攻击实验 Clean vs Poisoned）。
 - 多选对比：勾选多个实验，自动分配不同颜色叠加显示。
 - 编辑：修改实验名称、颜色，显示/隐藏，删除；修改图表标题。
+- 清空：一键清除全部导入数据与本地缓存（localStorage）。
 - 导出：当前图表导出 PNG（2x 分辨率、白底）；实验数据导出/导入快照 JSON。
 - 持久化：localStorage 保存导入与编辑状态，刷新后保留。
 
@@ -48,7 +49,11 @@ python -m http.server 8080
 - 选择 `attacks/pgd/outputs/ml100k/lightgcn/` 这类「含多个 run_tag 的父目录」，
   会一次导入该目录下所有实验（推荐）。
 - 选择单个 run_tag 目录（如 `.../2026-08-09-21-54/`），只能按目录名识别，
-  名称会标记为「自定义」，可在列表里手动修改。
+  会结合目录内 `config.yaml` 快照自动补全（攻击实验读 `attack.name`，模型实验
+  读 `checkpoint_dir` 推断模型名），无需手动修改。
+- 选择 `outputs` 根目录（如 `models/lightgcn/outputs/`）：所有 run_tag 实验会被
+  批量识别；根部的稳定副本（history.json / eval_log.csv）会按 `latest.json`
+  指针归并到对应实验，非实验文件（checkpoints、脚本等）自动忽略。
 - 支持的文件：`history.json`、`eval_log.csv`、`config.yaml`、
   `*_comparison.json`。
 

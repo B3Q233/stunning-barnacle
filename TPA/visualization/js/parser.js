@@ -62,7 +62,10 @@
   }
 
   function parseConfigYaml(text) {
-    const cfg = { dataset: null, model: null, attack: null, epochs: null, metrics: [] };
+    const cfg = {
+      dataset: null, model: null, attack: null, epochs: null, metrics: [],
+      checkpoint_dir: null,
+    };
     let section = null;
     let inMetrics = false;
     for (const rawLine of text.split(/\r?\n/)) {
@@ -88,10 +91,17 @@
       if (key === 'dataset' && !value.includes(':')) cfg.dataset = value;
       if (key === 'name' && section === 'model' && value) cfg.model = value;
       if (key === 'name' && section === 'attack' && value) cfg.attack = value;
-      if (key === 'epochs' && section === 'training' && value) cfg.epochs = Number(value);
-      if (key === 'metrics' && section === 'evaluation') inMetrics = true;
+      if (key === 'epochs' && value) cfg.epochs = Number(value);
+      if (key === 'checkpoint_dir' && value) cfg.checkpoint_dir = value;
+      if (key === 'metrics') inMetrics = true;
     }
     return cfg;
+  }
+
+  function inferModelName(checkpointDir) {
+    if (!checkpointDir) return null;
+    const m = String(checkpointDir).match(/models\/([^/]+)\/outputs/);
+    return m ? m[1] : null;
   }
 
   function parseComparisonJson(text) {
@@ -156,9 +166,9 @@
         method = cfg.attack;
         dataset = cfg.dataset || 'unknown';
         model = cfg.model || 'unknown';
-      } else if (runTag && cfg.model) {
+      } else if (runTag && (cfg.dataset || cfg.checkpoint_dir)) {
         kind = 'model';
-        model = cfg.model;
+        model = cfg.model || inferModelName(cfg.checkpoint_dir) || 'unknown';
         dataset = cfg.dataset || 'unknown';
       }
     }

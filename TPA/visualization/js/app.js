@@ -11,6 +11,13 @@
 
   const STORAGE_KEY = 'tpa.visualizer.v1';
   const RUN_TAG_RE = /^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}$/;
+  const ARTIFACT_NAMES = new Set([
+    'history.json', 'eval_log.csv', 'config.yaml', 'latest.json', 'surrogate_meta.json',
+  ]);
+
+  function isArtifact(name) {
+    return ARTIFACT_NAMES.has(name) || /_comparison\.(json|md)$/.test(name);
+  }
 
   function normalizeEntry(relPath, name, text) {
     return { segments: String(relPath || '').split('/').filter(Boolean), name, text };
@@ -19,17 +26,44 @@
   function groupByExperiment(entries) {
     const groups = new Map();
     for (const entry of entries) {
+      if (!isArtifact(entry.name)) continue;
       const seg = entry.segments;
       const runIdx = seg.findIndex((s) => RUN_TAG_RE.test(s));
-      const key = runIdx !== -1
-        ? seg.slice(0, runIdx + 1).join('/')
-        : (seg[0] || 'unknown');
+      const key = runIdx !== -1 ? seg[runIdx] : (seg[0] || 'unknown');
       if (!groups.has(key)) {
         groups.set(key, { segments: seg.slice(0, runIdx + 1), files: [] });
       }
       groups.get(key).files.push(entry);
     }
-    return [...groups.values()];
+
+    // 根目录稳定副本（latest.json 指针）归并到对应 run_tag 分组
+    const result = new Map();
+    for (const [key, g] of groups) {
+      const hasRunTag = g.segments.some((s) => RUN_TAG_RE.test(s));
+      if (!hasRunTag) {
+        const latest = g.files.find((f) => f.name === 'latest.json');
+        if (latest) {
+          try {
+            const tag = JSON.parse(latest.text).run_tag;
+            if (tag && RUN_TAG_RE.test(tag)) {
+              if (result.has(tag)) {
+                result.get(tag).files.push(...g.files);
+              } else {
+                result.set(tag, { segments: [tag], files: [...g.files] });
+              }
+              continue;
+            }
+          } catch (e) { /* 坏 latest.json 忽略 */ }
+        }
+      }
+      result.set(key, g);
+    }
+
+    // 只有含有效实验信号的分组才生成实验（过滤 surrogate_meta / latest.json 等孤立文件）
+    return [...result.values()].filter((g) => g.files.some(
+      (f) => f.name === 'history.json' || f.name === 'config.yaml'
+        || /_comparison\.json$/.test(f.name),
+    ));
   }
 
   function importFiles(entries) {
