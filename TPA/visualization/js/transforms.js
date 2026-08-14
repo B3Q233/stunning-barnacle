@@ -40,15 +40,21 @@
   }
 
   function buildLineSeries(experiments, metric, xKey = 'epoch') {
+    const rowsFor = (exp) => {
+      const all = [...exp.history, ...exp.evalLog];
+      const sel = exp.selectedEpochs;
+      if (!sel || !sel.length) return all;
+      const set = new Set(sel);
+      return all.filter((row) => set.has(row[xKey]));
+    };
     const xSet = new Set();
     for (const exp of experiments) {
-      for (const row of exp.history) xSet.add(row[xKey]);
-      for (const row of exp.evalLog) xSet.add(row[xKey]);
+      for (const row of rowsFor(exp)) xSet.add(row[xKey]);
     }
     const xAxis = [...xSet].sort((a, b) => a - b);
     const series = experiments.map((exp) => {
       const dataByX = new Map();
-      for (const row of [...exp.history, ...exp.evalLog]) {
+      for (const row of rowsFor(exp)) {
         const x = row[xKey];
         if (x !== undefined && typeof row[metric] === 'number') dataByX.set(x, row[metric]);
       }

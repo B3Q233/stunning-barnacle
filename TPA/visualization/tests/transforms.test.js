@@ -33,6 +33,20 @@ test('折线 series：每个实验一条线', () => {
   assert.deepStrictEqual(out.series[0].data, [0.5, 0.3]);
 });
 
+test('折线 series：selectedEpochs 过滤只显示选中的 epoch', () => {
+  const exps = [{
+    id: 'e1', label: 'e1', color: '#000', best: null, evalLog: [],
+    history: [
+      { epoch: 1, loss: 0.5 }, { epoch: 2, loss: 0.3 },
+      { epoch: 3, loss: 0.2 }, { epoch: 4, loss: 0.1 },
+    ],
+    selectedEpochs: [1, 3],
+  }];
+  const out = buildLineSeries(exps, 'loss');
+  assert.deepStrictEqual(out.xAxis, [1, 3]);
+  assert.deepStrictEqual(out.series[0].data, [0.5, 0.2]);
+});
+
 test('直方图：多指标分组柱', () => {
   const exps = [
     mkExp('e1', [], null, ['recall@10', 'ndcg@10']),

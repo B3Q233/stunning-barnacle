@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TPA 实验数据可视化</title>
   <link rel="stylesheet" href="styles.css">
-  <script src="lib/echarts.min.js"></script>
+  <script src="lib/echarts.min.js?v=3"></script>
 </head>
 <body>
   <header>
@@ -47,9 +47,30 @@
 
   <div id="message" class="message"></div>
 
-  <script src="js/parser.js"></script>
-  <script src="js/transforms.js"></script>
-  <script src="js/app.js"></script>
-  <script src="js/main.js"></script>
+  <div id="epoch-dialog" class="dialog hidden">
+    <div class="dialog-box">
+      <h3 id="epoch-dialog-title">编辑数据点</h3>
+      <div class="epoch-tools">
+        <button id="epoch-select-all" type="button">全选</button>
+        <button id="epoch-clear" type="button">清空</button>
+        <label>区间
+          <input id="epoch-from" type="number" min="1" placeholder="起始 epoch">
+          ~
+          <input id="epoch-to" type="number" min="1" placeholder="结束 epoch">
+          <button id="epoch-apply-range" type="button">应用区间</button>
+        </label>
+      </div>
+      <div id="epoch-list" class="epoch-list"></div>
+      <div class="dialog-actions">
+        <button id="epoch-ok" type="button">确定</button>
+        <button id="epoch-cancel" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/parser.js?v=3"></script>
+  <script src="js/transforms.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
+  <script src="js/main.js?v=3"></script>
 </body>
 </html>

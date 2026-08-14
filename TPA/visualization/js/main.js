@@ -102,6 +102,16 @@
   }
 
   // ---- 实验列表 ----
+  function epochOptions(exp) {
+    const set = new Set();
+    for (const row of [...exp.history, ...exp.evalLog]) {
+      if (typeof row.epoch === 'number') set.add(row.epoch);
+    }
+    return [...set].sort((a, b) => a - b);
+  }
+
+  let epochEditor = null;
+
   function renderList() {
     const ul = $('experiment-list');
     ul.innerHTML = '';
@@ -147,6 +157,14 @@
         persist();
       });
 
+      const epochs = epochOptions(exp);
+      const shownCount = exp.selectedEpochs ? exp.selectedEpochs.length : epochs.length;
+      const epochBtn = document.createElement('button');
+      epochBtn.className = 'epoch-btn';
+      epochBtn.textContent = `数据点 ${shownCount}/${epochs.length}`;
+      epochBtn.title = '选择要显示的 epoch（折线图）';
+      epochBtn.addEventListener('click', () => openEpochEditor(exp));
+
       const remove = document.createElement('button');
       remove.className = 'remove-btn';
       remove.textContent = '✕';
@@ -160,9 +178,56 @@
         persist();
       });
 
-      li.append(checkbox, dot, colorInput, labelInput, remove);
+      li.append(checkbox, dot, colorInput, labelInput, epochBtn, remove);
       ul.appendChild(li);
     }
+  }
+
+  // ---- 数据点编辑（选择要显示的 epoch）----
+  function openEpochEditor(exp) {
+    const epochs = epochOptions(exp);
+    const list = $('epoch-list');
+    list.innerHTML = '';
+    epochEditor = {
+      exp,
+      checked: new Set(exp.selectedEpochs || epochs),
+    };
+    $('epoch-dialog-title').textContent = `编辑数据点：${exp.label}`;
+    $('epoch-from').value = '';
+    $('epoch-to').value = '';
+    for (const ep of epochs) {
+      const label = document.createElement('label');
+      label.className = 'epoch-item';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = ep;
+      cb.checked = epochEditor.checked.has(ep);
+      cb.addEventListener('change', () => {
+        if (cb.checked) epochEditor.checked.add(ep);
+        else epochEditor.checked.delete(ep);
+      });
+      label.append(cb, document.createTextNode(`epoch ${ep}`));
+      list.appendChild(label);
+    }
+    $('epoch-dialog').classList.remove('hidden');
+  }
+
+  function closeEpochEditor() {
+    $('epoch-dialog').classList.add('hidden');
+    epochEditor = null;
+  }
+
+  function applyEpochSelection() {
+    if (!epochEditor) return;
+    const exp = epochEditor.exp;
+    const epochs = epochOptions(exp);
+    const checked = [...epochEditor.checked].sort((a, b) => a - b);
+    exp.selectedEpochs = checked.length === epochs.length ? null : checked;
+    closeEpochEditor();
+    renderList();
+    renderChart();
+    persist();
+    showMessage(`数据点已更新：显示 ${checked.length}/${epochs.length} 个 epoch`);
   }
 
   // ---- 图表渲染 ----
@@ -355,6 +420,40 @@
     $('btn-export-snapshot').addEventListener('click', exportSnapshot);
     $('btn-load-snapshot').addEventListener('click', () => $('snapshot-input').click());
     $('btn-clear').addEventListener('click', clearAll);
+    $('epoch-select-all').addEventListener('click', () => {
+      if (!epochEditor) return;
+      epochEditor.checked = new Set(epochOptions(epochEditor.exp));
+      document.querySelectorAll('#epoch-list input[type="checkbox"]')
+        .forEach((cb) => { cb.checked = true; });
+    });
+    $('epoch-clear').addEventListener('click', () => {
+      if (!epochEditor) return;
+      epochEditor.checked.clear();
+      document.querySelectorAll('#epoch-list input[type="checkbox"]')
+        .forEach((cb) => { cb.checked = false; });
+    });
+    $('epoch-apply-range').addEventListener('click', () => {
+      if (!epochEditor) return;
+      const from = Number($('epoch-from').value);
+      const to = Number($('epoch-to').value);
+      if (!Number.isFinite(from) || !Number.isFinite(to) || from > to) {
+        showMessage('请输入合法的区间（起始 ≤ 结束）', true);
+        return;
+      }
+      epochEditor.checked.clear();
+      document.querySelectorAll('#epoch-list input[type="checkbox"]')
+        .forEach((cb) => {
+          const ep = Number(cb.value);
+          if (ep >= from && ep <= to) {
+            cb.checked = true;
+            epochEditor.checked.add(ep);
+          } else {
+            cb.checked = false;
+          }
+        });
+    });
+    $('epoch-ok').addEventListener('click', applyEpochSelection);
+    $('epoch-cancel').addEventListener('click', closeEpochEditor);
     $('snapshot-input').addEventListener('change', (e) => {
       const file = e.target.files && e.target.files[0];
       if (file) handleSnapshotImport(file);

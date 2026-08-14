@@ -11,7 +11,8 @@
 - 图表：折线图（loss/指标随 epoch 变化）、直方图（最终/最佳指标对比）、
   对比图（攻击实验 Clean vs Poisoned）。
 - 多选对比：勾选多个实验，自动分配不同颜色叠加显示。
-- 编辑：修改实验名称、颜色，显示/隐藏，删除；修改图表标题。
+- 编辑：修改实验名称、颜色，显示/隐藏，删除；修改图表标题；折线图支持
+  「编辑数据点」——按 epoch 勾选要显示的值。
 - 清空：一键清除全部导入数据与本地缓存（localStorage）。
 - 导出：当前图表导出 PNG（2x 分辨率、白底）；实验数据导出/导入快照 JSON。
 - 持久化：localStorage 保存导入与编辑状态，刷新后保留。
@@ -46,21 +47,20 @@ python -m http.server 8080
 
 ### 导入技巧
 
-- 选择 `attacks/pgd/outputs/ml100k/lightgcn/` 这类「含多个 run_tag 的父目录」，
-  会一次导入该目录下所有实验（推荐）。
-- 选择单个 run_tag 目录（如 `.../2026-08-09-21-54/`），只能按目录名识别，
-  会结合目录内 `config.yaml` 快照自动补全（攻击实验读 `attack.name`，模型实验
-  读 `checkpoint_dir` 推断模型名），无需手动修改。
-- 选择 `outputs` 根目录（如 `models/lightgcn/outputs/`）：所有 run_tag 实验会被
-  批量识别；根部的稳定副本（history.json / eval_log.csv）会按 `latest.json`
-  指针归并到对应实验，非实验文件（checkpoints、脚本等）自动忽略。
+- 导入只认形如 `2026-08-09-21-54` 的「子实验目录」，output 根目录下的其他文件
+  （`xx.py`、`xx.json`、checkpoints、surrogate 等）一律忽略。
+- 选择 `outputs` 根目录（如 `models/lightgcn/outputs/`）：批量导入其下所有子实验
+  （推荐）。
+- 直接选择某个子实验目录：按单个实验导入，并读取目录内 `config.yaml` 快照补全
+  名称（攻击实验读 `attack.name`，模型实验读 `checkpoint_dir` 推断模型名）。
 - 支持的文件：`history.json`、`eval_log.csv`、`config.yaml`、
   `*_comparison.json`。
 
 ## 图表说明
 
 - 折线图：x 轴为 epoch，y 轴为所选指标（train_loss / val_loss / recall@K /
-  ndcg@K / target_* 等），每条线一个实验。
+  ndcg@K / target_* 等），每条线一个实验；默认显示全部 epoch，可点实验列表中的
+  「数据点」只显示选中的 epoch。
 - 直方图：x 轴为实验，按指标分组柱；值取 `history.json` 的 best（无 best 时取
   最后一个有效值）。
 - 对比图：仅攻击实验有意义；支持模型效用指标（recall@10 / ndcg@10）与目标物品
@@ -89,9 +89,10 @@ node --test TPA/visualization/tests/
    `models/lightgcn/outputs/2026-08-09-23-39/`，勾选全部，折线图显示 3 条
    不同颜色曲线（指标切到 ndcg@10）。
 3. 直方图显示多指标分组柱；对比图（攻击实验）显示 Clean/Poisoned 两组柱。
-4. 编辑标签/颜色、隐藏一条、改标题，刷新页面后状态保留。
-5. 导出快照 → 清空 → 导入快照恢复。
-6. 点击「导出图片」，下载 `tpa-line-ndcg@10-*.png`（或其他图表类型），
+4. 点某实验的「数据点」，只勾选部分 epoch，折线图仅显示这些点。
+5. 编辑标签/颜色、隐藏一条、改标题，刷新页面后状态保留。
+6. 导出快照 → 清空 → 导入快照恢复。
+7. 点击「导出图片」，下载 `tpa-line-ndcg@10-*.png`（或其他图表类型），
    图片可打开、内容为当前图表（2x 分辨率、白底）。
 
 ## 已知限制

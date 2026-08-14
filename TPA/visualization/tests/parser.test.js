@@ -95,6 +95,7 @@ test('扁平模型 config 快照识别为模型实验（checkpoint_dir 推断模
   );
   assert.deepStrictEqual(exp.meta.metrics, ['recall@20', 'ndcg@20']);
   assert.strictEqual(exp.meta.epochs, 10);
+  assert.strictEqual(exp.selectedEpochs, null);
 });
 
 test('解析 history.json', () => {

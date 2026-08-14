@@ -48,13 +48,11 @@ test('STORAGE_KEY 固定', () => {
   assert.strictEqual(STORAGE_KEY, 'tpa.visualizer.v1');
 });
 
-test('导入 outputs 根目录：过滤非实验文件并按 latest.json 归并', () => {
+test('导入 outputs 根目录：只认 run_tag 子实验，忽略根目录其他文件', () => {
   const entries = [
     { relativePath: 'outputs/history.json', name: 'history.json', text: '{"history":[]}' },
-    { relativePath: 'outputs/eval_log.csv', name: 'eval_log.csv', text: 'epoch,recall@20,ndcg@20\n1,0.1,0.2\n' },
     { relativePath: 'outputs/latest.json', name: 'latest.json', text: '{"run_tag":"2026-08-09-23-39"}' },
     { relativePath: 'outputs/plot_results.py', name: 'plot_results.py', text: 'x=1' },
-    { relativePath: 'outputs/checkpoints/latest.pt', name: 'latest.pt', text: 'bin' },
     { relativePath: 'outputs/2026-08-09-21-39/history.json', name: 'history.json', text: '{"history":[]}' },
     {
       relativePath: 'outputs/2026-08-09-21-39/config.yaml',
@@ -76,13 +74,15 @@ test('导入 outputs 根目录：过滤非实验文件并按 latest.json 归并'
   assert.ok(experiments.every((e) => e.kind !== 'custom'));
 });
 
-test('仅含 surrogate_meta.json 的目录不生成实验', () => {
+test('output 根目录没有子实验时返回空', () => {
   const { experiments } = importFiles([
     {
-      relativePath: 'outputs/surrogate/surrogate_meta.json',
-      name: 'surrogate_meta.json',
-      text: '{"model":"lightgcn"}',
+      relativePath: 'outputs/history.json',
+      name: 'history.json',
+      text: '{"history":[]}',
     },
+    { relativePath: 'outputs/latest.json', name: 'latest.json', text: '{"run_tag":"2026-08-09-23-39"}' },
+    { relativePath: 'outputs/plot_results.py', name: 'plot_results.py', text: 'x=1' },
   ]);
   assert.strictEqual(experiments.length, 0);
 });
