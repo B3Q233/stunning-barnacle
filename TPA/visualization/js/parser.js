@@ -147,6 +147,22 @@
       model = model || cfg.model || 'unknown';
     }
 
+    // 直接选择 run_tag 目录导入时，路径缺少父级段，改用 config.yaml 补全识别
+    if (kind === 'custom') {
+      const runIdx = seg.findIndex((s) => RUN_TAG_RE.test(s));
+      if (runIdx !== -1) runTag = seg[runIdx];
+      if (runTag && cfg.attack) {
+        kind = 'attack';
+        method = cfg.attack;
+        dataset = cfg.dataset || 'unknown';
+        model = cfg.model || 'unknown';
+      } else if (runTag && cfg.model) {
+        kind = 'model';
+        model = cfg.model;
+        dataset = cfg.dataset || 'unknown';
+      }
+    }
+
     const historyText = readFile(files, 'history.json') || '{"history":[]}';
     const compFile = (files || []).find((f) => /_comparison\.json$/.test(f.name));
 

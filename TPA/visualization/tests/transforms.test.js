@@ -57,6 +57,15 @@ test('对比图：clean/poisoned 两组柱', () => {
   assert.deepStrictEqual(out.series[1].data, [0.2]);
 });
 
+test('对比图：无 comparison 数据时 target 模式不抛错', () => {
+  const out = buildComparisonSeries(
+    [{ id: 'm', label: 'm', color: '#000', comparison: null }],
+    'hr@k', 'target',
+  );
+  assert.deepStrictEqual(out.series[0].data, [null]);
+  assert.deepStrictEqual(out.series[1].data, [null]);
+});
+
 test('导出文件名自动生成', () => {
   const name = buildExportFilename('line', 'ndcg@10', new Date(2026, 7, 15, 14, 30));
   assert.strictEqual(name, 'tpa-line-ndcg@10-20260815-1430.png');

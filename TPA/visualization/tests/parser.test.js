@@ -40,6 +40,35 @@ test('无法识别时按 custom 处理', () => {
   assert.strictEqual(exp.label, '自定义-my_data');
 });
 
+test('直接选择攻击 run_tag 目录时按 config.yaml 补全识别', () => {
+  const exp = parseExperiment(
+    ['2026-08-10-16-13'],
+    [{
+      name: 'config.yaml',
+      text: 'dataset: ml100k\nattack:\n  name: bandwagon\nmodel:\n  name: lightgcn\n',
+    }],
+  );
+  assert.strictEqual(exp.kind, 'attack');
+  assert.strictEqual(exp.method, 'bandwagon');
+  assert.strictEqual(exp.dataset, 'ml100k');
+  assert.strictEqual(exp.model, 'lightgcn');
+  assert.strictEqual(exp.runTag, '2026-08-10-16-13');
+  assert.strictEqual(
+    exp.label, 'attack-bandwagon-ml100k-lightgcn-2026年08月10日16时13分',
+  );
+});
+
+test('直接选择模型 run_tag 目录时按 config.yaml 补全识别', () => {
+  const exp = parseExperiment(
+    ['2026-08-09-23-01'],
+    [{ name: 'config.yaml', text: 'dataset: ml100k\nmodel:\n  name: lightgcn\n' }],
+  );
+  assert.strictEqual(exp.kind, 'model');
+  assert.strictEqual(exp.model, 'lightgcn');
+  assert.strictEqual(exp.dataset, 'ml100k');
+  assert.strictEqual(exp.runTag, '2026-08-09-23-01');
+});
+
 test('解析 history.json', () => {
   const rows = parseHistoryJson(
     JSON.stringify({ history: [{ epoch: 1, train_loss: 0.5, val_loss: 0.4 }] }),

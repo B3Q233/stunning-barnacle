@@ -83,7 +83,7 @@
   }
 
   function targetAvg(comparison, side, metric) {
-    const targets = (comparison.target_metrics || {})[side] || {};
+    const targets = ((comparison || {}).target_metrics || {})[side] || {};
     const values = Object.values(targets)
       .map((t) => t[metric])
       .filter((v) => typeof v === 'number');
