@@ -249,3 +249,42 @@ TPA/visualization/
 - `index.html` / `styles.css` / `main.js`：实验卡列表布局、卡内导入、
   Modal 组件、图表布局修复、期刊配色。
 - `parser.js` 与既有 Node 单测逻辑不变。
+
+## 14. 设计修订 v4（2026-08-15 用户确认，选项分组 + 左侧列表 + Bug 修复）
+
+### 14.1 头部说明移除
+
+- 移除 header 中「实验数据对比 · 顶刊配色」说明文字。
+
+### 14.2 history / comparison 选项分组（各管各的图）
+
+- 卡内选项拆为两组：「history 指标」（train_loss/val_loss/recall@10/ndcg@10…
+  折线图用）与「comparison 对比项」（模型效用/目标命中，直方图用）。
+- 数据结构从单一 `metricOptions` 拆为 `lineOptions` / `barOptions`；
+  折线图只消费 history 组，直方图只消费 comparison 组，互不串图。
+
+### 14.3 左侧简要列表
+
+- 左侧竖向列表：每项 `[勾选框] 名称 + 数据状态（H✓/C✓）`，点击切换选中；
+  只有勾选的卡参与图表渲染。
+- 主区域显示选中实验卡的完整面板（卡头操作 + 始终可见的导入区 +
+  history/comparison 两个指标分组），下方两张图。
+
+### 14.4 Bug：重置后重新导入无法显示
+
+- 根因：无数据时用 `innerHTML` 写占位符销毁了 ECharts 容器 DOM，但实例未
+  `dispose()`，重新导入后对旧实例 `setOption` 画不出来。
+- 修复：占位时先 `dispose()`；渲染用
+  `echarts.getInstanceByDom(dom) || echarts.init(dom)` 重建；
+  导入区始终可见，保证「重置后重新导入」可操作。
+
+### 14.5 Bug：路径新增后弹窗未关闭
+
+- 修复 Modal 的 `onExtra` 回调：选完实验路径后自动关闭弹窗。
+
+### 14.6 结构变化
+
+- `transforms.js`：`metricOptions` → `lineOptions` / `barOptions`
+  （`buildMultiLineSeries` / `buildMultiBarSeries` 消费对应分组，含单测更新）。
+- `index.html` / `styles.css` / `main.js`：左侧列表 + 选中卡面板、分组选项、
+  图表实例生命周期修复、Modal 关闭修复。

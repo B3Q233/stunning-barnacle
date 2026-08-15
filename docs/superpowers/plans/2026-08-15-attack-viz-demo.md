@@ -2042,3 +2042,205 @@ Expected: JS 全绿；Python 全量通过。
 git -C G:\Idea add -- TPA/visualization/README.md
 git -C G:\Idea commit -m "docs(visualization): 迭代 3 使用文档与验证清单更新"
 ```
+
+---
+
+# 迭代 4（选项分组 + 左侧列表 + Bug 修复）任务
+
+对应 spec 第 14 节。基线：迭代 3 已提交于 `feat/attack-viz-demo`。
+
+### Task 13: transforms.js 选项分组（lineOptions / barOptions）
+
+**Files:**
+- Modify: `TPA/visualization/js/transforms.js`
+- Test: `TPA/visualization/tests/transforms.test.js`
+
+**Interfaces:**
+- Consumes: 无变化（输入实验对象结构改为 `lineOptions` / `barOptions`）。
+- Produces: `buildMultiLineSeries` 读 `exp.lineOptions`；
+  `buildMultiBarSeries` 读 `exp.barOptions`。
+
+- [ ] **Step 1: 更新测试（先失败）**
+
+把 `transforms.test.js` 中多实验用例的 `metricOptions` 分别改为
+`lineOptions`（折线用例）与 `barOptions`（直方用例），其余断言不变。
+
+- [ ] **Step 2: 运行确认失败**
+
+Run: `node --test TPA/visualization/tests/transforms.test.js`
+Expected: FAIL（实现仍读 `metricOptions`，series 为空/断言不符）。
+
+- [ ] **Step 3: 实现**
+
+`buildMultiLineSeries` 内：
+```js
+for (const [name, opt] of Object.entries(exp.lineOptions || {})) {
+  if (opt && opt.selected && !metricNames.includes(name)) metricNames.push(name);
+}
+...
+const opt = (exp.lineOptions || {})[metric];
+```
+
+`buildMultiBarSeries` 内：
+```js
+for (const [name, opt] of Object.entries(exp.barOptions || {})) {
+  if (opt && opt.selected && barNames.has(name) && !metricNames.includes(name)) {
+    metricNames.push(name);
+  }
+}
+...
+const opt = (exp.barOptions || {})[metric];
+```
+
+- [ ] **Step 4: 运行确认通过**
+
+Run: `node --test TPA/visualization/tests/transforms.test.js`
+Expected: PASS，6 个用例。
+
+- [ ] **Step 5: 提交**
+
+```bash
+git -C G:\Idea add -- TPA/visualization/js/transforms.js TPA/visualization/tests/transforms.test.js
+git -C G:\Idea commit -m "feat(visualization): 折线/直方选项分组 lineOptions 与 barOptions（含 Node 单测）"
+```
+
+---
+
+### Task 14: 页面重构（左侧列表 + 选中卡面板 + 分组 + Bug 修复）
+
+**Files:**
+- Modify: `TPA/visualization/index.html`
+- Modify: `TPA/visualization/styles.css`
+- Modify: `TPA/visualization/js/main.js`
+
+**Interfaces:**
+- Consumes: Task 13 的 `lineOptions` / `barOptions`。
+- Produces: `window.TPAVisualizer.app.initApp()`。
+
+- [ ] **Step 1: 重写 index.html**
+
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>TPA 攻击实验可视化</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="lib/echarts.min.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand"><h1>TPA 攻击实验可视化</h1></div>
+    <div class="toolbar">
+      <button id="add-card">＋ 添加实验卡</button>
+      <button id="export-json">导出当前实验卡标准 JSON</button>
+    </div>
+    <div id="message" class="message"></div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <h2>实验列表</h2>
+      <ul id="card-list"></ul>
+    </aside>
+    <section class="content">
+      <div id="card-panel"></div>
+      <section class="charts">
+        <div class="chart-panel"><div id="chart-line" class="chart"></div></div>
+        <div class="chart-panel"><div id="chart-bar" class="chart"></div></div>
+      </section>
+    </section>
+  </main>
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="modal-title"></h3>
+      <div id="modal-body"></div>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn-ghost">取消</button>
+        <button id="modal-ok" class="btn-primary">确定</button>
+      </div>
+    </div>
+  </div>
+  <script src="js/parser.js"></script>
+  <script src="js/transforms.js"></script>
+  <script src="js/main.js"></script>
+  <script>window.TPAVisualizer.app.initApp();</script>
+</body>
+</html>
+```
+
+- [ ] **Step 2: 重写 styles.css**
+
+在迭代 3 基础上调整：
+- 删除 `.brand .hint` 相关样式；
+- 增加 `.layout { display:grid; grid-template-columns: 260px 1fr; gap:18px; }`、
+  `.sidebar`（细边框圆角列表）、`#card-list`（竖向简要项：
+  `[checkbox] 名称 + H✓/C✓ 状态`，选中项高亮）；
+- `.content` 纵向布局；`#card-panel` 卡面板（卡头 + 分组）；
+- `.metric-group h4` 分组小标题；`.metric-group` 间距。
+
+- [ ] **Step 3: 重写 main.js**
+
+要点：
+- 卡数据：`{id, name, checked, epochMetrics, comparison, lineOptions, barOptions}`；
+  `buildOptions(card)` 分别由 `listMetrics` / `buildComparisonItems` 生成两组，
+  同名字段保留用户已设的 selected/color。
+- 图表生命周期：
+  ```js
+  function showPlaceholder(id, text) {
+    const dom = document.getElementById(id);
+    const inst = echarts.getInstanceByDom(dom);
+    if (inst) inst.dispose();
+    dom.innerHTML = `<div class="placeholder">${text}</div>`;
+  }
+  function chartInstance(id) {
+    const dom = document.getElementById(id);
+    return echarts.getInstanceByDom(dom) || echarts.init(dom);
+  }
+  ```
+  折线/直方渲染均用 `chartInstance`，无数据用 `showPlaceholder`。
+- 左侧列表 `renderCards()`：每项 checkbox + 名称 + `H✓/C✓`，点击选中；
+  主面板 `renderPanel()` 只渲染选中卡：卡头（改名/重置 H/重置 C/删除）+
+  始终可见导入区 + history/comparison 两个指标分组（勾选/改色只调
+  `renderCharts()`）。
+- Modal `openModal` 的 `onExtra` 回调注入 `close`：路径导入完成后关闭弹窗。
+- 移除 header hint；导出仍为当前选中卡。
+
+- [ ] **Step 4: 语法与单测校验**
+
+Run: `node --check TPA/visualization/js/main.js`；`node --test TPA/visualization/tests/`
+Expected: 语法 OK；JS 全绿。
+
+- [ ] **Step 5: 提交**
+
+```bash
+git -C G:\Idea add -- TPA/visualization/index.html TPA/visualization/styles.css TPA/visualization/js/main.js
+git -C G:\Idea commit -m "feat(visualization): 左侧实验列表、history/comparison 分组与图表实例生命周期修复"
+```
+
+---
+
+### Task 15: README v4 + 全量回归
+
+**Files:**
+- Modify: `TPA/visualization/README.md`
+
+- [ ] **Step 1: 更新 README**
+
+按 v4 说明：左侧简要列表、选中卡面板、history/comparison 分组选项各管各图、
+重置后可重新导入、路径新增自动关闭弹窗。
+
+- [ ] **Step 2: 全量回归**
+
+Run:
+```bash
+node --test TPA/visualization/tests/
+cd TPA && G:\Idea\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+```
+Expected: JS 全绿；Python 全量通过。
+
+- [ ] **Step 3: 提交**
+
+```bash
+git -C G:\Idea add -- TPA/visualization/README.md
+git -C G:\Idea commit -m "docs(visualization): 迭代 4 使用文档与验证清单更新"
+```
