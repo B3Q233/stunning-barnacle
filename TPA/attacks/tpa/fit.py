@@ -180,6 +180,15 @@ def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
                          clean_user_items: Dict[int, set] | None = None,
                          ) -> Tuple[Any, List[Dict[str, Any]]]:
     """训练中毒模型，返回 (model, history)。"""
+    # WMF 为全量 ALS 语义（非 BPR mini-batch），走共享 ALS 训练分支；
+    # 中毒数据对 ALS 就是普通数据，直接构造全量矩阵训练即可。
+    if getattr(model_cls, "__name__", "") == "WMFModel":
+        from models.wmf.train import train_wmf_from_meta
+        return train_wmf_from_meta(
+            cfg, poisoned_meta, out_dir, model_cls, metrics_cfg,
+            checkpoint_mode=checkpoint_mode, targets=targets,
+            clean_user_items=clean_user_items, warm_start=warm_start,
+        )
     num_users = poisoned_meta["num_users"]
     num_items = poisoned_meta["num_items"]
     user_items = poisoned_meta["user_items"]
