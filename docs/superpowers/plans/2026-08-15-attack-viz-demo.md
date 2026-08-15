@@ -1422,3 +1422,623 @@ Expected: JS 全绿；Python 全量通过。
 git -C G:\Idea add -- TPA/visualization/README.md
 git -C G:\Idea commit -m "docs(visualization): 迭代 2 使用文档与验证清单更新"
 ```
+
+---
+
+# 迭代 3（卡内导入 + 顶刊配色 + 组件化）任务
+
+对应 spec 第 13 节。基线：迭代 2 已提交于 `feat/attack-viz-demo`。
+
+### Task 10: transforms.js 顶刊色板
+
+**Files:**
+- Modify: `TPA/visualization/js/transforms.js`（替换 `PALETTE`）
+- Test: `TPA/visualization/tests/transforms.test.js`（追加用例）
+
+- [ ] **Step 1: 追加失败测试**
+
+```js
+test('PALETTE 为顶刊 10 色且无重复', () => {
+  const { PALETTE } = require('../js/transforms.js');
+  assert.strictEqual(PALETTE.length, 10);
+  assert.strictEqual(new Set(PALETTE).size, 10);
+});
+```
+
+- [ ] **Step 2: 运行确认失败**
+
+Run: `node --test TPA/visualization/tests/transforms.test.js`
+Expected: FAIL（当前 9 色）。
+
+- [ ] **Step 3: 替换 PALETTE**
+
+```js
+const PALETTE = [
+  '#3B4992', '#EE0000', '#008B45', '#631879', '#008280',
+  '#BB0021', '#5F559B', '#A20056', '#808180', '#1B1919',
+];
+```
+
+- [ ] **Step 4: 运行确认通过**
+
+Run: `node --test TPA/visualization/tests/transforms.test.js`
+Expected: PASS，6 个用例。
+
+- [ ] **Step 5: 提交**
+
+```bash
+git -C G:\Idea add -- TPA/visualization/js/transforms.js TPA/visualization/tests/transforms.test.js
+git -C G:\Idea commit -m "feat(visualization): 系列色板替换为 Nature 顶刊 10 色（含 Node 单测）"
+```
+
+---
+
+### Task 11: 页面重构（实验卡 + 卡内导入 + Modal + 图表布局）
+
+**Files:**
+- Modify: `TPA/visualization/index.html`
+- Modify: `TPA/visualization/styles.css`
+- Modify: `TPA/visualization/js/main.js`
+
+**Interfaces:**
+- Consumes: Task 2/6 parser、Task 7 transforms（含新色板）。
+- Produces: `window.TPAVisualizer.app.initApp()`。
+
+- [ ] **Step 1: 重写 index.html**
+
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>TPA 攻击实验可视化</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="lib/echarts.min.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>TPA 攻击实验可视化</h1>
+      <span class="hint">实验数据对比 · 顶刊配色</span>
+    </div>
+    <div class="toolbar">
+      <button id="add-card">＋ 添加实验卡</button>
+      <button id="export-json">导出当前实验卡标准 JSON</button>
+    </div>
+    <div id="message" class="message"></div>
+  </header>
+  <main>
+    <section id="card-list" class="card-list"></section>
+    <section class="charts">
+      <div class="chart-panel"><div id="chart-line" class="chart"></div></div>
+      <div class="chart-panel"><div id="chart-bar" class="chart"></div></div>
+    </section>
+  </main>
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="modal-title"></h3>
+      <div id="modal-body"></div>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn-ghost">取消</button>
+        <button id="modal-ok" class="btn-primary">确定</button>
+      </div>
+    </div>
+  </div>
+  <script src="js/parser.js"></script>
+  <script src="js/transforms.js"></script>
+  <script src="js/main.js"></script>
+  <script>window.TPAVisualizer.app.initApp();</script>
+</body>
+</html>
+```
+
+- [ ] **Step 2: 重写 styles.css**
+
+```css
+* { box-sizing: border-box; }
+body { margin: 0; background: #fff; color: #222;
+  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", Arial, sans-serif; }
+header { padding: 18px 28px; border-bottom: 1px solid #e5e7eb;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.brand h1 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: .5px; }
+.brand .hint { color: #9ca3af; font-size: 12px; margin-left: 10px; }
+.toolbar { display: flex; gap: 10px; }
+button { font-size: 13px; padding: 7px 14px; border-radius: 6px; cursor: pointer;
+  background: #fff; border: 1px solid #d1d5db; color: #374151; }
+button:hover { border-color: #3B4992; color: #3B4992; }
+.btn-primary { background: #3B4992; border-color: #3B4992; color: #fff; }
+.btn-primary:hover { background: #2f3b78; color: #fff; }
+.btn-danger:hover { border-color: #EE0000; color: #EE0000; }
+.message { margin-top: 8px; font-size: 13px; color: #b45309; }
+.message.error { color: #dc2626; }
+main { max-width: 1280px; margin: 0 auto; padding: 20px 28px; }
+.card-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+.exp-card { border: 1px solid #e5e7eb; border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.exp-card.checked { border-left: 3px solid #3B4992; }
+.exp-header { display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-bottom: 1px solid #f3f4f6; flex-wrap: wrap; }
+.exp-name { font-weight: 600; font-size: 14px; }
+.exp-status { font-size: 12px; color: #6b7280; }
+.exp-actions { margin-left: auto; display: flex; gap: 6px; }
+.exp-actions button { padding: 3px 8px; font-size: 12px; }
+.exp-body { padding: 12px 14px; }
+.import-area { border: 1px dashed #d1d5db; border-radius: 6px;
+  padding: 12px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  background: #fafafa; font-size: 13px; }
+.import-area label { display: inline-flex; align-items: center; gap: 6px; }
+.metric-rows { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.metric-row { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.metric-row input[type="color"] { width: 26px; height: 22px; padding: 0; border: none; }
+.charts { display: flex; flex-direction: column; gap: 20px; }
+.chart-panel { border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; }
+.chart { width: 100%; height: 440px; }
+.placeholder { padding: 60px; text-align: center; color: #9ca3af; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35);
+  display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal-overlay.hidden { display: none; }
+.modal { background: #fff; border-radius: 10px; width: 380px; max-width: 90vw;
+  padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+.modal h3 { margin: 0 0 14px; font-size: 16px; }
+.modal input[type="text"] { width: 100%; padding: 8px 10px; font-size: 14px;
+  border: 1px solid #d1d5db; border-radius: 6px; margin-bottom: 12px; }
+.modal .sep { text-align: center; color: #9ca3af; font-size: 12px; margin: 6px 0 10px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+```
+
+- [ ] **Step 3: 重写 main.js**
+
+```js
+'use strict';
+(function (global) {
+  const parser = global.TPAVisualizer.parser;
+  const transforms = global.TPAVisualizer.transforms;
+  const state = { cards: [], activeCardId: null };
+  let nextCardSeq = 1;
+  let lineChart = null;
+  let barChart = null;
+  const $ = (id) => document.getElementById(id);
+
+  function showMessage(text, isError) {
+    $('message').textContent = text;
+    $('message').className = isError ? 'message error' : 'message';
+  }
+
+  function readFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error(`读取 ${file.name} 失败`));
+      reader.readAsText(file, 'utf-8');
+    });
+  }
+
+  function openModal(title, opts) {
+    const o = opts || {};
+    const overlay = $('modal-overlay');
+    $('modal-title').textContent = title;
+    const body = $('modal-body');
+    body.innerHTML = '';
+    let inputEl = null;
+    if (o.input) {
+      inputEl = document.createElement('input');
+      inputEl.type = 'text';
+      inputEl.value = o.inputValue || '';
+      body.appendChild(inputEl);
+    }
+    if (o.extra) {
+      const sep = document.createElement('div');
+      sep.className = 'sep';
+      sep.textContent = '或';
+      body.appendChild(sep);
+      const extraBtn = document.createElement('button');
+      extraBtn.textContent = o.extraLabel || '导入实验路径';
+      extraBtn.addEventListener('click', () => o.onExtra && o.onExtra());
+      body.appendChild(extraBtn);
+    }
+    const ok = $('modal-ok');
+    ok.textContent = o.okText || '确定';
+    const cancel = $('modal-cancel');
+    overlay.classList.remove('hidden');
+
+    function close() {
+      overlay.classList.add('hidden');
+      ok.removeEventListener('click', confirmModal);
+      cancel.removeEventListener('click', close);
+      if (inputEl) inputEl.removeEventListener('keydown', onKey);
+    }
+    function onKey(e) {
+      if (e.key === 'Enter') confirmModal();
+    }
+    function confirmModal() {
+      const value = inputEl ? inputEl.value.trim() : null;
+      close();
+      o.onOk && o.onOk(value);
+    }
+    ok.addEventListener('click', confirmModal);
+    cancel.addEventListener('click', close);
+    if (inputEl) {
+      inputEl.addEventListener('keydown', onKey);
+      inputEl.focus();
+    }
+  }
+
+  function addCard(name) {
+    const card = {
+      id: `card-${Date.now()}-${nextCardSeq}`,
+      name: name || `实验 ${nextCardSeq}`,
+      checked: true,
+      epochMetrics: null,
+      comparison: null,
+      metricOptions: {},
+    };
+    nextCardSeq += 1;
+    state.cards.push(card);
+    state.activeCardId = card.id;
+    return card;
+  }
+
+  function activeCard() {
+    return state.cards.find((c) => c.id === state.activeCardId) || null;
+  }
+
+  function cardHasData(card) {
+    return !!(card.epochMetrics || card.comparison);
+  }
+
+  function isDefaultName(card) {
+    return /^实验 \d+$/.test(card.name);
+  }
+
+  function buildMetricOptions(card) {
+    const names = [];
+    if (card.epochMetrics) {
+      for (const m of parser.listMetrics(card.epochMetrics)) {
+        if (!names.includes(m)) names.push(m);
+      }
+    }
+    if (card.comparison) {
+      for (const it of transforms.buildComparisonItems(card.comparison)) {
+        if (!names.includes(it.name)) names.push(it.name);
+      }
+    }
+    const options = {};
+    names.forEach((name, i) => {
+      options[name] = { selected: true, color: transforms.colorFor(i) };
+    });
+    return options;
+  }
+
+  function applyFileToCard(card, file, text) {
+    if (file.name === 'history.json') {
+      card.epochMetrics = parser.extractEpochMetrics(text);
+    } else if (file.name.endsWith('_comparison.json')) {
+      card.comparison = parser.parseComparison(text);
+    } else {
+      throw new Error(`跳过未知文件: ${file.name}`);
+    }
+  }
+
+  async function importDirIntoCard(card, fileList) {
+    const files = [...fileList];
+    if (!files.length) return;
+    const info = parser.parseDirectoryPath(files[0].webkitRelativePath || files[0].name);
+    const autoName = parser.buildAutoName(info);
+    if (autoName && isDefaultName(card)) card.name = autoName;
+    const errors = [];
+    for (const file of files) {
+      try {
+        applyFileToCard(card, file, await readFile(file));
+      } catch (e) {
+        errors.push(`${file.name}: ${e.message}`);
+      }
+    }
+    card.metricOptions = buildMetricOptions(card);
+    if (errors.length) showMessage(errors.join('；'), true);
+    renderAll();
+  }
+
+  async function importFilesIntoCard(card, fileList) {
+    const files = [...fileList];
+    if (!files.length) return;
+    const errors = [];
+    for (const file of files) {
+      try {
+        applyFileToCard(card, file, await readFile(file));
+      } catch (e) {
+        errors.push(`${file.name}: ${e.message}`);
+      }
+    }
+    card.metricOptions = buildMetricOptions(card);
+    if (errors.length) showMessage(errors.join('；'), true);
+    renderAll();
+  }
+
+  function renderCards() {
+    const list = $('card-list');
+    list.innerHTML = '';
+    for (const card of state.cards) {
+      list.appendChild(buildCardEl(card));
+    }
+  }
+
+  function buildCardEl(card) {
+    const el = document.createElement('div');
+    el.className = 'exp-card' + (card.checked ? ' checked' : '');
+    el.dataset.cardId = card.id;
+
+    const header = document.createElement('div');
+    header.className = 'exp-header';
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.checked = card.checked;
+    check.title = '是否参与渲染';
+    check.addEventListener('change', () => {
+      card.checked = check.checked;
+      renderAll();
+    });
+    const name = document.createElement('span');
+    name.className = 'exp-name';
+    name.textContent = card.name;
+    name.title = '设为当前实验卡（导出目标）';
+    name.addEventListener('click', () => {
+      state.activeCardId = card.id;
+      renderAll();
+    });
+    const status = document.createElement('span');
+    status.className = 'exp-status';
+    status.textContent = `history ${card.epochMetrics ? '✓' : '—'} · comparison ${card.comparison ? '✓' : '—'}`;
+    const actions = document.createElement('span');
+    actions.className = 'exp-actions';
+    actions.appendChild(btn('改名', () => {
+      openModal('修改实验卡名称', {
+        input: true, inputValue: card.name, onOk: (v) => {
+          if (v) { card.name = v; renderAll(); }
+        },
+      });
+    }));
+    actions.appendChild(btn('重置 H', () => {
+      card.epochMetrics = null;
+      card.metricOptions = buildMetricOptions(card);
+      renderAll();
+    }));
+    actions.appendChild(btn('重置 C', () => {
+      card.comparison = null;
+      card.metricOptions = buildMetricOptions(card);
+      renderAll();
+    }));
+    actions.appendChild(btn('删除', () => {
+      openModal(`删除实验卡「${card.name}」？`, {
+        okText: '删除', onOk: () => {
+          state.cards = state.cards.filter((c) => c.id !== card.id);
+          if (state.activeCardId === card.id) {
+            state.activeCardId = state.cards.length ? state.cards[0].id : null;
+          }
+          renderAll();
+        },
+      });
+    }, true));
+    header.append(check, name, status, actions);
+    el.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'exp-body';
+    if (!cardHasData(card)) {
+      body.appendChild(buildImportArea(card));
+    } else {
+      body.appendChild(buildMetricRows(card));
+    }
+    el.appendChild(body);
+    return el;
+  }
+
+  function buildImportArea(card) {
+    const area = document.createElement('div');
+    area.className = 'import-area';
+    const dirBtn = btn('导入实验路径', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.webkitdirectory = true;
+      input.multiple = true;
+      input.addEventListener('change', (e) => importDirIntoCard(card, e.target.files));
+      input.click();
+    });
+    const histLabel = document.createElement('label');
+    histLabel.append('history.json ');
+    const histInput = document.createElement('input');
+    histInput.type = 'file';
+    histInput.accept = '.json';
+    histInput.addEventListener('change', (e) => importFilesIntoCard(card, e.target.files));
+    histLabel.appendChild(histInput);
+    const cmpLabel = document.createElement('label');
+    cmpLabel.append('comparison ');
+    const cmpInput = document.createElement('input');
+    cmpInput.type = 'file';
+    cmpInput.accept = '.json';
+    cmpInput.addEventListener('change', (e) => importFilesIntoCard(card, e.target.files));
+    cmpLabel.appendChild(cmpInput);
+    area.append(dirBtn, histLabel, cmpLabel);
+    return area;
+  }
+
+  function buildMetricRows(card) {
+    const wrap = document.createElement('div');
+    wrap.className = 'metric-rows';
+    for (const [name, opt] of Object.entries(card.metricOptions)) {
+      const row = document.createElement('label');
+      row.className = 'metric-row';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = opt.selected;
+      cb.addEventListener('change', () => {
+        opt.selected = cb.checked;
+        renderCharts();
+      });
+      const color = document.createElement('input');
+      color.type = 'color';
+      color.value = opt.color;
+      color.addEventListener('input', () => {
+        opt.color = color.value;
+        renderCharts();
+      });
+      const span = document.createElement('span');
+      span.textContent = name;
+      row.append(cb, color, span);
+      wrap.appendChild(row);
+    }
+    return wrap;
+  }
+
+  function btn(text, onClick, danger) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = text;
+    if (danger) b.className = 'btn-danger';
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  function chartBase(title) {
+    return {
+      title: { text: title, top: 10, left: 'center', textStyle: { fontSize: 14 } },
+      tooltip: { trigger: 'axis' },
+      legend: { type: 'scroll', top: 44, left: 'center' },
+      grid: { top: 96, left: 70, right: 30, bottom: 60 },
+    };
+  }
+
+  function renderLineChart(cards) {
+    const withHistory = cards.filter((c) => c.epochMetrics);
+    if (!withHistory.length) {
+      $('chart-line').innerHTML = '<div class="placeholder">勾选含 history 数据的实验卡</div>';
+      return;
+    }
+    lineChart = lineChart || echarts.init($('chart-line'));
+    const { xAxis, series } = transforms.buildMultiLineSeries(withHistory);
+    const option = chartBase('每轮指标折线图');
+    option.xAxis = { type: 'category', data: xAxis, name: 'epoch' };
+    option.yAxis = { type: 'value' };
+    option.dataZoom = [{ type: 'inside' }, { type: 'slider' }];
+    option.series = series;
+    option.legend.data = series.map((s) => s.name);
+    lineChart.setOption(option, true);
+  }
+
+  function renderBarChart(cards) {
+    const withCmp = cards.filter((c) => c.comparison);
+    if (!withCmp.length) {
+      $('chart-bar').innerHTML = '<div class="placeholder">勾选含 comparison 数据的实验卡</div>';
+      return;
+    }
+    barChart = barChart || echarts.init($('chart-bar'));
+    const { xAxis, series } = transforms.buildMultiBarSeries(withCmp);
+    const option = chartBase('Clean vs Poisoned 对比');
+    option.xAxis = { type: 'category', data: xAxis, axisLabel: { interval: 0 } };
+    option.yAxis = { type: 'value' };
+    option.series = series;
+    option.legend.data = series.map((s) => s.name);
+    barChart.setOption(option, true);
+  }
+
+  function renderCharts() {
+    const cards = state.cards.filter((c) => c.checked && cardHasData(c));
+    renderLineChart(cards);
+    renderBarChart(cards);
+  }
+
+  function renderAll() {
+    renderCards();
+    renderCharts();
+  }
+
+  function exportJson() {
+    const card = activeCard();
+    if (!card || !card.epochMetrics) {
+      showMessage('当前实验卡没有 history 数据', true);
+      return;
+    }
+    const blob = new Blob([JSON.stringify(card.epochMetrics, null, 2)],
+      { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${card.name}-epoch_metrics.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function initApp() {
+    $('add-card').addEventListener('click', () => {
+      openModal('添加实验卡', {
+        input: true,
+        inputValue: `实验 ${nextCardSeq}`,
+        extra: true,
+        extraLabel: '导入实验路径自动命名',
+        onExtra: () => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.webkitdirectory = true;
+          input.multiple = true;
+          input.addEventListener('change', (e) => {
+            const files = [...e.target.files];
+            if (!files.length) return;
+            const info = parser.parseDirectoryPath(files[0].webkitRelativePath || files[0].name);
+            const card = addCard(parser.buildAutoName(info) || `实验 ${nextCardSeq}`);
+            importDirIntoCard(card, files);
+          });
+          input.click();
+        },
+        onOk: (v) => {
+          addCard(v || `实验 ${nextCardSeq}`);
+          renderAll();
+        },
+      });
+    });
+    $('export-json').addEventListener('click', exportJson);
+    showMessage('点击「＋ 添加实验卡」开始');
+  }
+
+  global.TPAVisualizer = global.TPAVisualizer || {};
+  global.TPAVisualizer.app = { initApp, addCard, exportJson };
+})(window);
+```
+
+- [ ] **Step 4: 语法与单测校验**
+
+Run: `node --check TPA/visualization/js/main.js`；`node --test TPA/visualization/tests/`
+Expected: 语法 OK；JS 全绿。
+
+- [ ] **Step 5: 提交**
+
+```bash
+git -C G:\Idea add -- TPA/visualization/index.html TPA/visualization/styles.css TPA/visualization/js/main.js
+git -C G:\Idea commit -m "feat(visualization): 实验卡内导入、Modal 组件、顶刊配色与图表布局修复"
+```
+
+---
+
+### Task 12: README v3 + 全量回归
+
+**Files:**
+- Modify: `TPA/visualization/README.md`
+
+- [ ] **Step 1: 更新 README**
+
+按 v3 说明：实验卡模型（卡内导入/添加数据/重置/改名/删除）、添加实验卡弹窗
+（输入名称或导入路径自动命名）、顶刊配色、Modal 组件、图表布局（标题/图例
+分离）。手动验证清单补充：标题与图例不重叠、导入只能从实验卡内发起。
+
+- [ ] **Step 2: 全量回归**
+
+Run:
+```bash
+node --test TPA/visualization/tests/
+cd TPA && G:\Idea\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+```
+Expected: JS 全绿；Python 全量通过。
+
+- [ ] **Step 3: 提交**
+
+```bash
+git -C G:\Idea add -- TPA/visualization/README.md
+git -C G:\Idea commit -m "docs(visualization): 迭代 3 使用文档与验证清单更新"
+```
