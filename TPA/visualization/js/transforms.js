@@ -76,5 +76,69 @@
     };
   }
 
-  return { PALETTE, colorFor, buildLineSeries, buildComparisonItems, buildComparisonSeries };
+  function buildMultiLineSeries(experiments) {
+    const xSet = new Set();
+    const metricNames = [];
+    for (const exp of experiments) {
+      for (const e of Object.keys(exp.epochMetrics || {})) xSet.add(Number(e));
+      for (const [name, opt] of Object.entries(exp.metricOptions || {})) {
+        if (opt && opt.selected && !metricNames.includes(name)) metricNames.push(name);
+      }
+    }
+    const xAxis = [...xSet].sort((a, b) => a - b).map(String);
+    const series = [];
+    for (const metric of metricNames) {
+      for (const exp of experiments) {
+        const opt = (exp.metricOptions || {})[metric];
+        if (!opt || !opt.selected) continue;
+        series.push({
+          name: `${metric}-${exp.name}`,
+          type: 'line',
+          color: opt.color || colorFor(series.length),
+          data: xAxis.map((e) => {
+            const v = exp.epochMetrics[e] ? exp.epochMetrics[e][metric] : undefined;
+            return typeof v === 'number' ? v : null;
+          }),
+        });
+      }
+    }
+    return { xAxis, series };
+  }
+
+  function buildMultiBarSeries(experiments) {
+    const xAxis = experiments.map((e) => e.name);
+    const barNames = new Set();
+    const metricNames = [];
+    for (const exp of experiments) {
+      for (const it of buildComparisonItems(exp.comparison || {})) barNames.add(it.name);
+      for (const [name, opt] of Object.entries(exp.metricOptions || {})) {
+        if (opt && opt.selected && barNames.has(name) && !metricNames.includes(name)) {
+          metricNames.push(name);
+        }
+      }
+    }
+    const series = [];
+    for (const metric of metricNames) {
+      const cleanData = [];
+      const poisonedData = [];
+      for (const exp of experiments) {
+        const opt = (exp.metricOptions || {})[metric];
+        const item = buildComparisonItems(exp.comparison || {})
+          .find((it) => it.name === metric);
+        const color = opt ? opt.color : undefined;
+        const mk = (v) => (v === null || v === undefined
+          ? null : { value: v, itemStyle: color ? { color } : undefined });
+        cleanData.push(mk(item ? item.clean : null));
+        poisonedData.push(mk(item ? item.poisoned : null));
+      }
+      series.push({ name: `${metric}-Clean`, type: 'bar', data: cleanData });
+      series.push({ name: `${metric}-Poisoned`, type: 'bar', data: poisonedData });
+    }
+    return { xAxis, series };
+  }
+
+  return {
+    PALETTE, colorFor, buildLineSeries, buildComparisonItems, buildComparisonSeries,
+    buildMultiLineSeries, buildMultiBarSeries,
+  };
 });
