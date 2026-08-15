@@ -81,7 +81,7 @@
     const metricNames = [];
     for (const exp of experiments) {
       for (const e of Object.keys(exp.epochMetrics || {})) xSet.add(Number(e));
-      for (const [name, opt] of Object.entries(exp.metricOptions || {})) {
+      for (const [name, opt] of Object.entries(exp.lineOptions || {})) {
         if (opt && opt.selected && !metricNames.includes(name)) metricNames.push(name);
       }
     }
@@ -89,7 +89,7 @@
     const series = [];
     for (const metric of metricNames) {
       for (const exp of experiments) {
-        const opt = (exp.metricOptions || {})[metric];
+        const opt = (exp.lineOptions || {})[metric];
         if (!opt || !opt.selected) continue;
         series.push({
           name: `${metric}-${exp.name}`,
@@ -111,7 +111,7 @@
     const metricNames = [];
     for (const exp of experiments) {
       for (const it of buildComparisonItems(exp.comparison || {})) barNames.add(it.name);
-      for (const [name, opt] of Object.entries(exp.metricOptions || {})) {
+      for (const [name, opt] of Object.entries(exp.barOptions || {})) {
         if (opt && opt.selected && barNames.has(name) && !metricNames.includes(name)) {
           metricNames.push(name);
         }
@@ -122,7 +122,7 @@
       const cleanData = [];
       const poisonedData = [];
       for (const exp of experiments) {
-        const opt = (exp.metricOptions || {})[metric];
+        const opt = (exp.barOptions || {})[metric];
         const item = buildComparisonItems(exp.comparison || {})
           .find((it) => it.name === metric);
         const color = opt ? opt.color : undefined;

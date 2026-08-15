@@ -60,9 +60,9 @@ test('直方 series：按选中项生成 Clean/Poisoned 两列', () => {
 test('多实验折线：同一指标按实验拆线且颜色可自定义', () => {
   const exps = [
     { name: 'A', epochMetrics: { '1': { 'recall@10': 0.1 }, '2': { 'recall@10': 0.2 } },
-      metricOptions: { 'recall@10': { selected: true, color: '#111111' } } },
+      lineOptions: { 'recall@10': { selected: true, color: '#111111' } } },
     { name: 'B', epochMetrics: { '1': { 'recall@10': 0.3 } },
-      metricOptions: { 'recall@10': { selected: true, color: '#333333' } } },
+      lineOptions: { 'recall@10': { selected: true, color: '#333333' } } },
   ];
   const { xAxis, series } = buildMultiLineSeries(exps);
   assert.deepStrictEqual(xAxis, ['1', '2']);
@@ -79,13 +79,13 @@ test('多实验直方：x=实验，每指标 Clean/Poisoned 两列并逐点着�
         modelUtility: { clean: { 'recall@10': 0.1 }, poisoned: { 'recall@10': 0.2 } },
         targetMetrics: {},
       },
-      metricOptions: { 'recall@10': { selected: true, color: '#111111' } } },
+      barOptions: { 'recall@10': { selected: true, color: '#111111' } } },
     { name: 'B',
       comparison: {
         modelUtility: { clean: { 'recall@10': 0.3 }, poisoned: { 'recall@10': 0.4 } },
         targetMetrics: {},
       },
-      metricOptions: { 'recall@10': { selected: true, color: '#333333' } } },
+      barOptions: { 'recall@10': { selected: true, color: '#333333' } } },
   ];
   const { xAxis, series } = buildMultiBarSeries(exps);
   assert.deepStrictEqual(xAxis, ['A', 'B']);
