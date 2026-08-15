@@ -112,7 +112,7 @@ training:
   lr: 0.001
   weight_decay: 0.0001
   neg_ratio: 1
-  eval_every: 5
+  eval_every: 1                 # 每轮全量评估并写入 history（可视化需要完整每轮数据）
   k: 20                    # Top-K 评估
   device: cuda             # 无 CUDA 时自动回退 CPU
 

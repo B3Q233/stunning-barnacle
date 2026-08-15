@@ -101,14 +101,14 @@ data/raw/gowalla/
 | 参数 | 含义 | 默认值 | 来源 |
 |------|------|--------|------|
 | k | Top-K | 20 | [paper] |
-| eval_every | 全量评估间隔(epoch) | 10 | [ai] |
+| eval_every | 全量评估间隔(epoch) | 1 | [ai] |
 | metrics | 评估指标 | [recall@20, ndcg@20] | [paper] |
 
 ## 6. 结果解读
 
 训练完成后，在 `models/lightgcn/outputs/` 下查看：
 
-- `history.json` — 每 epoch 的 loss/val_loss
+- `history.json` — 每 epoch 的 loss/val_loss + 评估指标（recall@20/ndcg@20）
 - `eval_log.csv` — 每 eval_every epoch 的 recall@20/ndcg@20（表格格式，可直接粘贴到论文）
 - `training_curve.png` — 训练/验证 loss 曲线
 - `comparison_table.md` — 复现值 vs 论文值对比表，偏差 ±2% 内为对齐

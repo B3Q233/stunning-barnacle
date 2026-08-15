@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>TPA 攻击实验可视化</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="lib/echarts.min.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand"><h1>TPA 攻击实验可视化</h1></div>
+    <div class="toolbar">
+      <button id="add-card">＋ 添加实验卡</button>
+      <button id="export-json">导出当前实验卡标准 JSON</button>
+    </div>
+    <div id="message" class="message"></div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <h2>实验列表</h2>
+      <ul id="card-list"></ul>
+    </aside>
+    <section class="content">
+      <div id="card-panel"></div>
+      <section class="charts">
+        <div class="chart-panel"><div id="chart-line" class="chart"></div></div>
+        <div class="chart-panel"><div id="chart-bar" class="chart"></div></div>
+      </section>
+    </section>
+  </main>
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="modal-title"></h3>
+      <div id="modal-body"></div>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn-ghost">取消</button>
+        <button id="modal-ok" class="btn-primary">确定</button>
+      </div>
+    </div>
+  </div>
+  <script src="js/parser.js"></script>
+  <script src="js/transforms.js"></script>
+  <script src="js/main.js"></script>
+  <script>window.TPAVisualizer.app.initApp();</script>
+</body>
+</html>
