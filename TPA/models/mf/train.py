@@ -7,7 +7,7 @@ import sys
 import os
 import csv
 import json
-from typing import Dict
+from typing import Dict, Optional
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if _PROJECT_ROOT not in sys.path:
@@ -67,9 +67,10 @@ class FullRankingCallback(Callback):
                 writer = csv.writer(f)
                 writer.writerow(["epoch"] + self.metric_names)
 
-    def on_epoch_end(self, epoch: int, metrics: Dict[str, float]) -> None:
+    def on_epoch_end(self, epoch: int,
+                     metrics: Dict[str, float]) -> Optional[Dict[str, float]]:
         if epoch % self.eval_every != 0 and epoch != 1:
-            return
+            return None
 
         print(f"  [eval] epoch {epoch}: computing full ranking...")
         self.model.set_eval()
@@ -114,6 +115,8 @@ class FullRankingCallback(Callback):
             payload.update(result)
             torch.save(payload, ckpt_path)
             print(f"  [ckpt] best -> {ckpt_path} ({name}={result[name]:.4f})")
+
+        return result
 
     def on_train_end(self, metrics: Dict[str, float]) -> None:
         print("\n[best]")
@@ -212,14 +215,17 @@ def main(tag: str | None = None, resume: bool = False):
             print(f"[epoch {epoch}/{config.epochs}] train_loss={avg_loss:.4f} "
                   f"val_loss={avg_val:.4f}")
 
-            history.append({
+            entry = {
                 "epoch": epoch, "train_loss": avg_loss, "val_loss": avg_val,
-            })
+            }
+            history.append(entry)
 
             if epoch % config.save_every_n_epochs == 0:
                 save_checkpoint(model, epoch, tag_latest_ckpt)
 
-            full_rank.on_epoch_end(epoch, {})
+            eval_result = full_rank.on_epoch_end(epoch, {})
+            if eval_result:
+                entry.update(eval_result)
 
             with open(tag_history_path, "w") as f:
                 json.dump({

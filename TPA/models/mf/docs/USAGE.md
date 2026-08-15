@@ -35,7 +35,8 @@ python TPA/models/mf/scripts/preprocess.py --dataset ml100k
 python TPA/models/mf/main.py
 ```
 
-断点续训：加 `--resume`。训练完成后查看 `outputs/eval_log.csv` 与 `outputs/history.json`。
+断点续训：加 `--resume`。训练完成后查看 `outputs/eval_log.csv` 与
+`outputs/history.json`（每 epoch 均含 loss 与 recall/ndcg 评估指标）。
 
 ## 5. 配置说明（config.yaml）
 
