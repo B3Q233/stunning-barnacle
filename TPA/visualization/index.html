@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>TPA 攻击实验可视化</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="lib/echarts.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>TPA 攻击实验可视化</h1>
+    <div class="inputs">
+      <label>history.json <input id="history-input" type="file" accept=".json"></label>
+      <label>attack_comparison.json <input id="comparison-input" type="file" accept=".json"></label>
+      <button id="export-json">导出标准 JSON</button>
+    </div>
+    <div id="drop-zone">拖拽文件到此处（history.json / *_comparison.json）</div>
+    <div id="summary" class="summary"></div>
+    <div id="message" class="message"></div>
+  </header>
+  <main>
+    <section class="controls">
+      <fieldset><legend>折线图指标</legend><div id="line-metrics" class="checks"></div></fieldset>
+      <fieldset><legend>直方图对比项</legend><div id="bar-metrics" class="checks"></div></fieldset>
+    </section>
+    <section class="charts">
+      <div id="chart-line" class="chart"></div>
+      <div id="chart-bar" class="chart"></div>
+    </section>
+  </main>
+  <script src="js/parser.js"></script>
+  <script src="js/transforms.js"></script>
+  <script src="js/main.js"></script>
+  <script>window.TPAVisualizer.app.initApp();</script>
+</body>
+</html>
