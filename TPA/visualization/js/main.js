@@ -182,7 +182,8 @@
       name.title = '查看该实验卡';
       const status = document.createElement('span');
       status.className = 'ci-status';
-      status.textContent = `H${card.epochMetrics ? '✓' : '—'} C${card.comparison ? '✓' : '—'}`;
+      status.appendChild(badge(`H${card.epochMetrics ? '✓' : '—'}`, !!card.epochMetrics));
+      status.appendChild(badge(`C${card.comparison ? '✓' : '—'}`, !!card.comparison));
       li.addEventListener('click', (e) => {
         if (e.target !== check) {
           state.activeCardId = card.id;
@@ -208,8 +209,8 @@
     name.textContent = card.name;
     const status = document.createElement('span');
     status.className = 'panel-status';
-    status.textContent =
-      `history ${card.epochMetrics ? '✓' : '—'} · comparison ${card.comparison ? '✓' : '—'}`;
+    status.appendChild(badge(`history ${card.epochMetrics ? '✓' : '—'}`, !!card.epochMetrics));
+    status.appendChild(badge(`comparison ${card.comparison ? '✓' : '—'}`, !!card.comparison));
     const actions = document.createElement('span');
     actions.className = 'panel-actions';
     actions.appendChild(btn('改名', () => {
@@ -330,6 +331,13 @@
     if (danger) b.className = 'btn-danger';
     b.addEventListener('click', onClick);
     return b;
+  }
+
+  function badge(text, ok) {
+    const s = document.createElement('span');
+    s.className = 'badge' + (ok ? ' ok' : '');
+    s.textContent = text;
+    return s;
   }
 
   function showPlaceholder(id, text) {
