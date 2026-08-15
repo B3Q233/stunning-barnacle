@@ -37,7 +37,7 @@ MinerU-Skill/
 # 攻击实验产物（poisoned / rec_freq 等）不入库
 **/attacks/*/data/
 *.pkl
-!models/*/data/processed/*/meta.pkl
+!**/models/*/data/processed/*/meta.pkl
 
 # Outputs (generated files — track scripts and logs, ignore large binaries)
 outputs/

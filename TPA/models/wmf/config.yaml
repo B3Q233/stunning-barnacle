@@ -1,0 +1,32 @@
+run_tag: null                      # 实验标签（--tag 或此处指定；null=自动当前时间）
+
+data:
+  dataset: ml100k                  # [unreported] 仓库内数据集名（本地 TPA/data/raw/ml100k）
+  raw_data_path: data/raw/ml100k   # [unreported] 原始成对数据目录（train.txt / test.txt）
+  processed_data_path: models/wmf/data/processed/ml100k   # [unreported] 步骤①预处理产物
+  val_ratio: 0.05                  # [ai] 论文用时间切分（TV 专属）；公开数据无时间戳，从训练集随机划 5%
+
+model:
+  factors: 100                     # [paper] f=20–200，论文推荐取可行上限（Fig.1）
+  alpha: 40                        # [paper] 置信度缩放 α=40（Eq.3）
+  epsilon: 1e-8                    # [paper] log 缩放常数 ε（Eq.6，仅 log-scaling 使用）
+  confidence_scheme: minimal       # [paper] minimal=1+αr；log-scaling=1+αlog(1+r/ε)
+  init_method: normal              # [ai] 论文未提及；参考常见 MF 复现惯例
+  init_std: 0.01                   # [ai] 初始化标准差（normal: N(0, 0.01)）
+
+training:
+  lambda_reg: 0.01                 # [unreported] 论文未给（说明交叉验证决定）；recpack/implicit 默认 0.01
+  epochs: 100                       # [paper] 约 10 轮交替收敛；参考 implicit 15 / recpack 20
+  batch_size: 0                    # [paper] ALS 为全量闭式更新，0=单批全量
+  device: cuda                      # [unreported] ALS 为 CPU 线性代数求解，无需 GPU
+  save_every_n_epochs: 5           # [unreported] checkpoint 保存间隔（epoch）
+  shuffle: false                   # [unreported] ALS 与批次顺序无关
+
+evaluation:
+  k: 10                            # [unreported] 无 @K 指标时的回退 K
+  eval_every: 1                    # [ai] 全量排序评估间隔（epoch）
+  metrics:
+  - rank: lower                    # [paper] Eq.(8) expected percentile rank，越低越好（random=50%）
+  - recall@10: upper               # [ai] 补充指标，与仓库其他模型对齐
+  - ndcg@10: upper                 # [ai] 补充指标
+  checkpoint_mode: per_metric      # [unreported] 每指标一份最优 checkpoint
