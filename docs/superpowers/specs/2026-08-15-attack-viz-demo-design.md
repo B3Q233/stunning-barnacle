@@ -288,3 +288,34 @@ TPA/visualization/
   （`buildMultiLineSeries` / `buildMultiBarSeries` 消费对应分组，含单测更新）。
 - `index.html` / `styles.css` / `main.js`：左侧列表 + 选中卡面板、分组选项、
   图表实例生命周期修复、Modal 关闭修复。
+
+## 15. 设计修订 v5（2026-08-15 用户确认，现代 UI 主题）
+
+### 15.1 目标
+
+组件视觉现代化：数据系列色板保持 Nature 顶刊 10 色不变，UI 组件改为
+现代轻量风格——设计令牌（CSS 变量）+ 中性灰底 + 靛蓝主色。
+
+### 15.2 设计令牌
+
+- `--bg: #f8fafc`（页面底）、`--surface: #fff`（卡片）、
+  `--border: #e2e8f0`、`--text: #0f172a`、`--text-secondary: #64748b`、
+  `--primary: #6366f1`（靛蓝）、`--primary-soft: #eef2ff`、
+  `--success: #10b981`、`--danger: #ef4444`、圆角 12px / 8px、
+  两级柔和阴影、系统字体栈。
+
+### 15.3 组件现代化
+
+- header：毛玻璃吸顶（半透明 + `backdrop-filter: blur`）。
+- 按钮：主按钮靛蓝渐变填充、次要按钮描边幽灵式，hover/active/聚焦环。
+- 卡片：白底圆角 + 轻阴影；左侧列表选中项为靛蓝浅底药丸高亮。
+- 状态徽章：H✓/C✓ 小药丸（成功绿 / 中性灰）。
+- 指标行：chip 式圆角，checkbox `accent-color` 靛蓝，颜色选择器圆角化。
+- Modal：遮罩 `backdrop-filter: blur` + 淡入动画，对话框 `popIn` 动画。
+- 输入框聚焦高亮环；`focus-visible` 键盘可达。
+
+### 15.4 改动范围
+
+- `styles.css` 全量重写（CSS 变量体系）；`main.js` 状态改为药丸徽章渲染；
+  `index.html` 结构不变；JS/Python 测试不受影响。
+- 不包含（YAGNI）：暗色模式（变量化后后续易加）。
