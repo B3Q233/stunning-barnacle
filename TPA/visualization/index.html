@@ -8,21 +8,24 @@
 </head>
 <body>
   <header>
-    <div class="brand">
-      <h1>TPA 攻击实验可视化</h1>
-      <span class="hint">实验数据对比 · 顶刊配色</span>
-    </div>
+    <div class="brand"><h1>TPA 攻击实验可视化</h1></div>
     <div class="toolbar">
       <button id="add-card">＋ 添加实验卡</button>
       <button id="export-json">导出当前实验卡标准 JSON</button>
     </div>
     <div id="message" class="message"></div>
   </header>
-  <main>
-    <section id="card-list" class="card-list"></section>
-    <section class="charts">
-      <div class="chart-panel"><div id="chart-line" class="chart"></div></div>
-      <div class="chart-panel"><div id="chart-bar" class="chart"></div></div>
+  <main class="layout">
+    <aside class="sidebar">
+      <h2>实验列表</h2>
+      <ul id="card-list"></ul>
+    </aside>
+    <section class="content">
+      <div id="card-panel"></div>
+      <section class="charts">
+        <div class="chart-panel"><div id="chart-line" class="chart"></div></div>
+        <div class="chart-panel"><div id="chart-bar" class="chart"></div></div>
+      </section>
     </section>
   </main>
   <div id="modal-overlay" class="modal-overlay hidden">

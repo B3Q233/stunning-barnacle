@@ -4,8 +4,6 @@
   const transforms = global.TPAVisualizer.transforms;
   const state = { cards: [], activeCardId: null };
   let nextCardSeq = 1;
-  let lineChart = null;
-  let barChart = null;
   const $ = (id) => document.getElementById(id);
 
   function showMessage(text, isError) {
@@ -42,7 +40,7 @@
       body.appendChild(sep);
       const extraBtn = document.createElement('button');
       extraBtn.textContent = o.extraLabel || '导入实验路径';
-      extraBtn.addEventListener('click', () => o.onExtra && o.onExtra());
+      extraBtn.addEventListener('click', () => o.onExtra && o.onExtra(close));
       body.appendChild(extraBtn);
     }
     const ok = $('modal-ok');
@@ -79,7 +77,8 @@
       checked: true,
       epochMetrics: null,
       comparison: null,
-      metricOptions: {},
+      lineOptions: {},
+      barOptions: {},
     };
     nextCardSeq += 1;
     state.cards.push(card);
@@ -99,23 +98,23 @@
     return /^实验 \d+$/.test(card.name);
   }
 
-  function buildMetricOptions(card) {
-    const names = [];
+  function buildOptions(card) {
+    const nextLine = {};
     if (card.epochMetrics) {
-      for (const m of parser.listMetrics(card.epochMetrics)) {
-        if (!names.includes(m)) names.push(m);
-      }
+      parser.listMetrics(card.epochMetrics).forEach((name, i) => {
+        nextLine[name] = card.lineOptions[name]
+          || { selected: true, color: transforms.colorFor(i) };
+      });
     }
+    card.lineOptions = nextLine;
+    const nextBar = {};
     if (card.comparison) {
-      for (const it of transforms.buildComparisonItems(card.comparison)) {
-        if (!names.includes(it.name)) names.push(it.name);
-      }
+      transforms.buildComparisonItems(card.comparison).forEach((it, i) => {
+        nextBar[it.name] = card.barOptions[it.name]
+          || { selected: true, color: transforms.colorFor(i) };
+      });
     }
-    const options = {};
-    names.forEach((name, i) => {
-      options[name] = { selected: true, color: transforms.colorFor(i) };
-    });
-    return options;
+    card.barOptions = nextBar;
   }
 
   function applyFileToCard(card, file, text) {
@@ -142,7 +141,7 @@
         errors.push(`${file.name}: ${e.message}`);
       }
     }
-    card.metricOptions = buildMetricOptions(card);
+    buildOptions(card);
     if (errors.length) showMessage(errors.join('；'), true);
     renderAll();
   }
@@ -158,48 +157,61 @@
         errors.push(`${file.name}: ${e.message}`);
       }
     }
-    card.metricOptions = buildMetricOptions(card);
+    buildOptions(card);
     if (errors.length) showMessage(errors.join('；'), true);
     renderAll();
   }
 
   function renderCards() {
-    const list = $('card-list');
-    list.innerHTML = '';
+    const ul = $('card-list');
+    ul.innerHTML = '';
     for (const card of state.cards) {
-      list.appendChild(buildCardEl(card));
+      const li = document.createElement('li');
+      li.className = 'card-item' + (card.id === state.activeCardId ? ' active' : '');
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.checked = card.checked;
+      check.title = '是否参与渲染';
+      check.addEventListener('change', () => {
+        card.checked = check.checked;
+        renderAll();
+      });
+      const name = document.createElement('span');
+      name.className = 'ci-name';
+      name.textContent = card.name;
+      name.title = '查看该实验卡';
+      const status = document.createElement('span');
+      status.className = 'ci-status';
+      status.textContent = `H${card.epochMetrics ? '✓' : '—'} C${card.comparison ? '✓' : '—'}`;
+      li.addEventListener('click', (e) => {
+        if (e.target !== check) {
+          state.activeCardId = card.id;
+          renderAll();
+        }
+      });
+      li.append(check, name, status);
+      ul.appendChild(li);
     }
   }
 
-  function buildCardEl(card) {
-    const el = document.createElement('div');
-    el.className = 'exp-card' + (card.checked ? ' checked' : '');
-    el.dataset.cardId = card.id;
-
+  function renderPanel() {
+    const panel = $('card-panel');
+    const card = activeCard();
+    if (!card) {
+      panel.innerHTML = '<div class="placeholder">点击「＋ 添加实验卡」开始</div>';
+      return;
+    }
     const header = document.createElement('div');
-    header.className = 'exp-header';
-    const check = document.createElement('input');
-    check.type = 'checkbox';
-    check.checked = card.checked;
-    check.title = '是否参与渲染';
-    check.addEventListener('change', () => {
-      card.checked = check.checked;
-      renderAll();
-    });
+    header.className = 'panel-header';
     const name = document.createElement('span');
-    name.className = 'exp-name';
+    name.className = 'panel-name';
     name.textContent = card.name;
-    name.title = '设为当前实验卡（导出目标）';
-    name.addEventListener('click', () => {
-      state.activeCardId = card.id;
-      renderAll();
-    });
     const status = document.createElement('span');
-    status.className = 'exp-status';
+    status.className = 'panel-status';
     status.textContent =
       `history ${card.epochMetrics ? '✓' : '—'} · comparison ${card.comparison ? '✓' : '—'}`;
     const actions = document.createElement('span');
-    actions.className = 'exp-actions';
+    actions.className = 'panel-actions';
     actions.appendChild(btn('改名', () => {
       openModal('修改实验卡名称', {
         input: true, inputValue: card.name, onOk: (v) => {
@@ -212,12 +224,12 @@
     }));
     actions.appendChild(btn('重置 H', () => {
       card.epochMetrics = null;
-      card.metricOptions = buildMetricOptions(card);
+      buildOptions(card);
       renderAll();
     }));
     actions.appendChild(btn('重置 C', () => {
       card.comparison = null;
-      card.metricOptions = buildMetricOptions(card);
+      buildOptions(card);
       renderAll();
     }));
     actions.appendChild(btn('删除', () => {
@@ -231,18 +243,21 @@
         },
       });
     }, true));
-    header.append(check, name, status, actions);
-    el.appendChild(header);
+    header.append(name, status, actions);
 
     const body = document.createElement('div');
-    body.className = 'exp-body';
-    if (!cardHasData(card)) {
-      body.appendChild(buildImportArea(card));
-    } else {
-      body.appendChild(buildMetricRows(card));
+    body.className = 'panel-body';
+    body.appendChild(buildImportArea(card));
+    if (cardHasData(card)) {
+      if (card.epochMetrics) {
+        body.appendChild(metricGroup('history 指标', card.lineOptions, renderCharts));
+      }
+      if (card.comparison) {
+        body.appendChild(metricGroup('comparison 对比项', card.barOptions, renderCharts));
+      }
     }
-    el.appendChild(body);
-    return el;
+    panel.innerHTML = '';
+    panel.append(header, body);
   }
 
   function buildImportArea(card) {
@@ -274,10 +289,15 @@
     return area;
   }
 
-  function buildMetricRows(card) {
+  function metricGroup(title, options, onChange) {
+    const group = document.createElement('div');
+    group.className = 'metric-group';
+    const h = document.createElement('h4');
+    h.textContent = title;
+    group.appendChild(h);
     const wrap = document.createElement('div');
     wrap.className = 'metric-rows';
-    for (const [name, opt] of Object.entries(card.metricOptions)) {
+    for (const [name, opt] of Object.entries(options)) {
       const row = document.createElement('label');
       row.className = 'metric-row';
       const cb = document.createElement('input');
@@ -285,21 +305,22 @@
       cb.checked = opt.selected;
       cb.addEventListener('change', () => {
         opt.selected = cb.checked;
-        renderCharts();
+        onChange();
       });
       const color = document.createElement('input');
       color.type = 'color';
       color.value = opt.color;
       color.addEventListener('input', () => {
         opt.color = color.value;
-        renderCharts();
+        onChange();
       });
       const span = document.createElement('span');
       span.textContent = name;
       row.append(cb, color, span);
       wrap.appendChild(row);
     }
-    return wrap;
+    group.appendChild(wrap);
+    return group;
   }
 
   function btn(text, onClick, danger) {
@@ -309,6 +330,18 @@
     if (danger) b.className = 'btn-danger';
     b.addEventListener('click', onClick);
     return b;
+  }
+
+  function showPlaceholder(id, text) {
+    const dom = $(id);
+    const inst = echarts.getInstanceByDom(dom);
+    if (inst) inst.dispose();
+    dom.innerHTML = `<div class="placeholder">${text}</div>`;
+  }
+
+  function chartInstance(id) {
+    const dom = $(id);
+    return echarts.getInstanceByDom(dom) || echarts.init(dom);
   }
 
   function chartBase(title) {
@@ -323,10 +356,9 @@
   function renderLineChart(cards) {
     const withHistory = cards.filter((c) => c.epochMetrics);
     if (!withHistory.length) {
-      $('chart-line').innerHTML = '<div class="placeholder">勾选含 history 数据的实验卡</div>';
+      showPlaceholder('chart-line', '勾选含 history 数据的实验卡');
       return;
     }
-    lineChart = lineChart || echarts.init($('chart-line'));
     const { xAxis, series } = transforms.buildMultiLineSeries(withHistory);
     const option = chartBase('每轮指标折线图');
     option.xAxis = { type: 'category', data: xAxis, name: 'epoch' };
@@ -334,23 +366,22 @@
     option.dataZoom = [{ type: 'inside' }, { type: 'slider' }];
     option.legend.data = series.map((s) => s.name);
     option.series = series;
-    lineChart.setOption(option, true);
+    chartInstance('chart-line').setOption(option, true);
   }
 
   function renderBarChart(cards) {
     const withCmp = cards.filter((c) => c.comparison);
     if (!withCmp.length) {
-      $('chart-bar').innerHTML = '<div class="placeholder">勾选含 comparison 数据的实验卡</div>';
+      showPlaceholder('chart-bar', '勾选含 comparison 数据的实验卡');
       return;
     }
-    barChart = barChart || echarts.init($('chart-bar'));
     const { xAxis, series } = transforms.buildMultiBarSeries(withCmp);
     const option = chartBase('Clean vs Poisoned 对比');
     option.xAxis = { type: 'category', data: xAxis, axisLabel: { interval: 0 } };
     option.yAxis = { type: 'value' };
     option.legend.data = series.map((s) => s.name);
     option.series = series;
-    barChart.setOption(option, true);
+    chartInstance('chart-bar').setOption(option, true);
   }
 
   function renderCharts() {
@@ -361,6 +392,7 @@
 
   function renderAll() {
     renderCards();
+    renderPanel();
     renderCharts();
   }
 
@@ -386,7 +418,7 @@
         inputValue: `实验 ${nextCardSeq}`,
         extra: true,
         extraLabel: '导入实验路径自动命名',
-        onExtra: () => {
+        onExtra: (closeModal) => {
           const input = document.createElement('input');
           input.type = 'file';
           input.webkitdirectory = true;
@@ -396,6 +428,7 @@
             if (!files.length) return;
             const info = parser.parseDirectoryPath(files[0].webkitRelativePath || files[0].name);
             const card = addCard(parser.buildAutoName(info) || `实验 ${nextCardSeq}`);
+            closeModal();
             importDirIntoCard(card, files);
           });
           input.click();
