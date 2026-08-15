@@ -170,3 +170,46 @@ TPA/visualization/
 5. 直方图显示 Clean/Poisoned 分组柱（模型效用与目标命中）。
 6. 导出标准 JSON，检查为 `{"1": {...}, ..., "30": {...}}` 且无 `targets` 嵌套。
 7. 选择坏 JSON 文件，页面提示错误且不崩溃。
+
+## 12. 设计修订 v2（2026-08-15 用户确认，多实验选项卡）
+
+### 12.1 修复
+
+- 直方图 x 轴标签取消倾斜（去掉 `axisLabel.rotate: 20`），文字水平显示。
+
+### 12.2 左侧导航（选项卡）
+
+- 竖向列表，每项为横向选项卡条目：`[勾选框] 名称` + 操作按钮
+  （改名 / 重置 history / 重置 comparison / 删除）。
+- 「新建选项卡」按钮：弹窗输入名称（默认「实验 N」，可随时改名）。
+- 导入方式（两种都支持，导入只能落在选项卡内）：
+  - 选择整个实验目录（`webkitdirectory`）：从相对路径自动解析
+    「攻击方法-实验时间」，如 `attacks/random/outputs/ml100k/lightgcn/
+    2026-08-15-07-23/` → `random-2026-08-15-07-23`，同时读入目录下
+    `history.json` 与 `*_comparison.json`；
+  - 在选项卡内多选 `history.json` + `attack_comparison.json` 两个文件导入。
+- 导入规则：每次导入都落到新建/空选项卡；当前选项卡已有数据时提示先新建。
+
+### 12.3 顶部卡牌（指标控制）
+
+- 只有左侧**勾选**的选项卡在卡牌中渲染，从上到下依次为各实验。
+- 每个实验一段：名称 + 该实验全部指标 checkbox（默认全选）+ 每指标颜色选择器。
+- 修改勾选/颜色即时重绘对应图。
+
+### 12.4 图表
+
+- 折线图：同一指标按实验拆线（`recall@10-实验A`、`recall@10-实验B`），
+  颜色使用卡牌自定义颜色。
+- 直方图：x 轴 = 实验，每个实验一组 Clean / Poisoned 柱；对比指标
+  （模型效用 / 目标命中）在卡牌中勾选显隐，标签水平显示；柱色按
+  实验的指标自定义色逐点着色。
+- 未勾选含数据选项卡时显示占位提示。
+
+### 12.5 结构变化
+
+- `parser.js`：新增 `parseDirectoryPath(relativePath)` 与 `buildAutoName(info)`。
+- `transforms.js`：新增 `buildMultiLineSeries(experiments)` 与
+  `buildMultiBarSeries(experiments)`（保留 v1 单实验函数）。
+- `main.js`：选项卡状态管理（新建/改名/重置/删除/勾选/激活）、目录导入、
+  卡牌渲染；`index.html` / `styles.css` 增加侧栏与卡牌布局。
+- Node 单测补充：目录路径解析、自动命名、多实验折线/直方 series、颜色覆盖。

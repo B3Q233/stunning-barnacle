@@ -748,3 +748,677 @@ git -C G:\Idea commit -m "docs(visualization): 使用文档与手动验证清单
   Node 单测（Task 2/3）、README 与全量回归（Task 5）、旧版 git 清理（Task 1）。
 - 无占位符：每个代码步骤含完整代码；ECharts 下载失败有明确 CDN 回退。
 - 类型一致：`epochMetrics` / `comparison` / `items` / `selectedNames` 命名在各任务间一致。
+
+---
+
+# 迭代 2（多实验选项卡 + 指标自定义）任务
+
+对应 spec 第 12 节。基线：v1 已提交于 `feat/attack-viz-demo`。
+
+### Task 6: parser.js 目录路径解析与自动命名
+
+**Files:**
+- Modify: `TPA/visualization/js/parser.js`（追加函数并导出）
+- Test: `TPA/visualization/tests/parser.test.js`（追加用例）
+
+**Interfaces:**
+- Consumes: 无。
+- Produces（Task 8 依赖）:
+  - `parseDirectoryPath(relativePath: string): {method, dataset, model, runTag} | null`
+  - `buildAutoName(info: object): string | null`（`${method}-${runTag}`）
+
+- [ ] **Step 1: 追加失败测试**
+
+在 `parser.test.js` 末尾追加：
+
+```js
+const { parseDirectoryPath, buildAutoName } = require('../js/parser.js');
+
+test('parseDirectoryPath 解析攻击实验目录相对路径', () => {
+  const info = parseDirectoryPath(
+    'attacks/random/outputs/ml100k/lightgcn/2026-08-15-07-23/history.json');
+  assert.deepStrictEqual(info, {
+    method: 'random', dataset: 'ml100k', model: 'lightgcn',
+    runTag: '2026-08-15-07-23',
+  });
+});
+
+test('parseDirectoryPath 非实验路径返回 null', () => {
+  assert.strictEqual(parseDirectoryPath('tmp/foo.txt'), null);
+});
+
+test('buildAutoName 组合 攻击方法-实验时间', () => {
+  assert.strictEqual(
+    buildAutoName({ method: 'random', runTag: '2026-08-15-07-23' }),
+    'random-2026-08-15-07-23');
+  assert.strictEqual(buildAutoName(null), null);
+});
+```
+
+- [ ] **Step 2: 运行确认失败**
+
+Run: `node --test TPA/visualization/tests/parser.test.js`
+Expected: FAIL，`parseDirectoryPath is not a function`。
+
+- [ ] **Step 3: 实现**
+
+在 `parser.js` 的 factory 内、`return` 之前追加：
+
+```js
+function parseDirectoryPath(relativePath) {
+  const parts = String(relativePath || '').split('/').filter(Boolean);
+  const attacksIdx = parts.indexOf('attacks');
+  const outIdx = parts.indexOf('outputs');
+  const runIdx = parts.findIndex((s) => /^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}$/.test(s));
+  if (attacksIdx === -1 || outIdx === -1 || runIdx === -1
+      || !(outIdx > attacksIdx && runIdx > outIdx)) {
+    return null;
+  }
+  return {
+    method: parts[attacksIdx + 1] || null,
+    dataset: parts[outIdx + 1] || null,
+    model: parts[outIdx + 2] || null,
+    runTag: parts[runIdx],
+  };
+}
+
+function buildAutoName(info) {
+  if (!info || !info.method || !info.runTag) return null;
+  return `${info.method}-${info.runTag}`;
+}
+```
+
+`return` 语句改为同时导出两个新函数。
+
+- [ ] **Step 4: 运行确认通过**
+
+Run: `node --test TPA/visualization/tests/parser.test.js`
+Expected: PASS，10 个用例。
+
+- [ ] **Step 5: 提交**
+
+```bash
+git -C G:\Idea add -- TPA/visualization/js/parser.js TPA/visualization/tests/parser.test.js
+git -C G:\Idea commit -m "feat(visualization): 实验目录路径解析与自动命名（含 Node 单测）"
+```
+
+---
+
+### Task 7: transforms.js 多实验 series
+
+**Files:**
+- Modify: `TPA/visualization/js/transforms.js`（追加函数并导出，保留 v1 函数）
+- Test: `TPA/visualization/tests/transforms.test.js`（追加用例）
+
+**Interfaces:**
+- Consumes: Task 6 产物无关；输入结构为实验列表，每项：
+  `{name, epochMetrics, comparison, metricOptions: {metric: {selected, color}}}`。
+- Produces（Task 8 依赖）:
+  - `buildMultiLineSeries(experiments): {xAxis: string[], series: [{name: `${metric}-${exp.name}`, type:'line', color, data}]}`（x 为所有实验 epoch 并集，缺失为 null）
+  - `buildMultiBarSeries(experiments): {xAxis: 实验名[], series: [{name: `${metric}-Clean|Poisoned`, type:'bar', data}]}`（柱按实验指标色逐点着色）
+
+- [ ] **Step 1: 追加失败测试**
+
+在 `transforms.test.js` 末尾追加：
+
+```js
+const { buildMultiLineSeries, buildMultiBarSeries } = require('../js/transforms.js');
+
+test('多实验折线：同一指标按实验拆线且颜色可自定义', () => {
+  const exps = [
+    { name: 'A', epochMetrics: { '1': { 'recall@10': 0.1 }, '2': { 'recall@10': 0.2 } },
+      metricOptions: { 'recall@10': { selected: true, color: '#111111' } } },
+    { name: 'B', epochMetrics: { '1': { 'recall@10': 0.3 } },
+      metricOptions: { 'recall@10': { selected: true, color: '#333333' } } },
+  ];
+  const { xAxis, series } = buildMultiLineSeries(exps);
+  assert.deepStrictEqual(xAxis, ['1', '2']);
+  assert.deepStrictEqual(series.map((s) => s.name), ['recall@10-A', 'recall@10-B']);
+  assert.strictEqual(series[0].color, '#111111');
+  assert.deepStrictEqual(series[0].data, [0.1, 0.2]);
+  assert.deepStrictEqual(series[1].data, [0.3, null]);
+});
+
+test('多实验直方：x=实验，每指标 Clean/Poisoned 两列并逐点着色', () => {
+  const exps = [
+    { name: 'A', comparison: { modelUtility: { clean: { 'recall@10': 0.1 }, poisoned: { 'recall@10': 0.2 } }, targetMetrics: {} },
+      metricOptions: { 'recall@10': { selected: true, color: '#111111' } } },
+    { name: 'B', comparison: { modelUtility: { clean: { 'recall@10': 0.3 }, poisoned: { 'recall@10': 0.4 } }, targetMetrics: {} },
+      metricOptions: { 'recall@10': { selected: true, color: '#333333' } } },
+  ];
+  const { xAxis, series } = buildMultiBarSeries(exps);
+  assert.deepStrictEqual(xAxis, ['A', 'B']);
+  assert.deepStrictEqual(series.map((s) => s.name),
+    ['recall@10-Clean', 'recall@10-Poisoned']);
+  assert.strictEqual(series[0].data[0].value, 0.1);
+  assert.strictEqual(series[0].data[0].itemStyle.color, '#111111');
+  assert.strictEqual(series[1].data[1].value, 0.4);
+});
+```
+
+- [ ] **Step 2: 运行确认失败**
+
+Run: `node --test TPA/visualization/tests/transforms.test.js`
+Expected: FAIL，`buildMultiLineSeries is not a function`。
+
+- [ ] **Step 3: 实现**
+
+在 `transforms.js` 的 factory 内、`return` 之前追加：
+
+```js
+function buildMultiLineSeries(experiments) {
+  const xSet = new Set();
+  const metricNames = [];
+  for (const exp of experiments) {
+    for (const e of Object.keys(exp.epochMetrics || {})) xSet.add(Number(e));
+    for (const [name, opt] of Object.entries(exp.metricOptions || {})) {
+      if (opt && opt.selected && !metricNames.includes(name)) metricNames.push(name);
+    }
+  }
+  const xAxis = [...xSet].sort((a, b) => a - b).map(String);
+  const series = [];
+  for (const metric of metricNames) {
+    for (const exp of experiments) {
+      const opt = (exp.metricOptions || {})[metric];
+      if (!opt || !opt.selected) continue;
+      series.push({
+        name: `${metric}-${exp.name}`,
+        type: 'line',
+        color: opt.color || colorFor(series.length),
+        data: xAxis.map((e) => {
+          const v = exp.epochMetrics[e] ? exp.epochMetrics[e][metric] : undefined;
+          return typeof v === 'number' ? v : null;
+        }),
+      });
+    }
+  }
+  return { xAxis, series };
+}
+
+function buildMultiBarSeries(experiments) {
+  const xAxis = experiments.map((e) => e.name);
+  const barNames = new Set();
+  const metricNames = [];
+  for (const exp of experiments) {
+    for (const it of buildComparisonItems(exp.comparison || {})) barNames.add(it.name);
+    for (const [name, opt] of Object.entries(exp.metricOptions || {})) {
+      if (opt && opt.selected && barNames.has(name) && !metricNames.includes(name)) {
+        metricNames.push(name);
+      }
+    }
+  }
+  const series = [];
+  for (const metric of metricNames) {
+    const cleanData = [];
+    const poisonedData = [];
+    for (const exp of experiments) {
+      const opt = (exp.metricOptions || {})[metric];
+      const item = buildComparisonItems(exp.comparison || {})
+        .find((it) => it.name === metric);
+      const color = opt ? opt.color : undefined;
+      const mk = (v) => (v === null || v === undefined
+        ? null : { value: v, itemStyle: color ? { color } : undefined });
+      cleanData.push(mk(item ? item.clean : null));
+      poisonedData.push(mk(item ? item.poisoned : null));
+    }
+    series.push({ name: `${metric}-Clean`, type: 'bar', data: cleanData });
+    series.push({ name: `${metric}-Poisoned`, type: 'bar', data: poisonedData });
+  }
+  return { xAxis, series };
+}
+```
+
+`return` 语句追加导出两个新函数。
+
+- [ ] **Step 4: 运行确认通过**
+
+Run: `node --test TPA/visualization/tests/transforms.test.js`
+Expected: PASS，5 个用例。
+
+- [ ] **Step 5: 提交**
+
+```bash
+git -C G:\Idea add -- TPA/visualization/js/transforms.js TPA/visualization/tests/transforms.test.js
+git -C G:\Idea commit -m "feat(visualization): 多实验折线/直方 series 与逐点着色（含 Node 单测）"
+```
+
+---
+
+### Task 8: 页面重构（侧栏选项卡 + 卡牌 + 双图）
+
+**Files:**
+- Modify: `TPA/visualization/index.html`
+- Modify: `TPA/visualization/styles.css`
+- Modify: `TPA/visualization/js/main.js`
+
+**Interfaces:**
+- Consumes: Task 6 `parseDirectoryPath` / `buildAutoName`；Task 7
+  `buildMultiLineSeries` / `buildMultiBarSeries` / `buildComparisonItems` /
+  `colorFor`；Task 2 `extractEpochMetrics` / `listMetrics` / `parseComparison`。
+- Produces: `window.TPAVisualizer.app.initApp()`。
+
+- [ ] **Step 1: 重写 index.html**
+
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>TPA 攻击实验可视化</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="lib/echarts.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>TPA 攻击实验可视化</h1>
+    <div class="inputs">
+      <button id="btn-dir">导入实验目录</button>
+      <input id="dir-input" type="file" webkitdirectory multiple hidden>
+      <button id="btn-import">导入文件（多选）</button>
+      <input id="import-input" type="file" multiple accept=".json" hidden>
+      <button id="export-json">导出当前选项卡标准 JSON</button>
+    </div>
+    <div id="drop-zone">拖拽 history.json / *_comparison.json 到此处（自动新建选项卡导入）</div>
+    <div id="message" class="message"></div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <h2>实验选项卡</h2>
+      <button id="new-tab">+ 新建选项卡</button>
+      <ul id="tab-list"></ul>
+    </aside>
+    <section class="content">
+      <div id="metric-card" class="card"></div>
+      <div id="chart-line" class="chart"></div>
+      <div id="chart-bar" class="chart"></div>
+    </section>
+  </main>
+  <script src="js/parser.js"></script>
+  <script src="js/transforms.js"></script>
+  <script src="js/main.js"></script>
+  <script>window.TPAVisualizer.app.initApp();</script>
+</body>
+</html>
+```
+
+- [ ] **Step 2: 重写 styles.css**
+
+```css
+body { margin: 0; font-family: "Microsoft YaHei", Arial, sans-serif; color: #333; }
+header { padding: 16px 24px; background: #f7f8fa; border-bottom: 1px solid #e4e7ed; }
+h1 { margin: 0 0 12px; font-size: 20px; }
+.inputs { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+button { cursor: pointer; }
+#drop-zone { margin-top: 10px; padding: 10px; border: 2px dashed #c0c4cc;
+  border-radius: 6px; text-align: center; color: #909399; font-size: 13px; }
+#drop-zone.active { border-color: #5470c6; color: #5470c6; }
+.message { margin-top: 6px; font-size: 13px; color: #e6a23c; }
+.message.error { color: #f56c6c; }
+.layout { display: grid; grid-template-columns: 280px 1fr; gap: 16px; padding: 16px 24px; }
+.sidebar { border: 1px solid #e4e7ed; border-radius: 6px; padding: 12px; height: fit-content; }
+.sidebar h2 { margin: 0 0 8px; font-size: 15px; }
+#new-tab { width: 100%; margin-bottom: 8px; }
+#tab-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.tab-item { display: flex; align-items: center; gap: 6px; padding: 6px 8px;
+  border: 1px solid #e4e7ed; border-radius: 4px; }
+.tab-item.active { border-color: #5470c6; background: #ecf5ff; }
+.tab-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  cursor: pointer; font-size: 13px; }
+.tab-btns { display: flex; gap: 2px; }
+.tab-btns button { font-size: 12px; padding: 0 4px; }
+.content { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.card { border: 1px solid #e4e7ed; border-radius: 6px; padding: 12px; }
+.card h3 { margin: 0 0 6px; font-size: 14px; }
+.exp-section { margin-bottom: 10px; }
+.metric-row { display: inline-flex; align-items: center; gap: 4px;
+  margin-right: 14px; font-size: 13px; }
+.metric-row input[type="color"] { width: 26px; height: 22px; padding: 0; border: none; }
+.chart { width: 100%; height: 420px; border: 1px solid #e4e7ed; border-radius: 6px; }
+.placeholder { padding: 60px; text-align: center; color: #909399; }
+```
+
+- [ ] **Step 3: 重写 main.js**
+
+```js
+'use strict';
+(function (global) {
+  const parser = global.TPAVisualizer.parser;
+  const transforms = global.TPAVisualizer.transforms;
+  const state = { tabs: [], activeTabId: null };
+  let nextTabSeq = 1;
+  let lineChart = null;
+  let barChart = null;
+  const $ = (id) => document.getElementById(id);
+
+  function showMessage(text, isError) {
+    $('message').textContent = text;
+    $('message').className = isError ? 'message error' : 'message';
+  }
+
+  function readFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error(`读取 ${file.name} 失败`));
+      reader.readAsText(file, 'utf-8');
+    });
+  }
+
+  function addTab(name) {
+    const tab = {
+      id: `tab-${Date.now()}-${nextTabSeq}`,
+      name: name || `实验 ${nextTabSeq}`,
+      checked: true,
+      epochMetrics: null,
+      comparison: null,
+      metricOptions: {},
+    };
+    nextTabSeq += 1;
+    state.tabs.push(tab);
+    state.activeTabId = tab.id;
+    return tab;
+  }
+
+  function activeTab() {
+    return state.tabs.find((t) => t.id === state.activeTabId) || null;
+  }
+
+  function tabHasData(tab) {
+    return !!(tab.epochMetrics || tab.comparison);
+  }
+
+  function buildMetricOptions(tab) {
+    const names = [];
+    if (tab.epochMetrics) {
+      for (const m of parser.listMetrics(tab.epochMetrics)) {
+        if (!names.includes(m)) names.push(m);
+      }
+    }
+    if (tab.comparison) {
+      for (const it of transforms.buildComparisonItems(tab.comparison)) {
+        if (!names.includes(it.name)) names.push(it.name);
+      }
+    }
+    const options = {};
+    names.forEach((name, i) => {
+      options[name] = { selected: true, color: transforms.colorFor(i) };
+    });
+    return options;
+  }
+
+  async function importFilesInto(tab, files) {
+    const errors = [];
+    for (const file of files) {
+      try {
+        const text = await readFile(file);
+        if (file.name === 'history.json') {
+          tab.epochMetrics = parser.extractEpochMetrics(text);
+        } else if (file.name.endsWith('_comparison.json')) {
+          tab.comparison = parser.parseComparison(text);
+        } else {
+          errors.push(`跳过未知文件: ${file.name}`);
+        }
+      } catch (e) {
+        errors.push(`${file.name}: ${e.message}`);
+      }
+    }
+    tab.metricOptions = buildMetricOptions(tab);
+    if (errors.length) showMessage(errors.join('；'), true);
+  }
+
+  async function handleDirectoryImport(fileList) {
+    const files = [...fileList];
+    if (!files.length) return;
+    const info = parser.parseDirectoryPath(files[0].webkitRelativePath || files[0].name);
+    let tab = activeTab();
+    if (!tab || tabHasData(tab)) tab = addTab(`实验 ${nextTabSeq}`);
+    const autoName = parser.buildAutoName(info);
+    if (autoName && !tabHasData(tab)) tab.name = autoName;
+    await importFilesInto(tab, files);
+    renderAll();
+  }
+
+  async function handleManualImport(fileList) {
+    const files = [...fileList];
+    if (!files.length) return;
+    let tab = activeTab();
+    if (!tab || tabHasData(tab)) {
+      tab = addTab(prompt('选项卡名称', `实验 ${nextTabSeq}`) || `实验 ${nextTabSeq}`);
+    }
+    await importFilesInto(tab, files);
+    renderAll();
+  }
+
+  function makeBtn(text, title, onClick) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = text;
+    b.title = title;
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  function renderTabs() {
+    const ul = $('tab-list');
+    ul.innerHTML = '';
+    for (const tab of state.tabs) {
+      const li = document.createElement('li');
+      li.className = 'tab-item' + (tab.id === state.activeTabId ? ' active' : '');
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.checked = tab.checked;
+      check.title = '是否参与渲染';
+      check.addEventListener('change', () => {
+        tab.checked = check.checked;
+        renderAll();
+      });
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'tab-name';
+      nameSpan.textContent = tab.name;
+      nameSpan.title = '点击设为当前选项卡';
+      nameSpan.addEventListener('click', () => {
+        state.activeTabId = tab.id;
+        renderAll();
+      });
+      const btns = document.createElement('span');
+      btns.className = 'tab-btns';
+      btns.appendChild(makeBtn('✎', '改名', () => {
+        const n = prompt('修改名称', tab.name);
+        if (n && n.trim()) {
+          tab.name = n.trim();
+          renderAll();
+        }
+      }));
+      btns.appendChild(makeBtn('↺H', '重置 history', () => {
+        tab.epochMetrics = null;
+        tab.metricOptions = buildMetricOptions(tab);
+        renderAll();
+      }));
+      btns.appendChild(makeBtn('↺C', '重置 comparison', () => {
+        tab.comparison = null;
+        tab.metricOptions = buildMetricOptions(tab);
+        renderAll();
+      }));
+      btns.appendChild(makeBtn('×', '删除选项卡', () => {
+        if (confirm(`删除选项卡「${tab.name}」？`)) {
+          state.tabs = state.tabs.filter((t) => t.id !== tab.id);
+          if (state.activeTabId === tab.id) {
+            state.activeTabId = state.tabs.length ? state.tabs[0].id : null;
+          }
+          renderAll();
+        }
+      }));
+      li.append(check, nameSpan, btns);
+      ul.appendChild(li);
+    }
+  }
+
+  function renderCard() {
+    const card = $('metric-card');
+    card.innerHTML = '';
+    const tabs = state.tabs.filter((t) => t.checked && tabHasData(t));
+    if (!tabs.length) {
+      card.innerHTML = '<div class="placeholder">勾选左侧选项卡以显示指标选项</div>';
+      return;
+    }
+    for (const tab of tabs) {
+      const section = document.createElement('div');
+      section.className = 'exp-section';
+      const h = document.createElement('h3');
+      h.textContent = tab.name;
+      section.appendChild(h);
+      for (const [name, opt] of Object.entries(tab.metricOptions)) {
+        const row = document.createElement('label');
+        row.className = 'metric-row';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = opt.selected;
+        cb.addEventListener('change', () => {
+          opt.selected = cb.checked;
+          renderCharts();
+        });
+        const color = document.createElement('input');
+        color.type = 'color';
+        color.value = opt.color;
+        color.addEventListener('input', () => {
+          opt.color = color.value;
+          renderCharts();
+        });
+        const span = document.createElement('span');
+        span.textContent = name;
+        row.append(cb, color, span);
+        section.appendChild(row);
+      }
+      card.appendChild(section);
+    }
+  }
+
+  function renderLineChart(tabs) {
+    const withHistory = tabs.filter((t) => t.epochMetrics);
+    if (!withHistory.length) {
+      $('chart-line').innerHTML = '<div class="placeholder">勾选含 history 数据的选项卡</div>';
+      return;
+    }
+    lineChart = lineChart || echarts.init($('chart-line'));
+    const { xAxis, series } = transforms.buildMultiLineSeries(withHistory);
+    lineChart.setOption({
+      title: { text: '每轮指标折线图' },
+      tooltip: { trigger: 'axis' },
+      legend: { type: 'scroll', data: series.map((s) => s.name) },
+      grid: { left: 60, right: 30, bottom: 60 },
+      xAxis: { type: 'category', data: xAxis, name: 'epoch' },
+      yAxis: { type: 'value' },
+      dataZoom: [{ type: 'inside' }, { type: 'slider' }],
+      series,
+    }, true);
+  }
+
+  function renderBarChart(tabs) {
+    const withCmp = tabs.filter((t) => t.comparison);
+    if (!withCmp.length) {
+      $('chart-bar').innerHTML = '<div class="placeholder">勾选含 comparison 数据的选项卡</div>';
+      return;
+    }
+    barChart = barChart || echarts.init($('chart-bar'));
+    const { xAxis, series } = transforms.buildMultiBarSeries(withCmp);
+    barChart.setOption({
+      title: { text: 'Clean vs Poisoned 对比' },
+      tooltip: { trigger: 'axis' },
+      legend: { type: 'scroll', data: series.map((s) => s.name) },
+      grid: { left: 60, right: 30, bottom: 60 },
+      xAxis: { type: 'category', data: xAxis, axisLabel: { interval: 0 } },
+      yAxis: { type: 'value' },
+      series,
+    }, true);
+  }
+
+  function renderCharts() {
+    const tabs = state.tabs.filter((t) => t.checked && tabHasData(t));
+    renderLineChart(tabs);
+    renderBarChart(tabs);
+  }
+
+  function renderAll() {
+    renderTabs();
+    renderCard();
+    renderCharts();
+  }
+
+  function exportJson() {
+    const tab = activeTab();
+    if (!tab || !tab.epochMetrics) {
+      showMessage('当前选项卡没有 history 数据', true);
+      return;
+    }
+    const blob = new Blob([JSON.stringify(tab.epochMetrics, null, 2)],
+      { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${tab.name}-epoch_metrics.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function initApp() {
+    $('new-tab').addEventListener('click', () => {
+      addTab(prompt('选项卡名称', `实验 ${nextTabSeq}`) || `实验 ${nextTabSeq}`);
+      renderAll();
+    });
+    $('btn-dir').addEventListener('click', () => $('dir-input').click());
+    $('dir-input').addEventListener('change', (e) => handleDirectoryImport(e.target.files));
+    $('btn-import').addEventListener('click', () => $('import-input').click());
+    $('import-input').addEventListener('change', (e) => handleManualImport(e.target.files));
+    $('export-json').addEventListener('click', exportJson);
+    const drop = $('drop-zone');
+    ['dragenter', 'dragover'].forEach((ev) =>
+      drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('active'); }));
+    ['dragleave', 'drop'].forEach((ev) =>
+      drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('active'); }));
+    drop.addEventListener('drop', (e) => handleManualImport(e.dataTransfer.files));
+    showMessage('请先新建选项卡，或直接导入实验目录/文件');
+  }
+
+  global.TPAVisualizer = global.TPAVisualizer || {};
+  global.TPAVisualizer.app = { initApp, handleDirectoryImport, handleManualImport, exportJson };
+})(window);
+```
+
+- [ ] **Step 4: 语法与单测校验**
+
+Run: `node --check TPA/visualization/js/main.js`；`node --test TPA/visualization/tests/`
+Expected: 语法 OK；JS 全绿。
+
+- [ ] **Step 5: 提交**
+
+```bash
+git -C G:\Idea add -- TPA/visualization/index.html TPA/visualization/styles.css TPA/visualization/js/main.js
+git -C G:\Idea commit -m "feat(visualization): 多实验选项卡、卡牌指标显隐与颜色自定义"
+```
+
+---
+
+### Task 9: README v2 + 全量回归
+
+**Files:**
+- Modify: `TPA/visualization/README.md`
+
+- [ ] **Step 1: 更新 README**
+
+补充：多实验选项卡用法（新建/导入目录自动命名/改名/重置/删除/勾选）、卡牌
+指标显隐与颜色自定义、直方图 x 轴为实验、导入需新建/空选项卡的规则。
+
+- [ ] **Step 2: 全量回归**
+
+Run:
+```bash
+node --test TPA/visualization/tests/
+cd TPA && G:\Idea\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+```
+Expected: JS 全绿；Python 全量通过。
+
+- [ ] **Step 3: 提交**
+
+```bash
+git -C G:\Idea add -- TPA/visualization/README.md
+git -C G:\Idea commit -m "docs(visualization): 迭代 2 使用文档与验证清单更新"
+```
