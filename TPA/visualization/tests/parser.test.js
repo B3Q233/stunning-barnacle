@@ -3,6 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const {
   parseHistoryRows, extractEpochMetrics, listMetrics, parseComparison,
+  parseDirectoryPath, buildAutoName,
 } = require('../js/parser.js');
 
 test('parseHistoryRows 兼容顶层数组形态并跳过嵌套 targets', () => {
@@ -60,4 +61,24 @@ test('parseComparison 映射 model_utility 与 target_metrics', () => {
   assert.strictEqual(cmp.modelUtility.poisoned['recall@10'], 0.2);
   assert.strictEqual(cmp.targetMetrics.clean['251']['hr@k'], 0.01);
   assert.deepStrictEqual(cmp.targetMetrics.poisoned, {});
+});
+
+test('parseDirectoryPath 解析攻击实验目录相对路径', () => {
+  const info = parseDirectoryPath(
+    'attacks/random/outputs/ml100k/lightgcn/2026-08-15-07-23/history.json');
+  assert.deepStrictEqual(info, {
+    method: 'random', dataset: 'ml100k', model: 'lightgcn',
+    runTag: '2026-08-15-07-23',
+  });
+});
+
+test('parseDirectoryPath 非实验路径返回 null', () => {
+  assert.strictEqual(parseDirectoryPath('tmp/foo.txt'), null);
+});
+
+test('buildAutoName 组合 攻击方法-实验时间', () => {
+  assert.strictEqual(
+    buildAutoName({ method: 'random', runTag: '2026-08-15-07-23' }),
+    'random-2026-08-15-07-23');
+  assert.strictEqual(buildAutoName(null), null);
 });

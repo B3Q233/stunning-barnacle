@@ -74,5 +74,30 @@
     };
   }
 
-  return { parseHistoryRows, extractEpochMetrics, listMetrics, parseComparison };
+  function parseDirectoryPath(relativePath) {
+    const parts = String(relativePath || '').split('/').filter(Boolean);
+    const attacksIdx = parts.indexOf('attacks');
+    const outIdx = parts.indexOf('outputs');
+    const runIdx = parts.findIndex((s) => /^\d{4}-\d{2}-\d{2}-\d{2}-\d{2}$/.test(s));
+    if (attacksIdx === -1 || outIdx === -1 || runIdx === -1
+        || !(outIdx > attacksIdx && runIdx > outIdx)) {
+      return null;
+    }
+    return {
+      method: parts[attacksIdx + 1] || null,
+      dataset: parts[outIdx + 1] || null,
+      model: parts[outIdx + 2] || null,
+      runTag: parts[runIdx],
+    };
+  }
+
+  function buildAutoName(info) {
+    if (!info || !info.method || !info.runTag) return null;
+    return `${info.method}-${info.runTag}`;
+  }
+
+  return {
+    parseHistoryRows, extractEpochMetrics, listMetrics, parseComparison,
+    parseDirectoryPath, buildAutoName,
+  };
 });
