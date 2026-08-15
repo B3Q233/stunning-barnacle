@@ -51,7 +51,7 @@ Expected: 无输出（已提交，工作区干净）。
 
 **Files:**
 - Create: `TPA/visualization/js/parser.js`
-- Test: `TPA/visualization/tests/test_parser.js`
+- Test: `TPA/visualization/tests/parser.test.js`
 
 **Interfaces:**
 - Consumes: 无（纯函数，输入文件文本）。
@@ -131,7 +131,7 @@ test('parseComparison 映射 model_utility 与 target_metrics', () => {
 
 - [ ] **Step 2: 运行确认失败**
 
-Run: `node --test TPA/visualization/tests/test_parser.js`
+Run: `node --test TPA/visualization/tests/parser.test.js`
 Expected: FAIL，`Cannot find module '../js/parser.js'`。
 
 - [ ] **Step 3: 实现 parser.js**
@@ -225,7 +225,7 @@ Expected: PASS，6 个用例。
 - [ ] **Step 5: 提交**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization/js/parser.js TPA/visualization/tests/test_parser.js
+git -C G:\Idea add -- TPA/visualization/js/parser.js TPA/visualization/tests/parser.test.js
 git -C G:\Idea commit -m "feat(visualization): history 解析与标准 JSON 提取（含 Node 单测）"
 ```
 
@@ -235,7 +235,7 @@ git -C G:\Idea commit -m "feat(visualization): history 解析与标准 JSON 提�
 
 **Files:**
 - Create: `TPA/visualization/js/transforms.js`
-- Test: `TPA/visualization/tests/test_transforms.js`
+- Test: `TPA/visualization/tests/transforms.test.js`
 
 **Interfaces:**
 - Consumes: Task 2 的 `extractEpochMetrics` / `parseComparison` 输出结构。
@@ -309,7 +309,7 @@ test('直方 series：按选中项生成 Clean/Poisoned 两列', () => {
 
 - [ ] **Step 2: 运行确认失败**
 
-Run: `node --test TPA/visualization/tests/test_transforms.js`
+Run: `node --test TPA/visualization/tests/transforms.test.js`
 Expected: FAIL，`Cannot find module '../js/transforms.js'`。
 
 - [ ] **Step 3: 实现 transforms.js**
@@ -405,7 +405,7 @@ Expected: PASS，3 个用例。
 - [ ] **Step 5: 提交**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization/js/transforms.js TPA/visualization/tests/test_transforms.js
+git -C G:\Idea add -- TPA/visualization/js/transforms.js TPA/visualization/tests/transforms.test.js
 git -C G:\Idea commit -m "feat(visualization): 折线/直方 series 构建与指标显隐（含 Node 单测）"
 ```
 
