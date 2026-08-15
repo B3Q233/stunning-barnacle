@@ -8,9 +8,9 @@ mode: all                        # classify | data | model | both | all
 seed: 42
 run_tag: null                    # 实验标签（--tag 或此处指定；null=自动当前时间 2026-08-07-14:20）
 
-# 被攻击 / 用于打分的模型（注册表见本目录 registry.py）
+# 被攻击 / 用于打分的模型（注册表见公有 models/registry.py）
 model:
-  name: lightgcn                 # 当前仅 lightgcn；新增模型在 registry.py 登记
+  name: wmf                 # 受害模型（可选 lightgcn / mf / wmf，公有注册表登记）
   overrides: {}                  # 可选：覆盖模型超参（emb_dim / n_layers / init_method ...）
 
 # 第 1 步：基于模型推荐频次的物品分类（流行/普通/冷门）
@@ -18,7 +18,7 @@ classification:
   k: 10                          # 每用户取 Top-K 推荐（默认取 training.k）
   popular_ratio: 0.2             # 流行物品 = 推荐频次前 20%
   batch_size: 1024               # 评分矩阵分批大小（大数据集防爆显存）
-  checkpoint: models/lightgcn/outputs/2026-08-09-23-01/checkpoints/ndcg@10-best-model.pt  # 打分用干净模型
+  checkpoint: models\wmf\outputs\2026-08-15-20-58\checkpoints\ndcg@10-best-model.pt  # 打分用干净模型
 
 attack:
   name: random  # 攻击名（模块目录 attacks/{name}/、输出路径、日志前缀均用此值）
@@ -33,7 +33,7 @@ attack:
 
 warm_start:
   enabled: true                  # 用干净模型参数初始化中毒模型（原用户/物品嵌入迁移）
-  checkpoint: models/lightgcn/outputs/2026-08-09-23-01/checkpoints/ndcg@10-best-model.pt
+  checkpoint: models\wmf\outputs\2026-08-15-20-58\checkpoints\ndcg@10-best-model.pt
 
 training:
   epochs: 30

@@ -31,6 +31,7 @@ DEFAULT_DIRECTIONS: Dict[str, str] = {
     "mae": "lower",
     "mse": "lower",
     "err": "lower",
+    "rank": "lower",
 }
 
 
