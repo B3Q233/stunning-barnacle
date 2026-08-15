@@ -95,3 +95,9 @@ test('多实验直方：x=实验，每指标 Clean/Poisoned 两列并逐点着�
   assert.strictEqual(series[0].data[0].itemStyle.color, '#111111');
   assert.strictEqual(series[1].data[1].value, 0.4);
 });
+
+test('PALETTE 为顶刊 10 色且无重复', () => {
+  const { PALETTE } = require('../js/transforms.js');
+  assert.strictEqual(PALETTE.length, 10);
+  assert.strictEqual(new Set(PALETTE).size, 10);
+});

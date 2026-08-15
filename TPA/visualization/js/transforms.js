@@ -9,8 +9,8 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
 
   const PALETTE = [
-    '#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de',
-    '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc',
+    '#3B4992', '#EE0000', '#008B45', '#631879', '#008280',
+    '#BB0021', '#5F559B', '#A20056', '#808180', '#1B1919',
   ];
 
   function colorFor(index) {
