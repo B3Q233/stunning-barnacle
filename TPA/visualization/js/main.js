@@ -2,8 +2,8 @@
 (function (global) {
   const parser = global.TPAVisualizer.parser;
   const transforms = global.TPAVisualizer.transforms;
-  const state = { tabs: [], activeTabId: null };
-  let nextTabSeq = 1;
+  const state = { cards: [], activeCardId: null };
+  let nextCardSeq = 1;
   let lineChart = null;
   let barChart = null;
   const $ = (id) => document.getElementById(id);
@@ -22,38 +22,92 @@
     });
   }
 
-  function addTab(name) {
-    const tab = {
-      id: `tab-${Date.now()}-${nextTabSeq}`,
-      name: name || `实验 ${nextTabSeq}`,
+  function openModal(title, opts) {
+    const o = opts || {};
+    const overlay = $('modal-overlay');
+    $('modal-title').textContent = title;
+    const body = $('modal-body');
+    body.innerHTML = '';
+    let inputEl = null;
+    if (o.input) {
+      inputEl = document.createElement('input');
+      inputEl.type = 'text';
+      inputEl.value = o.inputValue || '';
+      body.appendChild(inputEl);
+    }
+    if (o.extra) {
+      const sep = document.createElement('div');
+      sep.className = 'sep';
+      sep.textContent = '或';
+      body.appendChild(sep);
+      const extraBtn = document.createElement('button');
+      extraBtn.textContent = o.extraLabel || '导入实验路径';
+      extraBtn.addEventListener('click', () => o.onExtra && o.onExtra());
+      body.appendChild(extraBtn);
+    }
+    const ok = $('modal-ok');
+    ok.textContent = o.okText || '确定';
+    const cancel = $('modal-cancel');
+    overlay.classList.remove('hidden');
+
+    function close() {
+      overlay.classList.add('hidden');
+      ok.removeEventListener('click', confirmModal);
+      cancel.removeEventListener('click', close);
+      if (inputEl) inputEl.removeEventListener('keydown', onKey);
+    }
+    function onKey(e) {
+      if (e.key === 'Enter') confirmModal();
+    }
+    function confirmModal() {
+      const value = inputEl ? inputEl.value.trim() : null;
+      close();
+      o.onOk && o.onOk(value);
+    }
+    ok.addEventListener('click', confirmModal);
+    cancel.addEventListener('click', close);
+    if (inputEl) {
+      inputEl.addEventListener('keydown', onKey);
+      inputEl.focus();
+    }
+  }
+
+  function addCard(name) {
+    const card = {
+      id: `card-${Date.now()}-${nextCardSeq}`,
+      name: name || `实验 ${nextCardSeq}`,
       checked: true,
       epochMetrics: null,
       comparison: null,
       metricOptions: {},
     };
-    nextTabSeq += 1;
-    state.tabs.push(tab);
-    state.activeTabId = tab.id;
-    return tab;
+    nextCardSeq += 1;
+    state.cards.push(card);
+    state.activeCardId = card.id;
+    return card;
   }
 
-  function activeTab() {
-    return state.tabs.find((t) => t.id === state.activeTabId) || null;
+  function activeCard() {
+    return state.cards.find((c) => c.id === state.activeCardId) || null;
   }
 
-  function tabHasData(tab) {
-    return !!(tab.epochMetrics || tab.comparison);
+  function cardHasData(card) {
+    return !!(card.epochMetrics || card.comparison);
   }
 
-  function buildMetricOptions(tab) {
+  function isDefaultName(card) {
+    return /^实验 \d+$/.test(card.name);
+  }
+
+  function buildMetricOptions(card) {
     const names = [];
-    if (tab.epochMetrics) {
-      for (const m of parser.listMetrics(tab.epochMetrics)) {
+    if (card.epochMetrics) {
+      for (const m of parser.listMetrics(card.epochMetrics)) {
         if (!names.includes(m)) names.push(m);
       }
     }
-    if (tab.comparison) {
-      for (const it of transforms.buildComparisonItems(tab.comparison)) {
+    if (card.comparison) {
+      for (const it of transforms.buildComparisonItems(card.comparison)) {
         if (!names.includes(it.name)) names.push(it.name);
       }
     }
@@ -64,238 +118,298 @@
     return options;
   }
 
-  async function importFilesInto(tab, files) {
+  function applyFileToCard(card, file, text) {
+    if (file.name === 'history.json') {
+      card.epochMetrics = parser.extractEpochMetrics(text);
+    } else if (file.name.endsWith('_comparison.json')) {
+      card.comparison = parser.parseComparison(text);
+    } else {
+      throw new Error(`跳过未知文件: ${file.name}`);
+    }
+  }
+
+  async function importDirIntoCard(card, fileList) {
+    const files = [...fileList];
+    if (!files.length) return;
+    const info = parser.parseDirectoryPath(files[0].webkitRelativePath || files[0].name);
+    const autoName = parser.buildAutoName(info);
+    if (autoName && isDefaultName(card)) card.name = autoName;
     const errors = [];
     for (const file of files) {
       try {
-        const text = await readFile(file);
-        if (file.name === 'history.json') {
-          tab.epochMetrics = parser.extractEpochMetrics(text);
-        } else if (file.name.endsWith('_comparison.json')) {
-          tab.comparison = parser.parseComparison(text);
-        } else {
-          errors.push(`跳过未知文件: ${file.name}`);
-        }
+        applyFileToCard(card, file, await readFile(file));
       } catch (e) {
         errors.push(`${file.name}: ${e.message}`);
       }
     }
-    tab.metricOptions = buildMetricOptions(tab);
+    card.metricOptions = buildMetricOptions(card);
     if (errors.length) showMessage(errors.join('；'), true);
-  }
-
-  async function handleDirectoryImport(fileList) {
-    const files = [...fileList];
-    if (!files.length) return;
-    const info = parser.parseDirectoryPath(files[0].webkitRelativePath || files[0].name);
-    let tab = activeTab();
-    if (!tab || tabHasData(tab)) tab = addTab(`实验 ${nextTabSeq}`);
-    const autoName = parser.buildAutoName(info);
-    if (autoName && !tabHasData(tab)) tab.name = autoName;
-    await importFilesInto(tab, files);
     renderAll();
   }
 
-  async function handleManualImport(fileList) {
+  async function importFilesIntoCard(card, fileList) {
     const files = [...fileList];
     if (!files.length) return;
-    let tab = activeTab();
-    if (!tab || tabHasData(tab)) {
-      tab = addTab(prompt('选项卡名称', `实验 ${nextTabSeq}`) || `实验 ${nextTabSeq}`);
+    const errors = [];
+    for (const file of files) {
+      try {
+        applyFileToCard(card, file, await readFile(file));
+      } catch (e) {
+        errors.push(`${file.name}: ${e.message}`);
+      }
     }
-    await importFilesInto(tab, files);
+    card.metricOptions = buildMetricOptions(card);
+    if (errors.length) showMessage(errors.join('；'), true);
     renderAll();
   }
 
-  function makeBtn(text, title, onClick) {
+  function renderCards() {
+    const list = $('card-list');
+    list.innerHTML = '';
+    for (const card of state.cards) {
+      list.appendChild(buildCardEl(card));
+    }
+  }
+
+  function buildCardEl(card) {
+    const el = document.createElement('div');
+    el.className = 'exp-card' + (card.checked ? ' checked' : '');
+    el.dataset.cardId = card.id;
+
+    const header = document.createElement('div');
+    header.className = 'exp-header';
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.checked = card.checked;
+    check.title = '是否参与渲染';
+    check.addEventListener('change', () => {
+      card.checked = check.checked;
+      renderAll();
+    });
+    const name = document.createElement('span');
+    name.className = 'exp-name';
+    name.textContent = card.name;
+    name.title = '设为当前实验卡（导出目标）';
+    name.addEventListener('click', () => {
+      state.activeCardId = card.id;
+      renderAll();
+    });
+    const status = document.createElement('span');
+    status.className = 'exp-status';
+    status.textContent =
+      `history ${card.epochMetrics ? '✓' : '—'} · comparison ${card.comparison ? '✓' : '—'}`;
+    const actions = document.createElement('span');
+    actions.className = 'exp-actions';
+    actions.appendChild(btn('改名', () => {
+      openModal('修改实验卡名称', {
+        input: true, inputValue: card.name, onOk: (v) => {
+          if (v) {
+            card.name = v;
+            renderAll();
+          }
+        },
+      });
+    }));
+    actions.appendChild(btn('重置 H', () => {
+      card.epochMetrics = null;
+      card.metricOptions = buildMetricOptions(card);
+      renderAll();
+    }));
+    actions.appendChild(btn('重置 C', () => {
+      card.comparison = null;
+      card.metricOptions = buildMetricOptions(card);
+      renderAll();
+    }));
+    actions.appendChild(btn('删除', () => {
+      openModal(`删除实验卡「${card.name}」？`, {
+        okText: '删除', onOk: () => {
+          state.cards = state.cards.filter((c) => c.id !== card.id);
+          if (state.activeCardId === card.id) {
+            state.activeCardId = state.cards.length ? state.cards[0].id : null;
+          }
+          renderAll();
+        },
+      });
+    }, true));
+    header.append(check, name, status, actions);
+    el.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'exp-body';
+    if (!cardHasData(card)) {
+      body.appendChild(buildImportArea(card));
+    } else {
+      body.appendChild(buildMetricRows(card));
+    }
+    el.appendChild(body);
+    return el;
+  }
+
+  function buildImportArea(card) {
+    const area = document.createElement('div');
+    area.className = 'import-area';
+    const dirBtn = btn('导入实验路径', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.webkitdirectory = true;
+      input.multiple = true;
+      input.addEventListener('change', (e) => importDirIntoCard(card, e.target.files));
+      input.click();
+    });
+    const histLabel = document.createElement('label');
+    histLabel.append('history.json ');
+    const histInput = document.createElement('input');
+    histInput.type = 'file';
+    histInput.accept = '.json';
+    histInput.addEventListener('change', (e) => importFilesIntoCard(card, e.target.files));
+    histLabel.appendChild(histInput);
+    const cmpLabel = document.createElement('label');
+    cmpLabel.append('comparison ');
+    const cmpInput = document.createElement('input');
+    cmpInput.type = 'file';
+    cmpInput.accept = '.json';
+    cmpInput.addEventListener('change', (e) => importFilesIntoCard(card, e.target.files));
+    cmpLabel.appendChild(cmpInput);
+    area.append(dirBtn, histLabel, cmpLabel);
+    return area;
+  }
+
+  function buildMetricRows(card) {
+    const wrap = document.createElement('div');
+    wrap.className = 'metric-rows';
+    for (const [name, opt] of Object.entries(card.metricOptions)) {
+      const row = document.createElement('label');
+      row.className = 'metric-row';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = opt.selected;
+      cb.addEventListener('change', () => {
+        opt.selected = cb.checked;
+        renderCharts();
+      });
+      const color = document.createElement('input');
+      color.type = 'color';
+      color.value = opt.color;
+      color.addEventListener('input', () => {
+        opt.color = color.value;
+        renderCharts();
+      });
+      const span = document.createElement('span');
+      span.textContent = name;
+      row.append(cb, color, span);
+      wrap.appendChild(row);
+    }
+    return wrap;
+  }
+
+  function btn(text, onClick, danger) {
     const b = document.createElement('button');
     b.type = 'button';
     b.textContent = text;
-    b.title = title;
+    if (danger) b.className = 'btn-danger';
     b.addEventListener('click', onClick);
     return b;
   }
 
-  function renderTabs() {
-    const ul = $('tab-list');
-    ul.innerHTML = '';
-    for (const tab of state.tabs) {
-      const li = document.createElement('li');
-      li.className = 'tab-item' + (tab.id === state.activeTabId ? ' active' : '');
-      const check = document.createElement('input');
-      check.type = 'checkbox';
-      check.checked = tab.checked;
-      check.title = '是否参与渲染';
-      check.addEventListener('change', () => {
-        tab.checked = check.checked;
-        renderAll();
-      });
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'tab-name';
-      nameSpan.textContent = tab.name;
-      nameSpan.title = '点击设为当前选项卡';
-      nameSpan.addEventListener('click', () => {
-        state.activeTabId = tab.id;
-        renderAll();
-      });
-      const btns = document.createElement('span');
-      btns.className = 'tab-btns';
-      btns.appendChild(makeBtn('✎', '改名', () => {
-        const n = prompt('修改名称', tab.name);
-        if (n && n.trim()) {
-          tab.name = n.trim();
-          renderAll();
-        }
-      }));
-      btns.appendChild(makeBtn('↺H', '重置 history', () => {
-        tab.epochMetrics = null;
-        tab.metricOptions = buildMetricOptions(tab);
-        renderAll();
-      }));
-      btns.appendChild(makeBtn('↺C', '重置 comparison', () => {
-        tab.comparison = null;
-        tab.metricOptions = buildMetricOptions(tab);
-        renderAll();
-      }));
-      btns.appendChild(makeBtn('×', '删除选项卡', () => {
-        if (confirm(`删除选项卡「${tab.name}」？`)) {
-          state.tabs = state.tabs.filter((t) => t.id !== tab.id);
-          if (state.activeTabId === tab.id) {
-            state.activeTabId = state.tabs.length ? state.tabs[0].id : null;
-          }
-          renderAll();
-        }
-      }));
-      li.append(check, nameSpan, btns);
-      ul.appendChild(li);
-    }
+  function chartBase(title) {
+    return {
+      title: { text: title, top: 10, left: 'center', textStyle: { fontSize: 14 } },
+      tooltip: { trigger: 'axis' },
+      legend: { type: 'scroll', top: 44, left: 'center' },
+      grid: { top: 96, left: 70, right: 30, bottom: 60 },
+    };
   }
 
-  function renderCard() {
-    const card = $('metric-card');
-    card.innerHTML = '';
-    const tabs = state.tabs.filter((t) => t.checked && tabHasData(t));
-    if (!tabs.length) {
-      card.innerHTML = '<div class="placeholder">勾选左侧选项卡以显示指标选项</div>';
-      return;
-    }
-    for (const tab of tabs) {
-      const section = document.createElement('div');
-      section.className = 'exp-section';
-      const h = document.createElement('h3');
-      h.textContent = tab.name;
-      section.appendChild(h);
-      for (const [name, opt] of Object.entries(tab.metricOptions)) {
-        const row = document.createElement('label');
-        row.className = 'metric-row';
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = opt.selected;
-        cb.addEventListener('change', () => {
-          opt.selected = cb.checked;
-          renderCharts();
-        });
-        const color = document.createElement('input');
-        color.type = 'color';
-        color.value = opt.color;
-        color.addEventListener('input', () => {
-          opt.color = color.value;
-          renderCharts();
-        });
-        const span = document.createElement('span');
-        span.textContent = name;
-        row.append(cb, color, span);
-        section.appendChild(row);
-      }
-      card.appendChild(section);
-    }
-  }
-
-  function renderLineChart(tabs) {
-    const withHistory = tabs.filter((t) => t.epochMetrics);
+  function renderLineChart(cards) {
+    const withHistory = cards.filter((c) => c.epochMetrics);
     if (!withHistory.length) {
-      $('chart-line').innerHTML = '<div class="placeholder">勾选含 history 数据的选项卡</div>';
+      $('chart-line').innerHTML = '<div class="placeholder">勾选含 history 数据的实验卡</div>';
       return;
     }
     lineChart = lineChart || echarts.init($('chart-line'));
     const { xAxis, series } = transforms.buildMultiLineSeries(withHistory);
-    lineChart.setOption({
-      title: { text: '每轮指标折线图' },
-      tooltip: { trigger: 'axis' },
-      legend: { type: 'scroll', data: series.map((s) => s.name) },
-      grid: { left: 60, right: 30, bottom: 60 },
-      xAxis: { type: 'category', data: xAxis, name: 'epoch' },
-      yAxis: { type: 'value' },
-      dataZoom: [{ type: 'inside' }, { type: 'slider' }],
-      series,
-    }, true);
+    const option = chartBase('每轮指标折线图');
+    option.xAxis = { type: 'category', data: xAxis, name: 'epoch' };
+    option.yAxis = { type: 'value' };
+    option.dataZoom = [{ type: 'inside' }, { type: 'slider' }];
+    option.legend.data = series.map((s) => s.name);
+    option.series = series;
+    lineChart.setOption(option, true);
   }
 
-  function renderBarChart(tabs) {
-    const withCmp = tabs.filter((t) => t.comparison);
+  function renderBarChart(cards) {
+    const withCmp = cards.filter((c) => c.comparison);
     if (!withCmp.length) {
-      $('chart-bar').innerHTML = '<div class="placeholder">勾选含 comparison 数据的选项卡</div>';
+      $('chart-bar').innerHTML = '<div class="placeholder">勾选含 comparison 数据的实验卡</div>';
       return;
     }
     barChart = barChart || echarts.init($('chart-bar'));
     const { xAxis, series } = transforms.buildMultiBarSeries(withCmp);
-    barChart.setOption({
-      title: { text: 'Clean vs Poisoned 对比' },
-      tooltip: { trigger: 'axis' },
-      legend: { type: 'scroll', data: series.map((s) => s.name) },
-      grid: { left: 60, right: 30, bottom: 60 },
-      xAxis: { type: 'category', data: xAxis, axisLabel: { interval: 0 } },
-      yAxis: { type: 'value' },
-      series,
-    }, true);
+    const option = chartBase('Clean vs Poisoned 对比');
+    option.xAxis = { type: 'category', data: xAxis, axisLabel: { interval: 0 } };
+    option.yAxis = { type: 'value' };
+    option.legend.data = series.map((s) => s.name);
+    option.series = series;
+    barChart.setOption(option, true);
   }
 
   function renderCharts() {
-    const tabs = state.tabs.filter((t) => t.checked && tabHasData(t));
-    renderLineChart(tabs);
-    renderBarChart(tabs);
+    const cards = state.cards.filter((c) => c.checked && cardHasData(c));
+    renderLineChart(cards);
+    renderBarChart(cards);
   }
 
   function renderAll() {
-    renderTabs();
-    renderCard();
+    renderCards();
     renderCharts();
   }
 
   function exportJson() {
-    const tab = activeTab();
-    if (!tab || !tab.epochMetrics) {
-      showMessage('当前选项卡没有 history 数据', true);
+    const card = activeCard();
+    if (!card || !card.epochMetrics) {
+      showMessage('当前实验卡没有 history 数据', true);
       return;
     }
-    const blob = new Blob([JSON.stringify(tab.epochMetrics, null, 2)],
+    const blob = new Blob([JSON.stringify(card.epochMetrics, null, 2)],
       { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `${tab.name}-epoch_metrics.json`;
+    a.download = `${card.name}-epoch_metrics.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
 
   function initApp() {
-    $('new-tab').addEventListener('click', () => {
-      addTab(prompt('选项卡名称', `实验 ${nextTabSeq}`) || `实验 ${nextTabSeq}`);
-      renderAll();
+    $('add-card').addEventListener('click', () => {
+      openModal('添加实验卡', {
+        input: true,
+        inputValue: `实验 ${nextCardSeq}`,
+        extra: true,
+        extraLabel: '导入实验路径自动命名',
+        onExtra: () => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.webkitdirectory = true;
+          input.multiple = true;
+          input.addEventListener('change', (e) => {
+            const files = [...e.target.files];
+            if (!files.length) return;
+            const info = parser.parseDirectoryPath(files[0].webkitRelativePath || files[0].name);
+            const card = addCard(parser.buildAutoName(info) || `实验 ${nextCardSeq}`);
+            importDirIntoCard(card, files);
+          });
+          input.click();
+        },
+        onOk: (v) => {
+          addCard(v || `实验 ${nextCardSeq}`);
+          renderAll();
+        },
+      });
     });
-    $('btn-dir').addEventListener('click', () => $('dir-input').click());
-    $('dir-input').addEventListener('change', (e) => handleDirectoryImport(e.target.files));
-    $('btn-import').addEventListener('click', () => $('import-input').click());
-    $('import-input').addEventListener('change', (e) => handleManualImport(e.target.files));
     $('export-json').addEventListener('click', exportJson);
-    const drop = $('drop-zone');
-    ['dragenter', 'dragover'].forEach((ev) =>
-      drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('active'); }));
-    ['dragleave', 'drop'].forEach((ev) =>
-      drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('active'); }));
-    drop.addEventListener('drop', (e) => handleManualImport(e.dataTransfer.files));
-    showMessage('请先新建选项卡，或直接导入实验目录/文件');
+    showMessage('点击「＋ 添加实验卡」开始');
   }
 
   global.TPAVisualizer = global.TPAVisualizer || {};
-  global.TPAVisualizer.app = { initApp, handleDirectoryImport, handleManualImport, exportJson };
+  global.TPAVisualizer.app = { initApp, addCard, exportJson };
 })(window);

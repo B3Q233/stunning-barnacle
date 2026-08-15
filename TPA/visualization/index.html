@@ -8,29 +8,33 @@
 </head>
 <body>
   <header>
-    <h1>TPA 攻击实验可视化</h1>
-    <div class="inputs">
-      <button id="btn-dir">导入实验目录</button>
-      <input id="dir-input" type="file" webkitdirectory multiple hidden>
-      <button id="btn-import">导入文件（多选）</button>
-      <input id="import-input" type="file" multiple accept=".json" hidden>
-      <button id="export-json">导出当前选项卡标准 JSON</button>
+    <div class="brand">
+      <h1>TPA 攻击实验可视化</h1>
+      <span class="hint">实验数据对比 · 顶刊配色</span>
     </div>
-    <div id="drop-zone">拖拽 history.json / *_comparison.json 到此处（自动新建选项卡导入）</div>
+    <div class="toolbar">
+      <button id="add-card">＋ 添加实验卡</button>
+      <button id="export-json">导出当前实验卡标准 JSON</button>
+    </div>
     <div id="message" class="message"></div>
   </header>
-  <main class="layout">
-    <aside class="sidebar">
-      <h2>实验选项卡</h2>
-      <button id="new-tab">+ 新建选项卡</button>
-      <ul id="tab-list"></ul>
-    </aside>
-    <section class="content">
-      <div id="metric-card" class="card"></div>
-      <div id="chart-line" class="chart"></div>
-      <div id="chart-bar" class="chart"></div>
+  <main>
+    <section id="card-list" class="card-list"></section>
+    <section class="charts">
+      <div class="chart-panel"><div id="chart-line" class="chart"></div></div>
+      <div class="chart-panel"><div id="chart-bar" class="chart"></div></div>
     </section>
   </main>
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="modal-title"></h3>
+      <div id="modal-body"></div>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn-ghost">取消</button>
+        <button id="modal-ok" class="btn-primary">确定</button>
+      </div>
+    </div>
+  </div>
   <script src="js/parser.js"></script>
   <script src="js/transforms.js"></script>
   <script src="js/main.js"></script>
