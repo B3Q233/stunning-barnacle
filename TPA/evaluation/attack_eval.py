@@ -39,12 +39,16 @@ REPORT_TITLES = {
 }
 
 
-def ranking_scores(model, test_pairs: List[Tuple[int, int]]
+def ranking_scores(model, test_pairs: List[Tuple[int, int]],
+                   batch_size: int = 1024
                    ) -> Tuple[torch.Tensor, List[int], Dict[int, set]]:
     """对测试用户做全量排序评分。
 
     返回 (scores, test_user_ids, test_pos)。
     scores: (n_test_users, n_items)，行顺序与 test_user_ids 一致。
+
+    显存安全：按 batch_size 个用户分块在 GPU 上算分，每块立即 .cpu()，
+    避免大矩阵（如 gowalla 29k×41k ≈ 4.6GB）一次性占满显存。
     """
     test_pos: Dict[int, set] = {}
     for u, i in test_pairs:
@@ -56,13 +60,18 @@ def ranking_scores(model, test_pairs: List[Tuple[int, int]]
         user_emb = model.get_user_embeddings()
         item_emb = model.get_item_embeddings()
         ids = torch.LongTensor(test_users).to(user_emb.device)
-        scores = user_emb[ids] @ item_emb.T
+        chunks = []
+        for start in range(0, len(ids), batch_size):
+            batch = ids[start:start + batch_size]
+            chunks.append((user_emb[batch] @ item_emb.T).cpu())
+        scores = torch.cat(chunks, dim=0)
     return scores, test_users, test_pos
 
 
 def compute_target_metrics(scores: torch.Tensor, user_ids: List[int],
                            clean_user_items: Dict[int, set],
-                           target_items: List[int], k: int) -> Dict[int, Dict[str, Any]]:
+                           target_items: List[int], k: int,
+                           chunk_size: int = 1024) -> Dict[int, Dict[str, Any]]:
     """目标物品的攻击效果指标（HR@K / NDCG@K）。
 
     只统计"训练集中未交互过该目标物品"的合法用户（攻击的目标人群），
@@ -75,8 +84,10 @@ def compute_target_metrics(scores: torch.Tensor, user_ids: List[int],
     - mean_rank_all: 全体合格用户的平均排名（不受 Top-K 截断，更灵敏）
     - n_elig: 合格用户数（聚合时跳过 n_elig == 0 的目标）
     """
+    # 显存安全：分数先回 CPU，避免 GPU 上整矩阵 topk/argsort 分配数 GB
+    if scores.is_cuda:
+        scores = scores.cpu()
     topk = torch.topk(scores, k, dim=1).indices  # (n_users, k)
-    ranks_all = torch.argsort(scores, dim=1, descending=True)  # (n_users, n_items)
     out: Dict[int, Dict[str, Any]] = {}
     for t in target_items:
         eligible = [
@@ -94,15 +105,19 @@ def compute_target_metrics(scores: torch.Tensor, user_ids: List[int],
         dcg = 0.0
         ranks: List[int] = []
         ranks_all_list: List[int] = []
-        for r in eligible:
-            pos = (topk[r] == t).nonzero(as_tuple=False)
-            if pos.numel():
-                rank = int(pos.item()) + 1
-                hits += 1
-                dcg += 1.0 / np.log2(rank + 1)
-                ranks.append(rank)
-            pos_all = (ranks_all[r] == t).nonzero(as_tuple=False)
-            ranks_all_list.append(int(pos_all.item()) + 1)
+        # mean_rank_all 按块做 argsort，避免整矩阵一次性分配
+        for start in range(0, n_elig, chunk_size):
+            rows = eligible[start:start + chunk_size]
+            order = torch.argsort(scores[rows], dim=1, descending=True)
+            for j, r in enumerate(rows):
+                pos = (topk[r] == t).nonzero(as_tuple=False)
+                if pos.numel():
+                    rank = int(pos.item()) + 1
+                    hits += 1
+                    dcg += 1.0 / np.log2(rank + 1)
+                    ranks.append(rank)
+                pos_all = (order[j] == t).nonzero(as_tuple=False)
+                ranks_all_list.append(int(pos_all.item()) + 1)
 
         out[t] = {
             "hr@k": hits / n_elig,
