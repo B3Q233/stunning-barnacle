@@ -88,6 +88,8 @@ class LightGCN(TrainableModel):
         self.A_hat = torch.sparse_coo_tensor(indices, values,
                                               torch.Size([self.n_nodes, self.n_nodes]),
                                               device=self._device)
+        # CSR 格式在 GPU/CPU 上稀疏矩阵乘法更快（数值与 COO 完全一致）
+        self.A_hat = self.A_hat.to_sparse_csr()
         print(f"[LightGCN] 邻接矩阵: {self.n_nodes}x{self.n_nodes}, "
               f"edges={len(coo.data)}, device={self.A_hat.device}")
 
@@ -119,14 +121,17 @@ class LightGCN(TrainableModel):
                 f"normal, xavier_uniform, xavier_normal, kaiming_uniform, kaiming_normal, uniform"
             )
 
-    def forward(self, users: torch.Tensor, items: torch.Tensor = None):
+    def forward(self, users: torch.Tensor, items: torch.Tensor = None,
+                final_emb: torch.Tensor = None):
         """前向传播：使用缓存的最终嵌入计算预测分数。
 
         返回:
         - 若 items 为 None: 返回所有用户/物品的最终嵌入
         - 若 items 给定: 返回指定 (user, item) 对的预测分数
+        - final_emb 给定: 复用已算好的最终嵌入（train_step 内只传播一次）
         """
-        final_emb = self._compute_final_emb()
+        if final_emb is None:
+            final_emb = self._compute_final_emb()
 
         if items is not None:
             user_emb = final_emb[users]
@@ -157,13 +162,17 @@ class LightGCN(TrainableModel):
         pos_items = pos_items.to(self._device)
         neg_items = neg_items.to(self._device)              # [batch_size, neg_ratio]
 
+        # 只传播一次，pos/neg 复用（数学等价于旧版两次独立 forward）
+        final_emb = self._compute_final_emb()
+
         # 计算预测分数
-        pos_scores = self.forward(users, pos_items)          # [batch_size]
+        pos_scores = self.forward(users, pos_items, final_emb=final_emb)  # [batch_size]
 
         # neg_items 为 2D [batch_size, neg_ratio]，展开后传入 forward
         batch_size, neg_ratio = users.size(0), neg_items.size(1)
         users_expanded = users.unsqueeze(1).expand(-1, neg_ratio).reshape(-1)
-        neg_scores = self.forward(users_expanded, neg_items.reshape(-1))
+        neg_scores = self.forward(users_expanded, neg_items.reshape(-1),
+                                  final_emb=final_emb)
         neg_scores = neg_scores.view(batch_size, neg_ratio)  # [batch_size, neg_ratio]
 
         # BPR 损失
@@ -209,12 +218,16 @@ class LightGCN(TrainableModel):
         neg_items = neg_items.to(self._device)              # [batch_size, neg_ratio]
 
         with torch.no_grad():
-            pos_scores = self.forward(users, pos_items)      # [batch_size]
+            # 只传播一次，pos/neg 复用
+            final_emb = self._compute_final_emb()
+            pos_scores = self.forward(users, pos_items,
+                                      final_emb=final_emb)    # [batch_size]
 
             # neg_items 为 2D [batch_size, neg_ratio]，展开后传入 forward
             batch_size, neg_ratio = users.size(0), neg_items.size(1)
             users_expanded = users.unsqueeze(1).expand(-1, neg_ratio).reshape(-1)
-            neg_scores = self.forward(users_expanded, neg_items.reshape(-1))
+            neg_scores = self.forward(users_expanded, neg_items.reshape(-1),
+                                      final_emb=final_emb)
             neg_scores = neg_scores.view(batch_size, neg_ratio)  # [batch_size, neg_ratio]
 
             bpr_loss = -torch.mean(nn.functional.logsigmoid(
