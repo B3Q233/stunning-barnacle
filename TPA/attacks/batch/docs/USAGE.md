@@ -58,6 +58,41 @@ G:\Idea\.venv\Scripts\python.exe attacks/batch/run.py --mode aggregate
 结果整合与 Clean 基线计算。可用 `--max-targets 1` 先跑单个原子实验估算 yelp2018
 等大数据集单轮耗时。
 
+## 大数据集提速与复现注意事项
+
+### 快速变体配置
+
+`config.yelp2018_fast.yaml`：batch_size=1024、eval_every=5、epochs=10、
+num_workers=4。默认 `config.yaml` 保持不变，保证论文复现口径稳定。
+
+### batch 缩放实测（yelp2018，本机 RTX 3050）
+
+LightGCN 的 step 时间由全图传播主导，与 batch 大小基本无关（实测 256/512/1024/2048
+均约 53ms/step），因此 epoch 耗时随 batch 线性缩短：256→4.1min、1024→1.0min、
+2048→0.5min。加大 batch 是收益最大的配置项。
+
+### 评估语义（复现一致性）
+
+`mean_rank_all` 采用论文 rank_ui 定义：**严格高于目标分的候选数 + 1，
+并列分数共享同一排名**。旧版逐行 argsort 在并列时可能给出不同位次，因此相同数据下
+指标与旧版本可能出现细微差异；复现/对比历史结果时请注意这一点。
+
+### 评估频率建议
+
+普通训练 `eval_every=5` 足够；攻击实验关注早期有效性（attack success curve），
+建议 `eval_every=2~5`，最终复现时单独做一次全量评估。
+
+### num_workers 说明
+
+LightGCN 训练瓶颈在 GPU 传播与评估，负采样数据加载占比很小，`num_workers=4` 收益
+有限（实测几乎无变化）；保留配置项便于在 CPU 训练等场景使用。
+
+### 评估分数缓存（后续优化方向）
+
+每轮全量评估会重新计算 User×Item 分数矩阵；如需画攻击曲线或做调试分析，可将
+`ranking_scores` 的输出按 epoch 缓存到磁盘（如 `scores_epoch{n}.pt`）复用，
+避免每轮重复计算。
+
 ## 4. 输出目录
 
 ```

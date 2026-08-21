@@ -74,6 +74,31 @@ class ComputeTargetMetricsTest(unittest.TestCase):
         out = compute_target_metrics(scores, [0], {0: set()}, [0], 3)
         self.assertEqual(out[0]["mean_rank_all"], 1.0)
 
+    def test_multiple_targets_equal_single_calls(self):
+        torch.manual_seed(7)
+        scores = torch.randn(8, 12)
+        user_ids = list(range(8))
+        clean = {0: {1}, 3: {5}, 7: {2}}
+        targets = [1, 5, 9]
+        combined = compute_target_metrics(
+            scores, user_ids, clean, targets, k=4)
+        for t in targets:
+            single = compute_target_metrics(
+                scores, user_ids, clean, [t], k=4)[t]
+            self.assertEqual(combined[t], single, f"target {t} 结果不一致")
+
+    def test_chunk_size_independent(self):
+        torch.manual_seed(11)
+        scores = torch.randn(9, 15)
+        user_ids = list(range(9))
+        clean = {1: {4}, 5: {7}}
+        targets = [2, 6, 10]
+        a = compute_target_metrics(
+            scores, user_ids, clean, targets, k=5, chunk_size=1)
+        b = compute_target_metrics(
+            scores, user_ids, clean, targets, k=5, chunk_size=1024)
+        self.assertEqual(a, b)
+
 
 class AggregateTargetMetricsTest(unittest.TestCase):
     def test_single_target(self):

@@ -1,0 +1,37 @@
+# 批量投毒批跑配置——大数据集快速变体（yelp2018 示例）
+# 用途：先跑通流程 / 估算单轮耗时；论文复现请用默认 config.yaml 并保持原超参
+attack:
+  name: random
+
+experiment:
+  dataset: yelp2018
+  seed: 42
+
+model:
+  name: lightgcn
+  overrides: {}
+
+classification:
+  k: 10
+  popular_ratio: 0.2
+  checkpoint: models/lightgcn/outputs/checkpoints/latest.pt   # 按实际 clean 模型替换
+
+warm_start:
+  enabled: true
+  checkpoint: models/lightgcn/outputs/checkpoints/latest.pt
+
+training:
+  epochs: 10              # 大数据集先跑 10 轮看趋势
+  batch_size: 1024        # 实测传播占主导：step 时间与 batch 无关，epoch≈1min
+  eval_every: 5           # 攻击实验建议 2~5；最终复现时单独做一次全量评估
+  device: cuda
+  num_workers: 4
+  persistent_workers: true
+
+batch:
+  tiers: [popular, normal, cold]
+  per_tier: 2
+  strategy: random
+  seed: 114514
+
+override: {}

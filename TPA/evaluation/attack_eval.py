@@ -90,7 +90,35 @@ def compute_target_metrics(scores: torch.Tensor, user_ids: List[int],
         scores = scores.cpu()
     device = "cuda" if torch.cuda.is_available() else "cpu"
     out: Dict[int, Dict[str, Any]] = {}
-    for t in target_items:
+    if not target_items:
+        return out
+
+    n_items = scores.shape[1]
+    n_targets = len(target_items)
+    t_idx = [int(t) for t in target_items]
+
+    # 1) Top-K：整矩阵分块在设备上算一次（所有 target 共用）
+    topk = torch.empty((scores.shape[0], k), dtype=torch.long)
+    for start in range(0, scores.shape[0], 1024):
+        chunk = scores[start:start + 1024].to(device)
+        topk[start:start + 1024] = torch.topk(chunk, k, dim=1).indices.cpu()
+
+    # 2) 所有 target 的 rank_all 一次性向量化：
+    #    rank(u,t) = 严格高于目标分的候选数 + 1（论文 rank_ui 定义）
+    #    用户分块控制 (C, T, I) 比较张量内存，避免逐 target 重复扫描整矩阵
+    target_cols = scores[:, t_idx]  # (U, T)
+    rank_all = torch.empty((scores.shape[0], n_targets), dtype=torch.long)
+    max_elems = 96 * 1024 * 1024  # 单块 3D bool 张量上限 ~96MB
+    cs = min(chunk_size, max(1, max_elems // (n_targets * n_items)))
+    for start in range(0, scores.shape[0], cs):
+        end = min(start + cs, scores.shape[0])
+        chunk = scores[start:end].to(device)
+        tgt = target_cols[start:end].to(device)
+        rank_all[start:end] = (
+            (chunk.unsqueeze(1) > tgt.unsqueeze(-1)).sum(-1) + 1).cpu()
+
+    # 3) 逐 target 聚合（仅 T 次 Python 迭代，无逐行循环）
+    for ti, t in enumerate(target_items):
         eligible = [
             r for r, uid in enumerate(user_ids)
             if t not in clean_user_items.get(uid, set())
@@ -102,35 +130,21 @@ def compute_target_metrics(scores: torch.Tensor, user_ids: List[int],
                       "exposure": 0.0, "ndcg": 0.0}
             continue
 
-        hits = 0
-        dcg = 0.0
-        ranks: List[int] = []
-        ranks_all_list: List[int] = []
-        # 分块：topk 在设备上做；rank_all 用"严格高于目标分的候选数 + 1"
-        # （论文 rank_ui 定义），避免逐行 argsort（大矩阵 O(n log n) 极慢）
-        for start in range(0, n_elig, chunk_size):
-            rows = eligible[start:start + chunk_size]
-            chunk = scores[rows].to(device)
-            topk = torch.topk(chunk, k, dim=1).indices
-            target_col = chunk[:, t]
-            rank_all = (chunk > target_col.unsqueeze(1)).sum(dim=1) + 1
-            topk = topk.cpu()
-            rank_all = rank_all.cpu()
-            for j, r in enumerate(rows):
-                pos = (topk[j] == t).nonzero(as_tuple=False)
-                if pos.numel():
-                    rank = int(pos.item()) + 1
-                    hits += 1
-                    dcg += 1.0 / np.log2(rank + 1)
-                    ranks.append(rank)
-                ranks_all_list.append(int(rank_all[j].item()))
+        elig = torch.tensor(eligible, dtype=torch.long)
+        hit = topk[elig] == t                    # (E, k)
+        hit_mask = hit.any(dim=1)
+        hits = int(hit_mask.sum())
+        pos = hit.int().argmax(dim=1) + 1        # 命中行在 Top-K 中的 1-based 位次
+        ranks_hit = pos[hit_mask]
+        dcg = float((1.0 / torch.log2(ranks_hit.double() + 1)).sum()) if hits else 0.0
+        ra = rank_all[elig, ti].double()
 
         out[t] = {
             "hr@k": hits / n_elig,
             "ndcg@k": dcg / n_elig,
             "hit_users": hits,
-            "mean_rank": float(np.mean(ranks)) if ranks else None,
-            "mean_rank_all": float(np.mean(ranks_all_list)),
+            "mean_rank": float(ranks_hit.double().mean()) if hits else None,
+            "mean_rank_all": float(ra.mean()),
             "n_elig": n_elig,
             # 旧字段别名，兼容已有 JSON 消费者
             "exposure": hits / n_elig,
