@@ -49,3 +49,7 @@ outputs/checkpoints/
 
 # Logs
 *.log
+
+# Batch 批量投毒实验产物（不入库）
+attacks/batch/cache/
+attacks/batch/output/
