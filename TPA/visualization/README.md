@@ -52,6 +52,63 @@
 node --test TPA/visualization/tests/
 ```
 
+## Schema Registry（自定义 JSON 展示）
+
+可视化引擎只认识统一的中间格式，每种 JSON 结构通过注册一个 Schema 声明
+"展示哪些字段、如何展示"，新增格式无需改引擎代码。
+
+### 目录
+
+```
+registry/
+├── base.js            # VisualizationSchema 基类（name/title/type/x/series/match）
+├── path.js            # 通用路径解析：history[].epoch / summary.best_hr / targets.908.ndcg
+├── index.js           # register(schema) / getSchema(json) / schemas() / clear()
+├── normalize.js       # normalize(json, schema) → {title,type,x,series:[{name,data}]}
+└── schemas/
+    ├── history.js     # line：history[] 折线
+    ├── comparison.js  # metric：model_utility 对比
+    ├── tier_stats.js  # bar：batch 各层均值
+    └── meta.js        # metric：batch 元信息
+```
+
+### 使用
+
+在实验卡"导入实验路径"之外，新增 **自定义 JSON** 入口：选择任意 JSON 文件，
+引擎按 `match(json)` 匹配注册的 Schema 并渲染（line=折线 / bar=柱状 / metric=指标卡）。
+内置 schema 覆盖 `history.json`、`*_comparison.json`、批量 `tier_stats.json` 与
+`meta.json`。
+
+### 新增一种 JSON 格式（约 15 行）
+
+```js
+// registry/schemas/my_format.js
+const { VisualizationSchema } = require('../base.js');
+const { register } = require('../index.js');
+
+class MyFormatSchema extends VisualizationSchema {
+  constructor() {
+    super();
+    this.name = 'my_format';
+    this.title = 'My Format';
+    this.type = 'line';
+    this.x = 'result[].step';
+    this.series = {
+      'ASR': 'result[].attack_success',
+      'HR': 'result[].hr',
+      'NDCG': 'result[].ndcg',
+    };
+  }
+  match(json) {
+    return Array.isArray(json && json.result);
+  }
+}
+
+register(new MyFormatSchema());
+```
+
+然后在 `index.html` 的 `<script>` 列表中加入该文件即可，引擎与其它 schema 无需改动。
+
 ## 手动验证清单
 
 - 添加实验卡（输入名称 / 路径自动命名）后弹窗关闭，左侧列表出现该项。

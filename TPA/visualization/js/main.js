@@ -2,6 +2,7 @@
 (function (global) {
   const parser = global.TPAVisualizer.parser;
   const transforms = global.TPAVisualizer.transforms;
+  const buildVisualization = global.TPAVisualizer.normalize.buildVisualization;
   const state = { cards: [], activeCardId: null };
   let nextCardSeq = 1;
   const $ = (id) => document.getElementById(id);
@@ -77,6 +78,7 @@
       checked: true,
       epochMetrics: null,
       comparison: null,
+      registryViews: [],
       lineOptions: {},
       barOptions: {},
     };
@@ -91,7 +93,8 @@
   }
 
   function cardHasData(card) {
-    return !!(card.epochMetrics || card.comparison);
+    return !!(card.epochMetrics || card.comparison
+      || (card.registryViews && card.registryViews.length));
   }
 
   function isDefaultName(card) {
@@ -123,7 +126,19 @@
     } else if (file.name.endsWith('_comparison.json')) {
       card.comparison = parser.parseComparison(text);
     } else {
-      throw new Error(`跳过未知文件: ${file.name}`);
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch (e) {
+        throw new Error(`${file.name} 不是合法 JSON: ${e.message}`);
+      }
+      let view;
+      try {
+        view = buildVisualization(json);
+      } catch (e) {
+        throw new Error(`${file.name} 未匹配到已注册 schema: ${e.message}`);
+      }
+      card.registryViews.push({ view, enabled: true });
     }
   }
 
@@ -184,6 +199,8 @@
       status.className = 'ci-status';
       status.appendChild(badge(`H${card.epochMetrics ? '✓' : '—'}`, !!card.epochMetrics));
       status.appendChild(badge(`C${card.comparison ? '✓' : '—'}`, !!card.comparison));
+      status.appendChild(badge(`V${card.registryViews.length ? '✓' : '—'}`,
+        !!card.registryViews.length));
       li.addEventListener('click', (e) => {
         if (e.target !== check) {
           state.activeCardId = card.id;
@@ -197,6 +214,10 @@
 
   function renderPanel() {
     const panel = $('card-panel');
+    panel.querySelectorAll('.chart').forEach((el) => {
+      const inst = echarts.getInstanceByDom(el);
+      if (inst) inst.dispose();
+    });
     const card = activeCard();
     if (!card) {
       panel.innerHTML = '<div class="placeholder">点击「＋ 添加实验卡」开始</div>';
@@ -211,6 +232,8 @@
     status.className = 'panel-status';
     status.appendChild(badge(`history ${card.epochMetrics ? '✓' : '—'}`, !!card.epochMetrics));
     status.appendChild(badge(`comparison ${card.comparison ? '✓' : '—'}`, !!card.comparison));
+    status.appendChild(badge(`registry ${card.registryViews.length ? '✓' : '—'}`,
+      !!card.registryViews.length));
     const actions = document.createElement('span');
     actions.className = 'panel-actions';
     actions.appendChild(btn('改名', () => {
@@ -256,6 +279,14 @@
       if (card.comparison) {
         body.appendChild(metricGroup('comparison 对比项', card.barOptions, renderCharts));
       }
+      if (card.registryViews && card.registryViews.length) {
+        const viewsWrap = document.createElement('div');
+        viewsWrap.className = 'registry-views';
+        for (const entry of card.registryViews) {
+          viewsWrap.appendChild(registryViewBlock(entry));
+        }
+        body.appendChild(viewsWrap);
+      }
     }
     panel.innerHTML = '';
     panel.append(header, body);
@@ -286,8 +317,77 @@
     cmpInput.accept = '.json';
     cmpInput.addEventListener('change', (e) => importFilesIntoCard(card, e.target.files));
     cmpLabel.appendChild(cmpInput);
-    area.append(dirBtn, histLabel, cmpLabel);
+    const customLabel = document.createElement('label');
+    customLabel.append('自定义 JSON ');
+    const customInput = document.createElement('input');
+    customInput.type = 'file';
+    customInput.accept = '.json';
+    customInput.addEventListener('change', (e) => importFilesIntoCard(card, e.target.files));
+    customLabel.appendChild(customInput);
+    area.append(dirBtn, histLabel, cmpLabel, customLabel);
     return area;
+  }
+
+  function registryViewBlock(entry) {
+    const block = document.createElement('div');
+    block.className = 'registry-view';
+    const h = document.createElement('h4');
+    h.textContent = `${entry.view.title}（${entry.view.type}）`;
+    block.appendChild(h);
+
+    const toggle = document.createElement('label');
+    toggle.className = 'metric-row';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = entry.enabled !== false;
+    cb.addEventListener('change', () => {
+      entry.enabled = cb.checked;
+      renderAll();
+    });
+    toggle.append(cb, document.createTextNode('显示'));
+    block.appendChild(toggle);
+    if (entry.enabled === false) return block;
+
+    if (entry.view.type === 'metric') {
+      const rows = document.createElement('div');
+      rows.className = 'metric-rows';
+      for (const s of entry.view.series) {
+        const row = document.createElement('div');
+        row.className = 'metric-row';
+        const val = Array.isArray(s.data) ? s.data[0] : s.data;
+        row.textContent = `${s.name}: ${val === null || val === undefined ? 'N/A' : val}`;
+        rows.appendChild(row);
+      }
+      block.appendChild(rows);
+      return block;
+    }
+
+    const chartDom = document.createElement('div');
+    chartDom.className = 'chart';
+    chartDom.style.height = '220px';
+    block.appendChild(chartDom);
+    const inst = echarts.getInstanceByDom(chartDom) || echarts.init(chartDom);
+    inst.setOption(registryChartOption(entry.view), true);
+    return block;
+  }
+
+  function registryChartOption(view) {
+    if (view.type === 'bar') {
+      return {
+        tooltip: {},
+        legend: {},
+        xAxis: { type: 'category', data: view.series.map((s) => s.name) },
+        yAxis: { type: 'value' },
+        series: view.series.map((s) => ({ name: s.name, type: 'bar', data: s.data })),
+      };
+    }
+    return {
+      tooltip: { trigger: 'axis' },
+      legend: {},
+      xAxis: { type: 'category', data: view.x || [] },
+      yAxis: { type: 'value' },
+      series: view.series.map((s) => ({ name: s.name, type: 'line', data: s.data })),
+    };
   }
 
   function metricGroup(title, options, onChange) {
