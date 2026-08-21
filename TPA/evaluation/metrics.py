@@ -14,7 +14,9 @@ from typing import Dict, List, Tuple
 
 def _topk_by_batch(scores: torch.Tensor, k: int,
                    train_user_items: Dict[int, set],
-                   test_user_items: Dict[int, set]):
+                   test_user_items: Dict[int, set],
+                   mask_indices=None, topk_device=None,
+                   chunk_size: int = 1024):
     """分批计算 Recall@K 和 NDCG@K（all-ranking 协议）。
 
     scores: (n_users, n_items) 预测分数矩阵
@@ -24,12 +26,23 @@ def _topk_by_batch(scores: torch.Tensor, k: int,
     n_users = scores.shape[0]
 
     # 过滤训练集已交互物品（设为 -inf）
-    for u in range(n_users):
-        if u in train_user_items:
-            for i in train_user_items[u]:
-                scores[u, i] = float('-inf')
+    if mask_indices is None:
+        for u in range(n_users):
+            if u in train_user_items:
+                for i in train_user_items[u]:
+                    scores[u, i] = float('-inf')
+    else:
+        rows, cols = mask_indices
+        scores[rows.to(scores.device), cols.to(scores.device)] = float('-inf')
 
-    _, topk_indices = torch.topk(scores, k, dim=1)
+    if topk_device is None:
+        _, topk_indices = torch.topk(scores, k, dim=1)
+    else:
+        topk_indices = torch.empty((n_users, k), dtype=torch.long)
+        for start in range(0, n_users, chunk_size):
+            chunk = scores[start:start + chunk_size].to(topk_device)
+            _, idx = torch.topk(chunk, k, dim=1)
+            topk_indices[start:start + chunk_size] = idx.to("cpu")
 
     recalls = []
     ndcgs = []
@@ -56,9 +69,27 @@ def _topk_by_batch(scores: torch.Tensor, k: int,
     return float(np.mean(recalls)), float(np.mean(ndcgs))
 
 
+def build_train_mask_indices(train_user_items: Dict[int, set],
+                             user_ids: List[int]) -> Tuple[torch.Tensor, torch.Tensor]:
+    """把训练集已交互物品掩码编译为 (rows, cols) 索引张量，供向量化掩码复用。
+
+    rows/cols 长度 = 训练集交互总数；rows 为分数矩阵行号（按 user_ids 顺序），
+    cols 为物品 id。掩码只依赖训练集，训练过程中不变，可只构建一次。
+    """
+    rows = []
+    cols = []
+    for r, u in enumerate(user_ids):
+        items = train_user_items.get(u)
+        if items:
+            rows.extend([r] * len(items))
+            cols.extend(items)
+    return torch.LongTensor(rows), torch.LongTensor(cols)
+
+
 def compute_metrics(scores: torch.Tensor, train_user_items: Dict[int, set],
                     test_user_items: Dict[int, set],
-                    k: int = 20) -> Dict[str, float]:
+                    k: int = 20, mask_indices=None, topk_device=None,
+                    chunk_size: int = 1024) -> Dict[str, float]:
     """计算 Recall@K 和 NDCG@K（all-ranking 协议）。
 
     Args:
@@ -66,8 +97,14 @@ def compute_metrics(scores: torch.Tensor, train_user_items: Dict[int, set],
         train_user_items: 训练集交互 {user: {item, ...}}，用于过滤已交互物品
         test_user_items: 测试集正样本 {user: {item, ...}}，评估目标
         k: Top-K
+        mask_indices: build_train_mask_indices 的输出，提供时用向量化掩码
+        topk_device: 提供时按 chunk_size 分块在该设备上做 topk（结果回 CPU）
+        chunk_size: topk 分块大小
     """
-    recall, ndcg = _topk_by_batch(scores, k, train_user_items, test_user_items)
+    recall, ndcg = _topk_by_batch(
+        scores, k, train_user_items, test_user_items,
+        mask_indices=mask_indices, topk_device=topk_device,
+        chunk_size=chunk_size)
     return {f"recall@{k}": recall, f"ndcg@{k}": ndcg}
 
 
