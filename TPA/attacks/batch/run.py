@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
     from attacks.batch.aggregate import (
         build_results_rows, compute_clean_baseline, tier_summary,
-        write_results_csv, write_summary_md)
+        write_results_csv, write_summary_md, write_tier_stats_json)
     from attacks.batch.generator import build_atomic_base, load_batch_config
     from attacks.batch.runner import (
         _cleanup_staging, ensure_classify_cache, run_atomic, run_batch,
@@ -68,8 +68,11 @@ if __name__ == "__main__":
                 _cleanup_staging(runs_root, src)
     if args.mode in ("aggregate", "all") and not args.dry_run:
         rows = build_results_rows(runs_root, group, cfg, k)
-        write_results_csv(rows, k, out_root / "results.csv")
+        summary = tier_summary(rows, k)
+        write_results_csv(rows, k, out_root / "results.csv", summary=summary)
+        write_tier_stats_json(batch_tag, summary, k,
+                              out_root / "tier_stats.json")
         clean = compute_clean_baseline(cfg, k)
-        write_summary_md(batch_tag, tier_summary(rows, k), clean, k,
+        write_summary_md(batch_tag, summary, clean, k,
                          out_root / "summary.md")
         print(f"[batch] 整合完成：{len(rows)} 个原子实验 -> {out_root}")

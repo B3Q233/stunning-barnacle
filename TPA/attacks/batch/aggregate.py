@@ -73,7 +73,8 @@ def build_results_rows(runs_root: Path, group: str, cfg: Dict[str, Any],
     return rows
 
 
-def write_results_csv(rows: List[Dict[str, Any]], k: int, path: Path) -> None:
+def write_results_csv(rows: List[Dict[str, Any]], k: int, path: Path,
+                      summary: Optional[Dict[str, Any]] = None) -> None:
     fieldnames = ["attack", "dataset", "model", "tier", "item",
                   f"target_hr@{k}", f"target_ndcg@{k}",
                   f"recall@{k}", f"ndcg@{k}"]
@@ -84,16 +85,32 @@ def write_results_csv(rows: List[Dict[str, Any]], k: int, path: Path) -> None:
         for row in rows:
             writer.writerow({fn: row.get(fn, "") for fn in fieldnames})
 
+        if summary:
+            base = {
+                "attack": rows[0]["attack"] if rows else "",
+                "dataset": rows[0]["dataset"] if rows else "",
+                "model": rows[0]["model"] if rows else "",
+            }
+            for tier, metrics in sorted(summary.items()):
+                row = dict(base)
+                row["tier"] = tier
+                row["item"] = "avg"
+                for metric in (f"target_hr@{k}", f"target_ndcg@{k}",
+                               f"recall@{k}", f"ndcg@{k}"):
+                    row[metric] = metrics[metric]["mean"]
+                writer.writerow({fn: row.get(fn, "") for fn in fieldnames})
+
 
 def tier_summary(rows: List[Dict[str, Any]], k: int) -> Dict[str, Any]:
-    """按层统计 target_hr@{k} / target_ndcg@{k} 的 mean/std/n。"""
+    """按层统计四项指标（target_hr/target_ndcg/recall/ndcg）的 mean/std/n。"""
     grouped: Dict[str, List[Dict[str, Any]]] = {}
     for row in rows:
         grouped.setdefault(row["tier"], []).append(row)
     out = {}
     for tier, group in sorted(grouped.items()):
         out[tier] = {}
-        for metric in (f"target_hr@{k}", f"target_ndcg@{k}"):
+        for metric in (f"target_hr@{k}", f"target_ndcg@{k}",
+                       f"recall@{k}", f"ndcg@{k}"):
             vals = [r[metric] for r in group
                     if isinstance(r.get(metric), (int, float))]
             if not vals:
@@ -105,6 +122,18 @@ def tier_summary(rows: List[Dict[str, Any]], k: int) -> Dict[str, Any]:
                 "n": len(vals),
             }
     return out
+
+
+def write_tier_stats_json(batch_tag: str, summary: Dict[str, Any], k: int,
+                          path: Path) -> None:
+    """把按层统计（mean/std/n）写入 run_tag 目录下的 tier_stats.json。"""
+    import json
+    payload = {"batch_tag": batch_tag, "k": k, "tiers": {}}
+    for tier, metrics in sorted(summary.items()):
+        payload["tiers"][tier] = metrics
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2),
+                    encoding="utf-8")
 
 
 def _fmt(v) -> str:
@@ -153,8 +182,17 @@ def compute_clean_baseline(cfg: Dict[str, Any], k: int) -> Dict[str, float]:
 
     base = build_atomic_base(cfg)
     dataset = base["dataset"]
-    meta = gen_mod.load_meta(
-        Path(str(gen_mod.DEFAULT_RAW_META).format(dataset=dataset)))
+    meta_path = (PROJECT_ROOT / "models" / model_name / "data"
+                 / "processed" / dataset / "meta.pkl")
+    if not meta_path.exists():
+        # 兼容各攻击自定义的干净 meta 路径接口（bandwagon: DEFAULT_RAW_META，
+        # random: clean_meta_path）
+        if hasattr(gen_mod, "DEFAULT_RAW_META"):
+            meta_path = Path(
+                str(gen_mod.DEFAULT_RAW_META).format(dataset=dataset))
+        elif hasattr(gen_mod, "clean_meta_path"):
+            meta_path = Path(gen_mod.clean_meta_path(model_name, dataset))
+    meta = gen_mod.load_meta(meta_path)
     train_cfg = fit_mod.build_training_config(base, dataset, model_name)
     edge_index = torch.LongTensor(
         [[u, i] for u, i in meta["train_pairs"]]).T

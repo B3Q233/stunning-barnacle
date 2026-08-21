@@ -6,7 +6,7 @@ from pathlib import Path
 
 from attacks.batch.aggregate import (
     build_results_rows, scan_runs, tier_summary,
-    write_results_csv, write_summary_md)
+    write_results_csv, write_summary_md, write_tier_stats_json)
 
 from tests.test_batch_config import _base_cfg
 
@@ -25,6 +25,66 @@ def _best_entry(value):
 
 
 class AggregateTest(unittest.TestCase):
+
+    def test_tier_summary_includes_all_metrics(self):
+        cfg = _base_cfg()
+        group = "bandwagon_ml100k_lightgcn_top10"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _make_run(root, group, "popular", 32,
+                      {"target_hr@10": _best_entry(0.2),
+                       "target_ndcg@10": _best_entry(0.18),
+                       "recall@10": _best_entry(0.32),
+                       "ndcg@10": _best_entry(0.22)})
+            rows = build_results_rows(root, group, cfg, 10)
+            summary = tier_summary(rows, 10)
+            self.assertAlmostEqual(summary["popular"]["recall@10"]["mean"], 0.32)
+            self.assertAlmostEqual(summary["popular"]["ndcg@10"]["mean"], 0.22)
+
+    def test_write_tier_stats_json(self):
+        cfg = _base_cfg()
+        group = "bandwagon_ml100k_lightgcn_top10"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _make_run(root, group, "cold", 251,
+                      {"target_hr@10": _best_entry(0.5),
+                       "target_ndcg@10": _best_entry(0.4),
+                       "recall@10": _best_entry(0.3),
+                       "ndcg@10": _best_entry(0.2)})
+            rows = build_results_rows(root, group, cfg, 10)
+            summary = tier_summary(rows, 10)
+            write_tier_stats_json("2026-08-21-18-35", summary, 10,
+                                  root / "tier_stats.json")
+            stats = json.loads(
+                (root / "tier_stats.json").read_text(encoding="utf-8"))
+            self.assertEqual(stats["batch_tag"], "2026-08-21-18-35")
+            self.assertEqual(stats["k"], 10)
+            self.assertAlmostEqual(
+                stats["tiers"]["cold"]["target_hr@10"]["mean"], 0.5)
+            self.assertIn("recall@10", stats["tiers"]["cold"])
+
+    def test_write_results_csv_appends_avg_rows(self):
+        cfg = _base_cfg()
+        group = "bandwagon_ml100k_lightgcn_top10"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _make_run(root, group, "cold", 251,
+                      {"target_hr@10": _best_entry(0.5),
+                       "target_ndcg@10": _best_entry(0.4),
+                       "recall@10": _best_entry(0.3),
+                       "ndcg@10": _best_entry(0.2)})
+            _make_run(root, group, "cold", 987,
+                      {"target_hr@10": _best_entry(0.7),
+                       "target_ndcg@10": _best_entry(0.6),
+                       "recall@10": _best_entry(0.31),
+                       "ndcg@10": _best_entry(0.21)})
+            rows = build_results_rows(root, group, cfg, 10)
+            summary = tier_summary(rows, 10)
+            write_results_csv(rows, 10, root / "results.csv", summary=summary)
+            lines = (root / "results.csv").read_text(
+                encoding="utf-8").strip().splitlines()
+            self.assertEqual(len(lines), 1 + 2 + 1)  # 表头 + 2 行实验 + 1 行均值
+            self.assertIn(",cold,avg,0.6,0.5,0.305,0.205", lines[-1])
 
     def test_scan_and_rows(self):
         cfg = _base_cfg()

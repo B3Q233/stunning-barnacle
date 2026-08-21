@@ -59,7 +59,8 @@ attacks/batch/output/{batch_tag}/
 ├── meta.json              # 实验索引（attack/dataset/model/topk/per_tier/total_runs...）
 ├── configs/{攻击}_{数据集}_{模型}_top{k}/{层}/item{id}.yaml
 ├── runs/{同上}/{层}/item{id}/   # checkpoints + history.json + attack_comparison.md
-├── results.csv            # 每原子实验一行
+├── results.csv            # 每原子实验一行 + 每层均值行（item=avg）
+├── tier_stats.json        # 按层统计（四项指标 mean/std/n）
 ├── summary.md             # 按层 mean±std + Clean Model Utility
 └── logs/runner.log
 ```
