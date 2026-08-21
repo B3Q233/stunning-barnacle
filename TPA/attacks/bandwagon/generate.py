@@ -326,8 +326,9 @@ def main(config: Dict[str, Any], raw_meta: Path | None = None,
 
 def load_yaml_config(path: Path) -> Dict[str, Any]:
     import yaml
+    from training.config_utils import apply_k
     with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        return apply_k(yaml.safe_load(f))
 
 
 if __name__ == "__main__":

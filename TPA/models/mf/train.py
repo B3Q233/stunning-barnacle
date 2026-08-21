@@ -23,6 +23,7 @@ from training.metrics import (
     match_metric_values,
     safe_checkpoint_name,
 )
+from training.config_utils import apply_k
 from training.timing import section_enter, section_exit
 from models.mf.dataset import MFDataLoader, KEY_NUM_USERS, KEY_NUM_ITEMS, KEY_DATASET
 from models.mf.model import MatrixFactorization
@@ -164,6 +165,7 @@ def main(tag: str | None = None, resume: bool = False):
                 flat.update(raw[section])
         if "run_tag" in raw:
             flat["run_tag"] = raw["run_tag"]
+        flat = apply_k(flat)
         config = TrainingConfig(overrides=flat)
 
     run_tag = resolve_run_tag(config, cli_tag=tag)

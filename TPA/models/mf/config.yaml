@@ -5,8 +5,8 @@ evaluation:
   k: 20                         # 回退评估 K（仅当 metrics 中无 @K 时使用）
   eval_every: 1                 # [ai] 全量评估间隔(epoch)
   metrics:
-  - recall@20: upper            # upper=越高越好 / lower=越低越好；指标名中的 @K 是评估 K 的唯一权威
-  - ndcg@20: upper
+  - recall@{k}: upper           # upper=越高越好 / lower=越低越好；K 由 evaluation.k 绑定
+  - ndcg@{k}: upper
   checkpoint_mode: per_metric   # per_metric=每个指标各存一份最优（默认）| single=仅第一指标
 model:
   emb_dim: 64

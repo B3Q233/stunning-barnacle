@@ -29,6 +29,6 @@ evaluation:
   eval_every: 1                    # [ai] 全量排序评估间隔（epoch）
   metrics:
   - rank: lower                    # [paper] Eq.(8) expected percentile rank，越低越好（random=50%）
-  - recall@10: upper               # [ai] 补充指标，与仓库其他模型对齐
-  - ndcg@10: upper                 # [ai] 补充指标
+  - recall@{k}: upper              # [ai] 补充指标，与仓库其他模型对齐（K 由 evaluation.k 绑定）
+  - ndcg@{k}: upper                # [ai] 补充指标
   checkpoint_mode: per_metric      # [unreported] 每指标一份最优 checkpoint

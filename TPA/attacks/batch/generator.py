@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Tuple
 
 from attacks.batch.registry import get as get_attack
 from attacks.batch.utils import deep_merge, flatten_experiment, group_name
+from training.config_utils import apply_k
 from training.run_tag import sanitize_run_tag
 
 
@@ -48,7 +49,7 @@ def load_batch_config(path: Path) -> Dict[str, Any]:
     with open(path, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     validate_batch_config(cfg)
-    return cfg
+    return apply_k(cfg)
 
 
 def load_attack_default(cfg: Dict[str, Any]) -> Dict[str, Any]:
@@ -65,7 +66,7 @@ def build_atomic_base(cfg: Dict[str, Any]) -> Dict[str, Any]:
     if isinstance(cfg.get("override"), dict):
         merged = deep_merge(merged, cfg["override"])
     merged.pop("override", None)
-    return merged
+    return apply_k(merged)
 
 
 def sample_targets(categories, tiers, per_tier, strategy="random",

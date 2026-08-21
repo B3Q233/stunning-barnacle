@@ -112,6 +112,13 @@ attacks/batch/output/{batch_tag}/
 优先级从高到低：Generator 运行时字段（`target_items` / `run_tag` / `output.dir`）>
 `override` > Batch 配置 > 攻击默认配置（`attacks/{attack}/config.yaml`）。
 
+### 统一评估 K
+
+`k` 只需在**最外层定义一次**（如批跑配置顶层的 `k: 10`），
+`classification.k` / `training.k` / `evaluation.k` 与指标名会自动绑定：
+指标写 `{k}` 模板（如 `target_ndcg@{k}: upper`），加载时展开为 `target_ndcg@10`。
+模型与攻击配置文件同样支持（模型取 `evaluation.k`，攻击取顶层 `k`）。
+
 `batch` 段控制分层采样：
 
 | 键 | 说明 |

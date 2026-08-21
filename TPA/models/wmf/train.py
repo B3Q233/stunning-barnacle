@@ -53,6 +53,7 @@ from training.run_tag import (
     save_config_snapshot,
     write_latest_pointer,
 )
+from training.config_utils import apply_k
 from training.timing import section_enter, section_exit
 
 
@@ -287,6 +288,7 @@ def main(tag: Optional[str] = None, resume: bool = False,
         flat["run_tag"] = raw["run_tag"]
     if epochs_override is not None:
         flat[KEY_EPOCHS] = epochs_override
+    flat = apply_k(flat)
     config = TrainingConfig(overrides=flat)
 
     run_tag = resolve_run_tag(config, cli_tag=tag)

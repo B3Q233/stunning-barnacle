@@ -5,6 +5,7 @@
 dataset: ml100k                  # 受害数据集（ml100k / gowalla / yelp2018 / amazon-book）
 mode: all                        # classify | paths | data | model | both | all
 seed: 42
+k: 10                            # 统一评估 K（最外层唯一入口；classification/training/evaluation 与指标自动绑定）
 run_tag: null                    # 实验标签（--tag 或此处指定；null=自动当前时间 2026-08-07-14:20）
 
 # 被攻击 / 用于打分的模型（注册表见本目录 registry.py）
@@ -25,7 +26,6 @@ surrogate:
 
 # 第 1 步：基于模型推荐频次的物品分类（流行/普通/冷门）
 classification:
-  k: 10                          # 每用户取 Top-K 推荐（默认取 training.k）
   popular_ratio: 0.2             # 流行物品 = 推荐频次前 20%
   batch_size: 1024               # 评分矩阵分批大小（大数据集防爆显存）
   checkpoint: models\wmf\outputs\2026-08-15-20-58\checkpoints\ndcg@10-best-model.pt
@@ -59,16 +59,15 @@ training:
   weight_decay: 0.0001
   neg_ratio: 1
   eval_every: 1                 # 每轮全量评估并写入 history（可视化需要完整每轮数据）
-  k: 10
   device: cuda
 
 evaluation:
   report_model_utility: true     # 是否对比 clean/poisoned 的模型效用（投毒代价检查）
   metrics:                       # 方向标注：upper=越高越好 / lower=越低越好；@K 是评估 K 的唯一权威
-  - target_ndcg@10: upper        # 攻击主选优指标：目标物品 NDCG@10（多目标取均值）
-  - target_hr@10: upper          # 攻击辅助选优指标：目标物品 HR@10（多目标取均值）
-  - recall@10: upper             # 模型效用（投毒代价参考）
-  - ndcg@10: upper
+  - target_ndcg@{k}: upper       # 攻击主选优指标：目标物品 NDCG（K 由顶层 k 绑定）
+  - target_hr@{k}: upper         # 攻击辅助选优指标：目标物品 HR（K 由顶层 k 绑定）
+  - recall@{k}: upper            # 模型效用（投毒代价参考）
+  - ndcg@{k}: upper
   checkpoint_mode: per_metric    # per_metric=每个指标各存一份最优（默认）| single=仅第一指标
 
 output:

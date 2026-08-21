@@ -11,8 +11,9 @@ model:
   name: lightgcn
   overrides: {}
 
+k: 10                            # 统一评估 K（最外层唯一入口）
+
 classification:
-  k: 10
   popular_ratio: 0.2
   checkpoint: models/lightgcn/outputs/checkpoints/latest.pt   # 按实际 clean 模型替换
 
