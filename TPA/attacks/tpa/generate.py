@@ -176,6 +176,10 @@ def inject(meta: Dict[str, Any], profiles: List[Dict[str, Any]]
 
 
 # ── 主流程 ───────────────────────────────────────────────
+from training.timing import timed
+
+
+@timed("数据注入")
 def main(config: Dict[str, Any], raw_meta: Path | None = None,
          out_dir: Path | None = None) -> Dict[str, Any]:
     """执行 TPA 数据注入，产出 poisoned meta.pkl。

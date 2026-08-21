@@ -213,6 +213,7 @@ def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
           f"train={len(train_pairs)}, val={len(val_pairs)}, epochs={cfg.epochs}")
 
     for epoch in range(1, cfg.epochs + 1):
+        _t_epoch = section_enter(f"Epoch {epoch}/{cfg.epochs}")
         model.set_train()
         epoch_losses: List[float] = []
         for batch in train_loader:
@@ -257,6 +258,7 @@ def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
                 torch.save(payload, ckpt_path)
                 print(f"    [ckpt] best -> {ckpt_path} ({name}={res[name]:.4f})")
 
+        section_exit(f"Epoch {epoch}/{cfg.epochs}", _t_epoch)
         history.append(entry)
 
     torch.save({
@@ -283,6 +285,10 @@ def load_clean_model(cfg: TrainingConfig, clean_meta: Dict[str, Any],
     return model
 
 
+from training.timing import section_enter, section_exit, timed
+
+
+@timed("中毒模型拟合")
 def main(config: Dict[str, Any], skip_train: bool = False,
          tag: str | None = None) -> Dict[str, Any]:
     dataset = config["dataset"]

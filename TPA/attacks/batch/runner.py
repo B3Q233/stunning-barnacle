@@ -18,6 +18,7 @@ from attacks.batch.generator import generate_configs, write_configs
 from attacks.batch.registry import get as get_attack
 from attacks.batch.utils import (
     effective_dataset, public_cache_dir, read_json, resolution_k, write_json)
+from training.timing import section_enter, section_exit
 
 
 def attack_cache_path(cfg: Dict[str, Any]) -> Path:
@@ -56,8 +57,12 @@ def ensure_classify_cache(cfg: Dict[str, Any],
     spec = get_attack(base["attack"]["name"])
     classify_cfg = dict(base)
     classify_cfg["mode"] = "classify"
-    spec.classify(classify_cfg)
-    normalize_cache(base, read_json(attack_cache_path(base)), cache_dir)
+    _t = section_enter("分类缓存生成")
+    try:
+        spec.classify(classify_cfg)
+        normalize_cache(base, read_json(attack_cache_path(base)), cache_dir)
+    finally:
+        section_exit("分类缓存生成", _t)
     return read_json(target)
 
 
@@ -121,11 +126,13 @@ def run_batch(cfg, batch_tag, out_root, cache,
     """生成原子配置并逐个执行（data → model），整理到分层目录。"""
     configs_dir = out_root / "configs"
     runs_root = out_root / "runs"
+    _t_gen = section_enter("原子配置生成")
     entries = plan_runs(cfg, cache, batch_tag)
     if max_targets is not None:
         entries = entries[:max_targets]
     write_configs(entries, configs_dir)
     write_meta(cfg, batch_tag, entries, out_root / "meta.json")
+    section_exit("原子配置生成", _t_gen)
     logger, handler = _file_logger(out_root)
     try:
         logger.info("batch_tag=%s total_runs=%d dry_run=%s",
@@ -133,6 +140,7 @@ def run_batch(cfg, batch_tag, out_root, cache,
         print(f"[batch] 原子配置 {len(entries)} 个 -> {configs_dir}")
         if dry_run:
             return
+        _t_run = section_enter(f"批量执行 {len(entries)} 个原子实验")
         for rel, atomic in entries:
             print(f"[batch] {atomic['run_tag']}")
             logger.info("run %s", atomic["run_tag"])
@@ -147,6 +155,7 @@ def run_batch(cfg, batch_tag, out_root, cache,
                 shutil.move(str(src), str(dst))
                 _cleanup_staging(runs_root, src)
             logger.info("done %s", atomic["run_tag"])
+        section_exit(f"批量执行 {len(entries)} 个原子实验", _t_run)
     finally:
         logger.removeHandler(handler)
         handler.close()

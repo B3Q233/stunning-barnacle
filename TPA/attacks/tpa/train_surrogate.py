@@ -46,6 +46,10 @@ def _split_train_val(pairs: List[Tuple[int, int]], seed: int
     return shuffled[:split], shuffled[split:]
 
 
+from training.timing import timed
+
+
+@timed("代理模型训练")
 def main(config: Dict[str, Any]) -> Dict[str, Any]:
     dataset = config["dataset"]
     if not config.get("surrogate", {}).get("enabled", False):

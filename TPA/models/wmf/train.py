@@ -53,6 +53,7 @@ from training.run_tag import (
     save_config_snapshot,
     write_latest_pointer,
 )
+from training.timing import section_enter, section_exit
 
 
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -122,6 +123,7 @@ def train_wmf_from_meta(cfg: TrainingConfig, meta: Dict[str, Any],
           f"train={len(train_pairs)}, val={len(val_pairs)}, epochs={epochs}")
 
     for epoch in range(1, epochs + 1):
+        _t_epoch = section_enter(f"Epoch {epoch}/{epochs}")
         model.set_train()
         m = model.train_step(train_batch)
         model.set_eval()
@@ -160,6 +162,7 @@ def train_wmf_from_meta(cfg: TrainingConfig, meta: Dict[str, Any],
                 print(f"    [ckpt] best → {ckpt_path} "
                       f"({name}={res[name]:.4f})")
 
+        section_exit(f"Epoch {epoch}/{epochs}", _t_epoch)
         history.append(entry)
 
     torch.save({"epoch": epochs, "model_state_dict": model.state_dict()},

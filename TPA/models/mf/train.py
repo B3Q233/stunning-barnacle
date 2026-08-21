@@ -23,6 +23,7 @@ from training.metrics import (
     match_metric_values,
     safe_checkpoint_name,
 )
+from training.timing import section_enter, section_exit
 from models.mf.dataset import MFDataLoader, KEY_NUM_USERS, KEY_NUM_ITEMS, KEY_DATASET
 from models.mf.model import MatrixFactorization
 from evaluation.metrics import build_train_mask_indices, compute_metrics
@@ -195,6 +196,7 @@ def main(tag: str | None = None, resume: bool = False):
     history = []
     try:
         for epoch in range(start_epoch + 1, config.epochs + 1):
+            _t_epoch = section_enter(f"Epoch {epoch}/{config.epochs}")
             model.set_train()
             epoch_losses = []
             for batch in loader.train_loader():
@@ -223,6 +225,7 @@ def main(tag: str | None = None, resume: bool = False):
             entry = {
                 "epoch": epoch, "train_loss": avg_loss, "val_loss": avg_val,
             }
+            section_exit(f"Epoch {epoch}/{config.epochs}", _t_epoch)
             history.append(entry)
 
             if epoch % config.save_every_n_epochs == 0:

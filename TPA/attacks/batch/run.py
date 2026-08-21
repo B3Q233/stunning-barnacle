@@ -22,6 +22,7 @@ if __name__ == "__main__":
         staging_dir)
     from attacks.batch.utils import group_name, public_rec_freq_path
     from training.run_tag import resolve_run_tag
+    from training.timing import section_enter, section_exit
 
     parser = argparse.ArgumentParser(description="批量投毒攻击")
     parser.add_argument("--config", type=str,
@@ -67,6 +68,7 @@ if __name__ == "__main__":
                 shutil.move(str(src), str(dst))
                 _cleanup_staging(runs_root, src)
     if args.mode in ("aggregate", "all") and not args.dry_run:
+        _t = section_enter("结果整合")
         rows = build_results_rows(runs_root, group, cfg, k)
         summary = tier_summary(rows, k)
         write_results_csv(rows, k, out_root / "results.csv", summary=summary)
@@ -75,4 +77,5 @@ if __name__ == "__main__":
         clean = compute_clean_baseline(cfg, k)
         write_summary_md(batch_tag, summary, clean, k,
                          out_root / "summary.md")
+        section_exit("结果整合", _t)
         print(f"[batch] 整合完成：{len(rows)} 个原子实验 -> {out_root}")

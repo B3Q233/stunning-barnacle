@@ -177,6 +177,10 @@ def load_cache(config: Dict[str, Any], model_name: str, k: int,
     return data
 
 
+from training.timing import timed
+
+
+@timed("推荐频次分类")
 def main(config: Dict[str, Any]) -> Dict[str, Any]:
     dataset = config["dataset"]
     model_name = config.get("model", {}).get("name", "lightgcn")

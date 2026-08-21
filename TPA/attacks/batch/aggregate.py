@@ -9,6 +9,7 @@ from statistics import mean, stdev
 from typing import Any, Dict, List, Optional, Tuple
 
 from attacks.batch.utils import effective_dataset
+from training.timing import timed
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -161,6 +162,7 @@ def write_summary_md(batch_tag, summary, clean_baseline, k, path) -> None:
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
+@timed("Clean 基线计算")
 def compute_clean_baseline(cfg: Dict[str, Any], k: int) -> Dict[str, float]:
     """用 w_clean 在 clean 数据上算 recall@k / ndcg@k（投毒代价基线）。"""
     import torch

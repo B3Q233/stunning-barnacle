@@ -51,6 +51,13 @@ G:\Idea\.venv\Scripts\python.exe attacks/batch/run.py --mode aggregate
 | `--skip-classify` | 复用已有公共分类缓存，不重新生成 |
 | `--max-targets N` | 只跑前 N 个原子实验（冒烟） |
 
+## 计时输出
+
+全流程各环节会打印计时（格式：`【xx开始】` / `[xx结束 耗时X分Y秒]`），包括：
+原子配置生成、批量执行、数据注入、中毒模型拟合（含每个 Epoch）、分类缓存生成、
+结果整合与 Clean 基线计算。可用 `--max-targets 1` 先跑单个原子实验估算 yelp2018
+等大数据集单轮耗时。
+
 ## 4. 输出目录
 
 ```
