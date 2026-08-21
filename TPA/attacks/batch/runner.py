@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import sys
+import logging
+import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -12,6 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from attacks.batch.generator import build_atomic_base
+from attacks.batch.generator import generate_configs, write_configs
 from attacks.batch.registry import get as get_attack
 from attacks.batch.utils import (
     public_cache_dir, read_json, resolution_k, write_json)
@@ -55,3 +58,80 @@ def ensure_classify_cache(cfg: Dict[str, Any],
     spec.classify(base)
     normalize_cache(cfg, read_json(attack_cache_path(cfg)), cache_dir)
     return read_json(target)
+
+
+def plan_runs(cfg, categories, batch_tag):
+    """生成原子配置计划：[(相对路径, 原子配置), ...]。"""
+    return generate_configs(cfg, categories, batch_tag)
+
+
+def write_meta(cfg, batch_tag, entries, meta_path) -> None:
+    write_json({
+        "batch_tag": batch_tag,
+        "attack": cfg["attack"]["name"],
+        "dataset": cfg["experiment"]["dataset"],
+        "model": cfg["model"]["name"],
+        "topk": resolution_k(cfg),
+        "tiers": list(cfg["batch"]["tiers"]),
+        "per_tier": cfg["batch"]["per_tier"],
+        "total_runs": len(entries),
+        "seed": cfg["batch"].get("seed", 42),
+    }, meta_path)
+
+
+def staging_dir(runs_root: Path, atomic_cfg: Dict[str, Any]) -> Path:
+    """fit.py 固定拼接 {dataset}/{model}/{run_tag} 的 staging 目录。"""
+    return (runs_root / atomic_cfg["dataset"]
+            / atomic_cfg["model"]["name"] / atomic_cfg["run_tag"])
+
+
+def run_atomic(atomic_cfg: Dict[str, Any], stage: str) -> None:
+    """执行单个原子实验的 data（generate）或 model（fit）阶段。"""
+    spec = get_attack(atomic_cfg["attack"]["name"])
+    fn = {"data": spec.generate, "model": spec.fit}[stage]
+    fn(atomic_cfg)
+
+
+def _file_logger(out_root: Path):
+    """创建 runner.log 的 FileHandler；调用方用完后 removeHandler + close。"""
+    log_dir = out_root / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    logger = logging.getLogger(f"batch.{out_root.name}")
+    handler = logging.FileHandler(log_dir / "runner.log", encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    return logger, handler
+
+
+def run_batch(cfg, batch_tag, out_root, cache,
+              max_targets=None, dry_run=False) -> None:
+    """生成原子配置并逐个执行（data → model），整理到分层目录。"""
+    configs_dir = out_root / "configs"
+    runs_root = out_root / "runs"
+    entries = plan_runs(cfg, cache, batch_tag)
+    if max_targets is not None:
+        entries = entries[:max_targets]
+    write_configs(entries, configs_dir)
+    write_meta(cfg, batch_tag, entries, out_root / "meta.json")
+    logger, handler = _file_logger(out_root)
+    try:
+        logger.info("batch_tag=%s total_runs=%d dry_run=%s",
+                    batch_tag, len(entries), dry_run)
+        print(f"[batch] 原子配置 {len(entries)} 个 -> {configs_dir}")
+        if dry_run:
+            return
+        for rel, atomic in entries:
+            print(f"[batch] {atomic['run_tag']}")
+            logger.info("run %s", atomic["run_tag"])
+            run_atomic(atomic, "data")
+            run_atomic(atomic, "model")
+            src = staging_dir(runs_root, atomic)
+            dst = runs_root / rel[:-len(".yaml")]
+            if src != dst and src.exists():
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(src), str(dst))
+            logger.info("done %s", atomic["run_tag"])
+    finally:
+        logger.removeHandler(handler)
+        handler.close()
