@@ -16,7 +16,7 @@ if __name__ == "__main__":
     from attacks.batch.aggregate import (
         build_results_rows, compute_clean_baseline, tier_summary,
         write_results_csv, write_summary_md)
-    from attacks.batch.generator import load_batch_config
+    from attacks.batch.generator import build_atomic_base, load_batch_config
     from attacks.batch.runner import (
         _cleanup_staging, ensure_classify_cache, run_atomic, run_batch,
         staging_dir)
@@ -40,12 +40,13 @@ if __name__ == "__main__":
         "dir", "attacks/batch/output")) / batch_tag
     configs_dir, runs_root = out_root / "configs", out_root / "runs"
     k = cfg.get("evaluation", {}).get("k", 10)
-    group = group_name(cfg)
+    base = build_atomic_base(cfg)
+    group = group_name(base)
 
     if args.mode in ("generate", "all"):
-        if args.skip_classify and not public_rec_freq_path(cfg).exists():
+        if args.skip_classify and not public_rec_freq_path(base).exists():
             raise FileNotFoundError(
-                f"缓存不存在：{public_rec_freq_path(cfg)}"
+                f"缓存不存在：{public_rec_freq_path(base)}"
                 "（--skip-classify 需要已有缓存）")
         cache = ensure_classify_cache(cfg)
         run_batch(cfg, batch_tag, out_root, cache,

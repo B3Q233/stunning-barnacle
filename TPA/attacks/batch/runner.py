@@ -17,13 +17,13 @@ from attacks.batch.generator import build_atomic_base
 from attacks.batch.generator import generate_configs, write_configs
 from attacks.batch.registry import get as get_attack
 from attacks.batch.utils import (
-    public_cache_dir, read_json, resolution_k, write_json)
+    effective_dataset, public_cache_dir, read_json, resolution_k, write_json)
 
 
 def attack_cache_path(cfg: Dict[str, Any]) -> Path:
     """攻击自带的分类缓存路径（由各攻击 classify 生成）。"""
     return (PROJECT_ROOT / "attacks" / cfg["attack"]["name"]
-            / "data" / "rec_freq" / cfg["experiment"]["dataset"]
+            / "data" / "rec_freq" / effective_dataset(cfg)
             / f"{cfg['model']['name']}_top{resolution_k(cfg)}.json")
 
 
@@ -37,7 +37,7 @@ def normalize_cache(cfg: Dict[str, Any], attack_cache: Dict[str, Any],
         "cold": categories["cold"],
     }, cache_dir / "rec_freq.json")
     write_json({
-        "dataset": cfg["experiment"]["dataset"],
+        "dataset": effective_dataset(cfg),
         "model": cfg["model"]["name"],
         "topk": resolution_k(cfg),
         "checkpoint": cfg.get("classification", {}).get("checkpoint"),
@@ -48,15 +48,16 @@ def normalize_cache(cfg: Dict[str, Any], attack_cache: Dict[str, Any],
 def ensure_classify_cache(cfg: Dict[str, Any],
                           cache_dir: Optional[Path] = None) -> Dict[str, Any]:
     """公共缓存存在则直接读；否则调攻击 classify 生成一次并归一化。"""
-    cache_dir = cache_dir or public_cache_dir(cfg)
+    base = build_atomic_base(cfg)
+    cache_dir = cache_dir or public_cache_dir(base)
     target = cache_dir / "rec_freq.json"
     if target.exists():
         return read_json(target)
-    spec = get_attack(cfg["attack"]["name"])
-    base = build_atomic_base(cfg)
-    base["mode"] = "classify"
-    spec.classify(base)
-    normalize_cache(cfg, read_json(attack_cache_path(cfg)), cache_dir)
+    spec = get_attack(base["attack"]["name"])
+    classify_cfg = dict(base)
+    classify_cfg["mode"] = "classify"
+    spec.classify(classify_cfg)
+    normalize_cache(base, read_json(attack_cache_path(base)), cache_dir)
     return read_json(target)
 
 
@@ -69,7 +70,7 @@ def write_meta(cfg, batch_tag, entries, meta_path) -> None:
     write_json({
         "batch_tag": batch_tag,
         "attack": cfg["attack"]["name"],
-        "dataset": cfg["experiment"]["dataset"],
+        "dataset": effective_dataset(cfg),
         "model": cfg["model"]["name"],
         "topk": resolution_k(cfg),
         "tiers": list(cfg["batch"]["tiers"]),

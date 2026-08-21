@@ -1,6 +1,7 @@
 """批量投毒攻击：配置生成（四层 Deep Merge + 分层采样）。"""
 from __future__ import annotations
 
+import copy
 import random
 import sys
 from pathlib import Path
@@ -89,7 +90,7 @@ def atomic_run_tag(cfg, tier, item_id, batch_tag) -> str:
 
 def build_atomic_config(cfg, item_id, tier, batch_tag) -> dict:
     """生成单个原子配置：四层合并 + 运行时字段（P1）。"""
-    atomic = build_atomic_base(cfg)
+    atomic = copy.deepcopy(build_atomic_base(cfg))
     atomic["attack"]["target_items"] = {
         "strategy": "specified", "ids": [int(item_id)]}
     atomic["run_tag"] = atomic_run_tag(cfg, tier, item_id, batch_tag)
@@ -98,20 +99,27 @@ def build_atomic_config(cfg, item_id, tier, batch_tag) -> dict:
 
 
 def config_rel_path(cfg, tier, item_id) -> str:
-    return f"{group_name(cfg)}/{tier}/item{item_id}.yaml"
+    return f"{group_name(build_atomic_base(cfg))}/{tier}/item{item_id}.yaml"
 
 
 def generate_configs(cfg, categories, batch_tag) -> List[Tuple[str, dict]]:
     """返回 [(相对路径, 原子配置), ...]，相对路径为 {group}/{tier}/item{id}.yaml。"""
     sampling = cfg["batch"]
+    base = build_atomic_base(cfg)
+    group = group_name(base)
     targets = sample_targets(
         categories, sampling["tiers"], sampling["per_tier"],
         sampling.get("strategy", "random"), sampling.get("seed", 42))
     entries = []
     for tier, items in targets.items():
         for item in items:
-            entries.append((config_rel_path(cfg, tier, item),
-                            build_atomic_config(cfg, item, tier, batch_tag)))
+            atomic = copy.deepcopy(base)
+            atomic["attack"]["target_items"] = {
+                "strategy": "specified", "ids": [int(item)]}
+            atomic["run_tag"] = atomic_run_tag(cfg, tier, item, batch_tag)
+            atomic["output"] = {
+                "dir": f"attacks/batch/output/{batch_tag}/runs"}
+            entries.append((f"{group}/{tier}/item{item}.yaml", atomic))
     return entries
 
 

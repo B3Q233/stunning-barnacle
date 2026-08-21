@@ -45,6 +45,12 @@ class SampleTargetsTest(unittest.TestCase):
 
 class AtomicConfigTest(unittest.TestCase):
 
+    def test_config_rel_path_uses_effective_dataset(self):
+        cfg = _base_cfg()
+        cfg["override"] = {"dataset": "yelp2018"}
+        self.assertEqual(config_rel_path(cfg, "cold", 251),
+                         "bandwagon_yelp2018_lightgcn_top10/cold/item251.yaml")
+
     def test_merged_atomic_config(self):
         cfg = _base_cfg()
         cfg["override"] = {"attack": {"filler_size": 40}}

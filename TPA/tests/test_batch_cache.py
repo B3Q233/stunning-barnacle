@@ -6,11 +6,21 @@ from pathlib import Path
 from attacks.batch.runner import (
     attack_cache_path, ensure_classify_cache, normalize_cache)
 from attacks.batch.utils import read_json
+from attacks.batch.generator import build_atomic_base
 
 from tests.test_batch_config import _base_cfg
 
 
 class NormalizeCacheTest(unittest.TestCase):
+
+    def test_override_dataset_drives_attack_cache_path(self):
+        cfg = _base_cfg()
+        cfg["override"] = {"dataset": "yelp2018"}
+        base = build_atomic_base(cfg)
+        self.assertEqual(base["dataset"], "yelp2018")
+        p = attack_cache_path(base)
+        self.assertTrue(p.as_posix().endswith(
+            "attacks/bandwagon/data/rec_freq/yelp2018/lightgcn_top10.json"))
 
     def test_ordinary_mapped_to_normal_and_meta(self):
         cfg = _base_cfg()

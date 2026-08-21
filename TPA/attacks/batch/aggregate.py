@@ -8,6 +8,8 @@ from pathlib import Path
 from statistics import mean, stdev
 from typing import Any, Dict, List, Optional, Tuple
 
+from attacks.batch.utils import effective_dataset
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
@@ -59,7 +61,7 @@ def build_results_rows(runs_root: Path, group: str, cfg: Dict[str, Any],
     for tier, item, best in scan_runs(runs_root, group):
         row = {
             "attack": cfg["attack"]["name"],
-            "dataset": cfg["experiment"]["dataset"],
+            "dataset": effective_dataset(cfg),
             "model": cfg["model"]["name"],
             "tier": tier,
             "item": item,
@@ -142,7 +144,6 @@ def compute_clean_baseline(cfg: Dict[str, Any], k: int) -> Dict[str, float]:
 
     attack = cfg["attack"]["name"]
     model_name = cfg["model"]["name"]
-    dataset = cfg["experiment"]["dataset"]
     get_attack(attack)
     gen_mod = __import__(f"attacks.{attack}.generate", fromlist=["load_meta"])
     fit_mod = __import__(f"attacks.{attack}.fit",
@@ -150,9 +151,10 @@ def compute_clean_baseline(cfg: Dict[str, Any], k: int) -> Dict[str, float]:
     reg_mod = __import__(f"attacks.{attack}.registry",
                          fromlist=["get_model_cls"])
 
+    base = build_atomic_base(cfg)
+    dataset = base["dataset"]
     meta = gen_mod.load_meta(
         Path(str(gen_mod.DEFAULT_RAW_META).format(dataset=dataset)))
-    base = build_atomic_base(cfg)
     train_cfg = fit_mod.build_training_config(base, dataset, model_name)
     edge_index = torch.LongTensor(
         [[u, i] for u, i in meta["train_pairs"]]).T
