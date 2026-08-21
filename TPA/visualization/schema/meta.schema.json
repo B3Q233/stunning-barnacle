@@ -1,0 +1,27 @@
+{
+  "id": "fp_135ed1",
+  "title": "Batch Meta",
+  "type": "metric",
+  "x": null,
+  "series": {
+    "attack": "attack",
+    "dataset": "dataset",
+    "model": "model",
+    "topk": "topk",
+    "per_tier": "per_tier",
+    "total_runs": "total_runs",
+    "seed": "seed"
+  },
+  "fingerprint": [
+    "attack",
+    "batch_tag",
+    "dataset",
+    "model",
+    "per_tier",
+    "seed",
+    "tiers",
+    "tiers[]",
+    "topk",
+    "total_runs"
+  ]
+}

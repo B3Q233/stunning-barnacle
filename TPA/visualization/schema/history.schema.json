@@ -1,0 +1,25 @@
+{
+  "id": "fp_5dd775",
+  "title": "Training History",
+  "type": "line",
+  "x": "history[].epoch",
+  "series": {
+    "train_loss": "history[].train_loss",
+    "val_loss": "history[].val_loss",
+    "recall@10": "history[].recall@10",
+    "ndcg@10": "history[].ndcg@10",
+    "target_hr@10": "history[].target_hr@10",
+    "target_ndcg@10": "history[].target_ndcg@10"
+  },
+  "fingerprint": [
+    "history",
+    "history[]",
+    "history[].epoch",
+    "history[].ndcg@10",
+    "history[].recall@10",
+    "history[].target_hr@10",
+    "history[].target_ndcg@10",
+    "history[].train_loss",
+    "history[].val_loss"
+  ]
+}

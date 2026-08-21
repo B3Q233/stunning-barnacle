@@ -2,7 +2,9 @@
 (function (global) {
   const parser = global.TPAVisualizer.parser;
   const transforms = global.TPAVisualizer.transforms;
-  const buildVisualization = global.TPAVisualizer.normalize.buildVisualization;
+  const registry = global.TPAVisualizer.registry;
+  const designer = global.TPAVisualizer.designer;
+  const normalizeView = global.TPAVisualizer.normalize.normalize;
   const state = { cards: [], activeCardId: null };
   let nextCardSeq = 1;
   const $ = (id) => document.getElementById(id);
@@ -132,13 +134,30 @@
       } catch (e) {
         throw new Error(`${file.name} 不是合法 JSON: ${e.message}`);
       }
-      let view;
-      try {
-        view = buildVisualization(json);
-      } catch (e) {
-        throw new Error(`${file.name} 未匹配到已注册 schema: ${e.message}`);
+      const schema = registry.match(json);
+      if (schema) {
+        card.registryViews.push({
+          view: normalizeView(json, schema),
+          schema,
+          enabled: true,
+        });
+      } else {
+        // 未识别结构 → 打开设计器；保存后自动注册并立即渲染
+        const overlay = document.getElementById('modal-overlay');
+        if (overlay.classList.contains('hidden')) {
+          designer.openSchemaDesigner(json, (saved) => {
+            card.registryViews.push({
+              view: normalizeView(json, saved),
+              schema: saved,
+              enabled: true,
+            });
+            buildOptions(card);
+            renderAll();
+          });
+        } else {
+          throw new Error(`${file.name} 未识别且已有设计器打开，请先完成当前设计`);
+        }
       }
-      card.registryViews.push({ view, enabled: true });
     }
   }
 
@@ -379,6 +398,20 @@
         xAxis: { type: 'category', data: view.series.map((s) => s.name) },
         yAxis: { type: 'value' },
         series: view.series.map((s) => ({ name: s.name, type: 'bar', data: s.data })),
+      };
+    }
+    if (view.type === 'pie') {
+      return {
+        tooltip: {},
+        legend: {},
+        series: [{
+          type: 'pie',
+          radius: '62%',
+          data: view.series.map((s) => ({
+            name: s.name,
+            value: Array.isArray(s.data) ? s.data[0] : s.data,
+          })),
+        }],
       };
     }
     return {

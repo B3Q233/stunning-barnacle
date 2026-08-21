@@ -1,7 +1,7 @@
 'use strict';
 (function (global, factory) {
   if (typeof module === 'object' && module.exports) {
-    const registry = require('./index.js');
+    const registry = require('./registry.js');
     const { extract } = require('./path.js');
     module.exports = factory(registry, extract);
   } else {
@@ -29,7 +29,11 @@
   }
 
   function buildVisualization(json) {
-    return normalize(json, registry.getSchema(json));
+    const schema = registry.match(json);
+    if (!schema) {
+      throw new Error('未匹配到已注册 schema（可进入设计器创建）');
+    }
+    return normalize(json, schema);
   }
 
   return { normalize, buildVisualization };

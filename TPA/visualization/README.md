@@ -52,62 +52,74 @@
 node --test TPA/visualization/tests/
 ```
 
-## Schema Registry（自定义 JSON 展示）
+## Schema Registry + 可视化设计器
 
-可视化引擎只认识统一的中间格式，每种 JSON 结构通过注册一个 Schema 声明
-"展示哪些字段、如何展示"，新增格式无需改引擎代码。
+可视化引擎只认识统一的中间格式 `{title, type, x, series:[{name,data}]}`。
+每种 JSON 结构通过一个 Schema（JSON 文件）声明"展示哪些字段、如何展示"，
+按**结构指纹**匹配，与文件名无关。
+
+### 导入流程（Runtime / Designer 双模式）
+
+```
+导入 JSON → 生成结构指纹 → 已有 Schema？→ 是：直接渲染
+                                → 否：打开设计器
+                                       ├─ 选择图类型（折线/柱状/饼图/指标卡）
+                                       ├─ JSON 树状展示，勾选叶子字段（number 默认勾选）
+                                       ├─ 修改字段别名（如 history[].target_ndcg@10 → Target NDCG）
+                                       ├─ 折线图指定 X（默认第一个数值字段）
+                                       └─ 保存并渲染 → Schema 写入 localStorage 自动注册
+```
+
+第二次导入**同结构**的 JSON（值不同、结构相同）会直接按指纹匹配渲染，无需再次配置。
 
 ### 目录
 
 ```
 registry/
-├── base.js            # VisualizationSchema 基类（name/title/type/x/series/match）
+├── detector.js        # 结构指纹 fingerprint(json) + schemaId（fp_xxxxxxxx）
 ├── path.js            # 通用路径解析：history[].epoch / summary.best_hr / targets.908.ndcg
-├── index.js           # register(schema) / getSchema(json) / schemas() / clear()
-├── normalize.js       # normalize(json, schema) → {title,type,x,series:[{name,data}]}
-└── schemas/
-    ├── history.js     # line：history[] 折线
-    ├── comparison.js  # metric：model_utility 对比
-    ├── tier_stats.js  # bar：batch 各层均值
-    └── meta.js        # metric：batch 元信息
+├── registry.js        # 注册中心：match(json) / saveCustom / all
+├── normalize.js       # normalize(json, schema) → 统一格式
+└── schemas/builtin.js # 浏览器内嵌的内置 schema 镜像
+
+schema/                # 内置 schema 规范源（*.schema.json，指纹+series 声明）
+├── history.schema.json
+├── comparison.schema.json
+├── tier_stats.schema.json
+└── meta.schema.json
+
+designer/
+├── tree_builder.js    # JSON → 树（对象/数组分支、叶子含完整路径与类型）
+└── designer.js        # 设计器弹窗：图类型 + 树状勾选 + 别名 + 保存/导出
 ```
 
-### 使用
+### 自定义 schema 的持久化
 
-在实验卡"导入实验路径"之外，新增 **自定义 JSON** 入口：选择任意 JSON 文件，
-引擎按 `match(json)` 匹配注册的 Schema 并渲染（line=折线 / bar=柱状 / metric=指标卡）。
-内置 schema 覆盖 `history.json`、`*_comparison.json`、批量 `tier_stats.json` 与
-`meta.json`。
+设计器保存的 Schema 写入浏览器 `localStorage`（key `tpa_vis_custom_schemas`），
+刷新页面后仍可复用；"导出 Schema"可下载 JSON（如 `fp_a81c92.schema.json`），
+如需团队共享可放入 `schema/custom/` 并同步 `builtin.js` 镜像。
 
-### 新增一种 JSON 格式（约 15 行）
+### 指纹匹配说明
 
-```js
-// registry/schemas/my_format.js
-const { VisualizationSchema } = require('../base.js');
-const { register } = require('../index.js');
+`fingerprint(json)` 只记录键路径集合（数组记 `history[]`，递归首元素），
+值不同但结构相同 → 指纹相同 → 同一 Schema。例如：
 
-class MyFormatSchema extends VisualizationSchema {
-  constructor() {
-    super();
-    this.name = 'my_format';
-    this.title = 'My Format';
-    this.type = 'line';
-    this.x = 'result[].step';
-    this.series = {
-      'ASR': 'result[].attack_success',
-      'HR': 'result[].hr',
-      'NDCG': 'result[].ndcg',
-    };
-  }
-  match(json) {
-    return Array.isArray(json && json.result);
-  }
-}
-
-register(new MyFormatSchema());
+```json
+{"history":[{"epoch":1,"loss":0.2}]}
 ```
 
-然后在 `index.html` 的 `<script>` 列表中加入该文件即可，引擎与其它 schema 无需改动。
+指纹：`["history","history[]","history[].epoch","history[].loss"]`。
+注意：键名参与指纹，因此 target id 类动态键（如 `targets.908`）会使指纹不同，
+这类数据建议用设计器为具体结构保存一次自定义 Schema。
+
+### 测试
+
+```bash
+node --test TPA/visualization/tests/
+```
+
+新增用例：detector（指纹/哈希）、path（路径解析）、registry（内置匹配/自定义保存）、
+tree_builder（树与类型）、schemas（各内置结构归一化）、builtin（镜像与规范源一致）。
 
 ## 手动验证清单
 

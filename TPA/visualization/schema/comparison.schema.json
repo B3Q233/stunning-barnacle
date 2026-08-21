@@ -1,0 +1,24 @@
+{
+  "id": "fp_0ecb77",
+  "title": "Attack Comparison",
+  "type": "metric",
+  "x": null,
+  "series": {
+    "Clean Recall@10": "model_utility.clean.recall@10",
+    "Poisoned Recall@10": "model_utility.poisoned.recall@10",
+    "Clean NDCG@10": "model_utility.clean.ndcg@10",
+    "Poisoned NDCG@10": "model_utility.poisoned.ndcg@10"
+  },
+  "fingerprint": [
+    "model_utility",
+    "model_utility.clean",
+    "model_utility.clean.ndcg@10",
+    "model_utility.clean.recall@10",
+    "model_utility.poisoned",
+    "model_utility.poisoned.ndcg@10",
+    "model_utility.poisoned.recall@10",
+    "target_metrics",
+    "target_metrics.clean",
+    "target_metrics.poisoned"
+  ]
+}
