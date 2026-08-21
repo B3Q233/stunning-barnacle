@@ -1,154 +1,243 @@
-# 批量投毒攻击（配置生成器 + 分层采样 + 结果整合）设计文档
+# 批量投毒攻击系统（v1）设计文档 —— 优化版
 
 > 日期：2026-08-21
-> 状态：待用户确认
+> 状态：待用户确认（已按用户提供的《Batch 投毒攻击系统（v1）完整优化方案》重写）
 > 关联计划：`docs/superpowers/plans/2026-08-21-batch-poison-attack.md`
 
-## 1. 背景与目标
+## 1. 目标与设计原则
 
-仓库已有四个投毒攻击（bandwagon / pgd / random / tpa），均走 classify → data → model
-三阶段，每个原子实验由一个攻击 `config.yaml` 驱动、以 run_tag 隔离产物。用户需要：
+**目标**：在不修改现有 Bandwagon / TPA / PGD / Random 原子攻击代码的前提下，新增一个
+Batch 配置生成与调度系统，实现分层采样、批量生成配置、批量训练与结果整合。
 
-1. 用**一个批跑配置文件**指定攻击方法、clean 模型权重（w_clean）、数据集、受害模型
-   （model_t）与训练策略等基础信息；
-2. 批量程序作为**配置文件生成器**：用 clean 模型统计物品出现在用户 top@k 中的频次，
-   划分为 popular / normal / cold 三层，每层指定采样数 K，生成对应的原子投毒配置；
-3. **结果整合**：批量结果放在批量程序自己的 output 目录，以 `YYYY-MM-DD-HH:MM` 为一次
-   批量标签，原子实验命名为 `{攻击方法}_{数据集}_{模型}_top{k}_{层}_item{id}`，
-   按层聚合（平均 ± 标准差）。
+**两层架构**：
 
-原子投毒实验语义（用户定义）：
+| 层级 | 职责 | 现状 |
+|---|---|---|
+| 原子攻击（Atomic） | 一个目标物品的一次完整投毒实验 | 已有 |
+| Batch（批量） | 生成多个原子配置 + 调度运行 + 汇总结果 | 新增 |
+
+Batch **不实现任何攻击算法**，只调用已有攻击入口。调用关系：
 
 ```
-输入: model_t（受害模型结构）+ w_clean（clean 权重）+ data_clean + fun_attack + 攻击物品 I_t
-流程: Inter = fun_attack(model, data_clean)        # 生成投毒交互
-      data_poison = data_clean ∪ Inter             # 形成投毒数据集
-      model_t 载入 w_clean，在 data_poison 上训练
-输出: 目标物品最优 recall@10 / ndcg@10（取训练过程 BestTracker 最优值）
+Batch Config ──> Generator（分层采样）──> Atomic Config × N
+      ──> Bandwagon / TPA / PGD ──> Runs ──> Aggregate
 ```
 
-## 2. 敏捷范围
-
-- **v1（本计划，mini 投毒实验）**：单数据集（ml100k）× 单划分 × bandwagon 攻击 ×
-  lightgcn 受害模型；分层采样 + 逐目标训练 + 按层平均，跑通全链路。
-- **v2（后续迭代，不在本计划）**：多数据集 × 多划分（`training.split_seed` 网格）、
-  其他攻击方法（pgd/random/tpa）、更大规模。
-- v1 **不改动任何现有攻击代码**，纯新增目录与测试，风险最小。
-
-## 3. 目录结构
+## 2. 目录结构
 
 ```
 TPA/attacks/batch/
-├── config.yaml          # 批跑配置（= 攻击配置 + sampling 扩展段）
-├── generator.py         # 分层采样 + 原子配置生成
-├── runner.py            # 调度：classify 一次 + 逐原子 data+model
-├── aggregate.py         # results.csv + summary.md 整合
-├── run.py               # CLI 编排（generate/run/aggregate/all）
-├── docs/USAGE.md        # 使用文档
-└── docs/DESIGN.md       # 设计文档
+├── config.yaml              # Batch 配置模板
+├── generator.py             # 分层采样 + 配置生成
+├── runner.py                # 调度器
+├── aggregate.py             # 结果整合
+├── run.py                   # CLI
+├── utils.py                 # 路径/命名/JSON/meta 公共工具
+├── cache/                   # 公共分类缓存（不入库）
+│   └── classification/{dataset}/{model}/top{k}/rec_freq.json + meta.json
+├── docs/DESIGN.md
+├── docs/USAGE.md
+└── output/                  # 批量实验产物（不入库）
 ```
 
-批量输出布局：
+## 3. Batch 输出结构（分层目录，避免超长文件名）
+
+每次 Batch 是独立实验，以时间 `YYYY-MM-DD-HH:MM` 为唯一标识（batch_tag）：
 
 ```
-attacks/batch/output/{batch_tag}/            # batch_tag = YYYY-MM-DD-HH-MM
-├── config.yaml                              # 批跑配置快照
-├── configs/                                 # 生成的原子配置
-│   └── {run_tag}.yaml
-├── runs/{run_tag}/                          # 原子 fit 输出
-│   ├── checkpoints/  history.json  attack_comparison.md  config.yaml
-├── results.csv                              # 每原子实验一行
-└── summary.md                               # 按层 mean±std + clean 基线
+attacks/batch/output/2026-08-21-15-30/
+├── config.yaml                          # Batch 配置快照
+├── meta.json                            # Batch 元信息（实验索引）
+├── configs/
+│   └── bandwagon_ml100k_lightgcn_top10/ # 实验组 = 公共信息只保留一次
+│       ├── popular/item32.yaml, item87.yaml
+│       ├── normal/item510.yaml
+│       └── cold/item251.yaml, item1203.yaml
+├── runs/
+│   └── bandwagon_ml100k_lightgcn_top10/
+│       ├── popular/item32/{checkpoints/, history.json, attack_comparison.md, config.yaml}
+│       ├── normal/item510/...
+│       └── cold/item251/...
+├── results.csv
+└── summary.md
 ```
 
-## 4. 批跑配置 schema（config.yaml）
+命名规则（路径即语义）：
+
+| 层级 | 示例 |
+|---|---|
+| 实验组 | `bandwagon_ml100k_lightgcn_top10` |
+| 分类 | `cold` |
+| 原子配置 | `item251.yaml` |
+| 原子结果 | `item251/` |
+
+## 4. Batch 配置 Schema
+
+Batch 配置 = 原子攻击配置 + Batch 扩展。`experiment:` 包裹原原子配置顶层的
+dataset/mode/seed；`batch:` 为批量扩展段，**生成原子配置时被自动删除**，
+`experiment.*` 被展开回原子配置顶层（保持与现有攻击 config 兼容）。
 
 ```yaml
-# 以下为攻击配置（与 attacks/bandwagon/config.yaml 同构，可直接单独运行）
-dataset: ml100k
-mode: all
-seed: 42
+experiment:
+  dataset: ml100k
+  mode: all
+  seed: 42
+
 model:
   name: lightgcn
   overrides: {}
+
 classification:
   k: 10
   popular_ratio: 0.2
-  checkpoint: models/lightgcn/outputs/checkpoints/latest.pt   # w_clean
+  checkpoint: models/lightgcn/checkpoints/best.pt   # w_clean
+
 attack:
   name: bandwagon
   ratio: 0.03
   filler_size: 20
-  target_items: {strategy: specified, ids: []}   # 由生成器逐目标覆写
+  target_items: {strategy: specified, ids: []}       # 由 Generator 覆写
+
 warm_start:
   enabled: true
-  checkpoint: models/lightgcn/outputs/checkpoints/latest.pt   # w_clean
-training: {epochs: 5, batch_size: 256, lr: 0.001, weight_decay: 0.0001,
-           neg_ratio: 1, device: cuda}
+  checkpoint: models/lightgcn/checkpoints/best.pt    # w_clean
+
+training:
+  epochs: 30
+  batch_size: 256
+  lr: 0.001
+  weight_decay: 0.0001
+  neg_ratio: 1
+  device: cuda
+
 evaluation:
   k: 10
-  metrics: [target_ndcg@10: upper, target_hr@10: upper, recall@10: upper, ndcg@10: upper]
   report_model_utility: true
+
 output:
   dir: attacks/batch/output
 
-# 以下为批量扩展段（生成器专属，原子配置中剔除）
-sampling:
-  tiers: [popular, normal, cold]   # 可选子集
-  per_tier: 3                      # 每层采样目标物品数 K
-  strategy: random                 # random（seed 固定）| first（按层内顺序取前K）
+batch:
+  tiers: [popular, normal, cold]
+  per_tier: 3
+  strategy: random            # random（seed 固定）| first
   seed: 42
 ```
 
-## 5. 生成规则（generator.py）
+## 5. Generator 设计（generator.py）
 
-- 分类缓存：复用攻击自带缓存
-  `attacks/{attack}/data/rec_freq/{dataset}/{model}_top{k}.json`
-  （由 runner 调 `attacks.{attack}.classify.main` 生成一次，与目标无关，只跑一次；
-  缓存与独立运行共享，确定性与 checkpoint/dataset/model/k 绑定）。
-  缓存缺失且未生成时，`--mode generate` 报错并提示先跑 classify。
-- 层内采样：`strategy=random` 用 `sampling.seed` 的 `random.Random` 固定抽样；
-  `strategy=first` 按层列表顺序取前 K。空层跳过并告警。
-- 原子配置 = 批跑配置深拷贝，剔除 `sampling` 段，覆写：
-  - `attack.target_items = {strategy: specified, ids: [item_id]}`
-  - `run_tag = {attack}_{dataset}_{model}_top{k}_{tier}_item{item_id}`（经 sanitize）
-  - `output.dir = attacks/batch/output/{batch_tag}/runs`
-  - `classification.checkpoint` / `warm_start.checkpoint` 保持 w_clean 路径
-- 每个原子实验独立 run_tag → 中毒数据（攻击目录 data/poisoned/，不入库）与
-  fit 产物（batch output）互不覆盖。
+输入 `BatchConfig`，输出 `AtomicConfig[]`。
 
-## 6. 调度规则（runner.py）
+流程：读 Batch Config → 读公共分类缓存 → 得到 popular/normal/cold 三层 →
+每层采样 K 个 Item → 复制公共配置 → 覆写 `attack.target_items.ids=[item]` →
+写入 `configs/{group}/{tier}/item{id}.yaml`。
 
-- classify 只执行一次（同一 batch 内所有原子实验共享缓存）；
-- 对每个原子配置顺序执行 data（generate）+ model（fit）两阶段（in-process 调用
-  攻击模块的 `main(config)`，不新建子进程；单进程顺序执行避免 GPU 争用）；
-- 支持 `--dry-run`（只生成不执行）、`--skip-classify`（复用已有缓存）、
-  `--max-targets`（冒烟限流）。
+原子配置生成规则：
+- 深拷贝 Batch 配置，删除 `batch:` 段，展开 `experiment.*` 到顶层；
+- 仅覆写 `attack.target_items = {strategy: specified, ids: [item]}`；
+- `run_tag = {batch_tag}-{tier}-item{id}`（经 sanitize，用于攻击管线数据隔离）；
+- `output.dir = attacks/batch/output/{batch_tag}/runs`（fit 阶段再整理到分层目录）。
 
-## 7. 结果整合（aggregate.py）
+## 6. Runner 设计（runner.py）
 
-- 每原子实验读取 `runs/{run_tag}/history.json` 的 `best` 段：
-  `target_ndcg@{k}`、`target_hr@{k}`、`recall@{k}`、`ndcg@{k}`；
-- `results.csv` 列：`run_tag, tier, target_item, target_hr@{k}, target_ndcg@{k},
-  recall@{k}, ndcg@{k}`；
-- `summary.md`：按 tier 对 `target_hr@{k}` / `target_ndcg@{k}` 求 mean ± std，
-  附 clean 基线（用 w_clean 在 clean 数据上的 recall@{k} / ndcg@{k}，批量开始前算一次）；
-- tier / item 从 run_tag 解析（正则 `_top\d+_(popular|normal|cold)_item(\d+)$`）。
+Runner 负责调度，不负责攻击：
 
-## 8. 测试策略（stdlib unittest，CPU，不训练模型）
+```
+Batch Config ──> Generator ──> Atomic Configs
+      ──> Classify（仅一次）──> for item in configs:
+            Data Generate ──> Model Train ──> runs/
+```
 
-- `tests/test_batch_generator.py`：给定假分类缓存 → 采样数量/确定性、原子配置字段
-  （run_tag、target ids、output.dir、剔除 sampling）、空层跳过、写文件；
-- `tests/test_batch_aggregate.py`：给定假 runs 目录 → results.csv 行数/列、
-  summary mean±std 正确、缺 best 文件的 run 跳过；
-- `tests/test_batch_config.py`：批跑配置 schema 校验（缺 sampling.per_tier 等报错）；
-- E2E mini 验证（手工步骤，非单测）：准备 ml100k clean lightgcn checkpoint →
-  跑 mini 批量（epochs=1、per_tier=1、tiers=[cold]）→ 校验产物齐全、按层平均正确。
+- classify 只执行一次（公共缓存，与攻击算法无关）；
+- Data + Model 顺序执行，单 GPU 串行；
+- 支持 `--dry-run`（只生成 configs 与 meta.json，不执行攻击）；
+- 由于 fit.py 的 out_dir 固定拼接 `{dataset}/{model}/{run_tag}`，runner 在
+  model 阶段完成后把该 staging 目录**移动**到
+  `runs/{group}/{tier}/item{id}/`，得到用户要求的层次结构（不改 fit.py）。
 
-## 9. 验收标准
+CLI：`python attacks/batch/run.py --mode all`
+其他模式：`--mode generate` / `--mode run` / `--mode aggregate`；
+附加参数：`--batch-tag` / `--dry-run` / `--skip-classify` / `--max-targets`。
 
-- 单测全部通过（`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_* -v`）；
-- mini 批量跑通：`attacks/batch/output/{batch_tag}/` 下 configs/、runs/、
-  results.csv、summary.md 齐全，configs 数量 = Σ各层实际采样数，runs 数量一致；
-- summary.md 含按层 target_hr@10 / target_ndcg@10 的 mean±std 与 clean 基线；
-- 不修改任何现有攻击/模型代码（v1 纯新增）。
+## 7. 公共分类缓存
+
+分类结果与攻击算法无关，作为公共缓存：
+
+```
+cache/classification/{dataset}/{model}/top{k}/
+├── rec_freq.json   # {"popular": [1,5,8,...], "normal": [...], "cold": [...]}
+└── meta.json       # dataset/model/k/checkpoint/生成时间
+```
+
+- Generator 只读缓存，不重算；
+- Runner 在缓存不存在时：调用 `attacks.{attack}.classify.main`（复用已有实现，
+  生成攻击侧缓存），再归一化拷贝到公共缓存；v1 支持 bandwagon/pgd/random，
+  tpa 待 v2 适配；
+- `attacks/batch/cache/` 加入 .gitignore（不入库）。
+
+## 8. 结果整合（aggregate.py）
+
+### results.csv（每原子实验一行）
+
+| 列 | 说明 |
+|---|---|
+| attack | 攻击方法 |
+| dataset | 数据集 |
+| model | 受害模型 |
+| tier | 分层 |
+| item | 目标物品 id |
+| target_hr@{k} | 攻击效果：目标 HR（最优值） |
+| target_ndcg@{k} | 攻击效果：目标 NDCG（最优值） |
+| recall@{k} | 模型效用（中毒训练后整体 recall） |
+| ndcg@{k} | 模型效用（整体 ndcg） |
+
+### summary.md（按层统计 + clean 基线）
+
+| Tier | HR@{k} | NDCG@{k} |
+|---|---|---|
+| Popular | 0.214 ± 0.03 | 0.183 ± 0.02 |
+| Normal | 0.336 ± 0.04 | 0.291 ± 0.03 |
+| Cold | 0.487 ± 0.05 | 0.421 ± 0.04 |
+
+底部附 `Clean Model Utility`（w_clean 在 clean 数据上的 recall@{k} / ndcg@{k}），
+便于观察投毒代价。
+
+## 9. meta.json
+
+```json
+{
+  "batch_tag": "2026-08-21-15-30",
+  "attack": "bandwagon",
+  "dataset": "ml100k",
+  "model": "lightgcn",
+  "topk": 10,
+  "tiers": ["popular", "normal", "cold"],
+  "per_tier": 3,
+  "total_runs": 9,
+  "seed": 42
+}
+```
+
+## 10. 测试策略（stdlib unittest，CPU）
+
+| 测试 | 内容 |
+|---|---|
+| test_batch_config | 配置合法性（experiment/batch 段、per_tier>0、tier 白名单） |
+| test_generator | 分层采样确定性、原子配置字段、experiment 展开、batch 删除 |
+| test_yaml_writer | `configs/{group}/{tier}/item251.yaml` 正确生成 |
+| test_runner | dry-run 生成 configs+meta 且不执行；非 dry-run 调用 N×2 次并整理目录 |
+| test_aggregate | results.csv 列、mean±std 正确、缺 history 跳过 |
+| test_meta | meta.json 字段完整 |
+
+E2E（手工）：ml100k，epochs=1，tiers=[cold]，per_tier=1，验证整条链路。
+
+## 11. Sprint v1 验收标准
+
+| 功能 | 验收 |
+|---|---|
+| Generator | 能生成 `configs/{group}/cold/item251.yaml` |
+| Runner | classify 一次，顺序完成全部原子实验 |
+| Output | runs/ 与 configs/ 数量一致 |
+| Aggregate | 自动生成 results.csv 与 summary.md |
+| Isolation | 每次 Batch 独立时间目录，不覆盖历史 |
+| Compatibility | 不修改任何现有攻击代码 |
