@@ -51,5 +51,5 @@ outputs/checkpoints/
 *.log
 
 # Batch 批量投毒实验产物（不入库）
-attacks/batch/cache/
-attacks/batch/output/
+**/attacks/batch/cache/
+**/attacks/batch/output/
