@@ -119,3 +119,40 @@ def write_summary_md(batch_tag, summary, clean_baseline, k, path) -> None:
                   "", f"Recall@{k} : {r:.4f}", f"NDCG@{k}   : {n:.4f}"]
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def compute_clean_baseline(cfg: Dict[str, Any], k: int) -> Dict[str, float]:
+    """用 w_clean 在 clean 数据上算 recall@k / ndcg@k（投毒代价基线）。"""
+    import torch
+
+    from attacks.batch.generator import build_atomic_base
+    from attacks.batch.registry import get as get_attack
+    from evaluation.attack_eval import ranking_scores
+    from evaluation.metrics import build_train_mask_indices, compute_metrics
+    from training.paths import resolve_from_root
+
+    attack = cfg["attack"]["name"]
+    model_name = cfg["model"]["name"]
+    dataset = cfg["experiment"]["dataset"]
+    get_attack(attack)
+    gen_mod = __import__(f"attacks.{attack}.generate", fromlist=["load_meta"])
+    fit_mod = __import__(f"attacks.{attack}.fit",
+                         fromlist=["build_training_config"])
+    reg_mod = __import__(f"attacks.{attack}.registry",
+                         fromlist=["get_model_cls"])
+
+    meta = gen_mod.load_meta(
+        Path(str(gen_mod.DEFAULT_RAW_META).format(dataset=dataset)))
+    base = build_atomic_base(cfg)
+    train_cfg = fit_mod.build_training_config(base, dataset, model_name)
+    model = reg_mod.get_model_cls(model_name)(
+        train_cfg, meta["num_users"], meta["num_items"], None)
+    ckpt = resolve_from_root(cfg["classification"]["checkpoint"], PROJECT_ROOT)
+    model.load_state_dict(torch.load(
+        ckpt, map_location=model._device, weights_only=True)["model_state_dict"])
+    scores, users, test_pos = ranking_scores(model, meta["test_pairs"])
+    rows, cols = build_train_mask_indices(meta["user_items"], users)
+    return compute_metrics(
+        scores, meta["user_items"], test_pos, k=k,
+        mask_indices=(rows, cols),
+        topk_device=getattr(model._device, "type", "cpu"))

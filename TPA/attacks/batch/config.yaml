@@ -1,0 +1,33 @@
+# 批量投毒攻击批跑配置（v1 最终版）
+# 其余参数继承 attacks/bandwagon/config.yaml 默认值（P4 配置继承）
+attack:
+  name: bandwagon
+
+experiment:
+  dataset: ml100k
+  seed: 42
+
+model:
+  name: lightgcn
+  overrides: {}
+
+classification:
+  k: 10
+  popular_ratio: 0.2
+  checkpoint: models/lightgcn/outputs/clean-ml100k/checkpoints/latest.pt
+
+warm_start:
+  enabled: true
+  checkpoint: models/lightgcn/outputs/clean-ml100k/checkpoints/latest.pt
+
+training:
+  epochs: 5
+  device: cuda
+
+batch:
+  tiers: [popular, normal, cold]
+  per_tier: 2
+  strategy: random
+  seed: 42
+
+override: {}
