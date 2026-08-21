@@ -85,6 +85,17 @@ def staging_dir(runs_root: Path, atomic_cfg: Dict[str, Any]) -> Path:
             / atomic_cfg["model"]["name"] / atomic_cfg["run_tag"])
 
 
+def _cleanup_staging(runs_root: Path, src: Path) -> None:
+    """移动后清理空的 staging 父目录（如 runs/ml100k/lightgcn），保留 runs_root。"""
+    parent = src.parent
+    while parent != runs_root and parent != runs_root.parent:
+        try:
+            parent.rmdir()
+        except OSError:
+            break
+        parent = parent.parent
+
+
 def run_atomic(atomic_cfg: Dict[str, Any], stage: str) -> None:
     """执行单个原子实验的 data（generate）或 model（fit）阶段。"""
     spec = get_attack(atomic_cfg["attack"]["name"])
@@ -126,14 +137,15 @@ def run_batch(cfg, batch_tag, out_root, cache,
             logger.info("run %s", atomic["run_tag"])
             run_atomic(atomic, "data")
             run_atomic(atomic, "model")
-        src = staging_dir(runs_root, atomic)
-        dst = runs_root / rel[:-len(".yaml")]
-        if src != dst and src.exists():
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            if dst.exists():
-                shutil.rmtree(str(dst))
-            shutil.move(str(src), str(dst))
-        logger.info("done %s", atomic["run_tag"])
+            src = staging_dir(runs_root, atomic)
+            dst = runs_root / rel[:-len(".yaml")]
+            if src != dst and src.exists():
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                if dst.exists():
+                    shutil.rmtree(str(dst))
+                shutil.move(str(src), str(dst))
+                _cleanup_staging(runs_root, src)
+            logger.info("done %s", atomic["run_tag"])
     finally:
         logger.removeHandler(handler)
         handler.close()

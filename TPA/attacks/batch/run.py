@@ -18,7 +18,8 @@ if __name__ == "__main__":
         write_results_csv, write_summary_md)
     from attacks.batch.generator import load_batch_config
     from attacks.batch.runner import (
-        ensure_classify_cache, run_atomic, run_batch, staging_dir)
+        _cleanup_staging, ensure_classify_cache, run_atomic, run_batch,
+        staging_dir)
     from attacks.batch.utils import group_name, public_rec_freq_path
     from training.run_tag import resolve_run_tag
 
@@ -63,6 +64,7 @@ if __name__ == "__main__":
                 if dst.exists():
                     shutil.rmtree(str(dst))
                 shutil.move(str(src), str(dst))
+                _cleanup_staging(runs_root, src)
     if args.mode in ("aggregate", "all") and not args.dry_run:
         rows = build_results_rows(runs_root, group, cfg, k)
         write_results_csv(rows, k, out_root / "results.csv")

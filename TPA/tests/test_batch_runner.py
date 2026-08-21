@@ -65,10 +65,11 @@ class RunnerTest(unittest.TestCase):
                 out_root = Path(tmp)
                 runs_root = out_root / "runs"
                 runner.run_batch(cfg, "t", out_root, _categories())
-                moved = (runs_root / "bandwagon_ml100k_lightgcn_top10"
-                         / "cold" / "item9")
-                self.assertTrue(moved.exists())
-                self.assertTrue((moved / "history.json").exists())
+                group_dir = runs_root / "bandwagon_ml100k_lightgcn_top10"
+                moved = list(group_dir.rglob("item*/history.json"))
+                self.assertEqual(len(moved), 5)
+                # 所有 staging 都应被移走，不留 runs/{dataset}/{model} 残留
+                self.assertFalse((runs_root / "ml100k").exists())
                 self.assertTrue((out_root / "logs" / "runner.log").exists())
         finally:
             runner.run_atomic = original
