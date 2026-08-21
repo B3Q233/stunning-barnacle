@@ -1,5 +1,5 @@
 # 批量投毒攻击批跑配置（v1 最终版）
-# 其余参数继承 attacks/bandwagon/config.yaml 默认值（P4 配置继承）
+# 只写与攻击默认配置不同的项（P3 差异）；其余继承 attacks/{attack.name}/config.yaml（P4）
 attack:
   name: random
 
@@ -8,22 +8,15 @@ experiment:
   seed: 42
 
 model:
-  name: lightgcn
-  overrides: {}
+  name: lightgcn                 # 受害模型：覆盖 random 默认（wmf）为 lightgcn
 
 k: 10                            # 统一评估 K（最外层唯一入口；classification/training/evaluation 与指标自动绑定）
-# default
+
 classification:
-  popular_ratio: 0.2
-  checkpoint: models/lightgcn/outputs/clean-ml100k/checkpoints/latest.pt
+  checkpoint: models/lightgcn/outputs/clean-ml100k/checkpoints/latest.pt   # w_clean
 
 warm_start:
-  enabled: true
   checkpoint: models/lightgcn/outputs/clean-ml100k/checkpoints/latest.pt
-
-training:
-  epochs: 5
-  device: cuda
 
 batch:
   tiers: [popular, normal, cold]
@@ -31,60 +24,4 @@ batch:
   strategy: random
   seed: 114514
 
-override: 
-  # Random（随机）攻击配置（基于 attack-imp-direct-poison 模板）
-  # 本文件是生成攻击项目时的唯一配置入口：改 attack.name / dataset / 目标 / 模型即可
-  # 本攻击实现：假用户画像 = K 个随机物品（filler，全量物品均匀采样）+ 1 个目标物品
-  # 参考：Lam & Riedl, Shilling Recommender Systems for Fun and Profit, WWW 2004
-
-  dataset: ml100k                  # 受害数据集（ml100k / gowalla / yelp2018 / amazon-book）
-  mode: all                        # classify | data | model | both | all
-  seed: 42
-  run_tag: null                    # 实验标签（--tag 或此处指定；null=自动当前时间 2026-08-07-14:20）
-
-  # 被攻击 / 用于打分的模型（注册表见公有 models/registry.py）
-  model:
-    name: lightgcn                 # 受害模型（可选 lightgcn / mf / wmf，公有注册表登记）
-    overrides: {}                  # 可选：覆盖模型超参（emb_dim / n_layers / init_method ...）
-
-  # 第 1 步：基于模型推荐频次的物品分类（流行/普通/冷门）
-  classification:
-    popular_ratio: 0.2             # 流行物品 = 推荐频次前 20%
-    batch_size: 1024               # 评分矩阵分批大小（大数据集防爆显存）
-    checkpoint: models/lightgcn/outputs/clean-ml100k/checkpoints/latest.pt
-
-  attack:
-    name: random  # 攻击名（模块目录 attacks/{name}/、输出路径、日志前缀均用此值）
-    # 假用户数量：二选一（num_fake_users 优先，其次按 ratio 计算）
-    ratio: 0.03                    # 假用户数 = ratio × 真实用户数
-    filler_size: 20                # 每个假用户交互的随机物品数（从全量物品均匀采样）
-    target_items:
-      strategy: specified          # specified=手动指定 | category=按分类挑 | coldest | random
-      category: cold               # strategy=category 时：popular | ordinary | cold
-      count: 1                    # 目标物品数量（假用户均分给各目标）
-      ids: [251]          # strategy=specified 时填写（目标物品由你自行确定）
-
-  warm_start:
-    enabled: true                  # 用干净模型参数初始化中毒模型（原用户/物品嵌入迁移）
-    checkpoint: models/lightgcn/outputs/clean-ml100k/checkpoints/latest.pt
-
-  training:
-    epochs: 30
-    batch_size: 256
-    lr: 0.001
-    weight_decay: 0.0001
-    neg_ratio: 1
-    eval_every: 1                 # 每轮全量评估并写入 history（可视化需要完整每轮数据）
-    device: cuda
-
-  evaluation:
-    report_model_utility: true     # 是否对比 clean/poisoned 的模型效用（投毒代价检查）
-    metrics:                       # 方向标注：upper=越高越好 / lower=越低越好；@K 是评估 K 的唯一权威
-    - target_ndcg@{k}: upper       # 攻击主选优指标：目标物品 NDCG（K 由顶层 k 绑定）
-    - target_hr@{k}: upper         # 攻击辅助选优指标：目标物品 HR（K 由顶层 k 绑定）
-    - recall@{k}: upper            # 模型效用（投毒代价参考）
-    - ndcg@{k}: upper
-    checkpoint_mode: per_metric    # per_metric=每个指标各存一份最优（默认）| single=仅第一指标
-
-  output:
-    dir: attacks/random/outputs
+override: {}                     # 需要临时覆盖攻击默认参数时填这里（Deep Merge 生效）

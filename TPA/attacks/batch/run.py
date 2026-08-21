@@ -21,6 +21,7 @@ if __name__ == "__main__":
         _cleanup_staging, ensure_classify_cache, run_atomic, run_batch,
         staging_dir)
     from attacks.batch.utils import group_name, public_rec_freq_path
+    from training.config_utils import resolve_k
     from training.run_tag import resolve_run_tag
     from training.timing import section_enter, section_exit
 
@@ -40,7 +41,7 @@ if __name__ == "__main__":
     out_root = PROJECT_ROOT / Path(cfg.get("output", {}).get(
         "dir", "attacks/batch/output")) / batch_tag
     configs_dir, runs_root = out_root / "configs", out_root / "runs"
-    k = cfg.get("evaluation", {}).get("k", 10)
+    k = resolve_k(cfg)
     base = build_atomic_base(cfg)
     group = group_name(base)
 

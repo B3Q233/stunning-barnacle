@@ -112,6 +112,9 @@ attacks/batch/output/{batch_tag}/
 优先级从高到低：Generator 运行时字段（`target_items` / `run_tag` / `output.dir`）>
 `override` > Batch 配置 > 攻击默认配置（`attacks/{attack}/config.yaml`）。
 
+批跑配置**只写与攻击默认不同的项**（P3 差异），相同项由 P4 继承，避免同义配置重复维护；
+临时覆盖用 `override` 段（Deep Merge 生效）。
+
 ### 统一评估 K
 
 `k` 只需在**最外层定义一次**（如批跑配置顶层的 `k: 10`），
