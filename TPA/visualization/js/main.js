@@ -173,6 +173,7 @@
         applyFileToCard(card, file, await readFile(file));
       } catch (e) {
         errors.push(`${file.name}: ${e.message}`);
+        console.error('[visualizer] 导入失败:', file.name, e);
       }
     }
     buildOptions(card);
@@ -189,6 +190,7 @@
         applyFileToCard(card, file, await readFile(file));
       } catch (e) {
         errors.push(`${file.name}: ${e.message}`);
+        console.error('[visualizer] 导入失败:', file.name, e);
       }
     }
     buildOptions(card);
@@ -582,8 +584,11 @@
     });
     $('export-json').addEventListener('click', exportJson);
     showMessage('点击「＋ 添加实验卡」开始');
+    console.log('[visualizer] v1.2（Schema Registry + 设计器已加载）');
   }
 
   global.TPAVisualizer = global.TPAVisualizer || {};
-  global.TPAVisualizer.app = { initApp, addCard, exportJson };
+  global.TPAVisualizer.app = {
+    initApp, addCard, exportJson, applyFileToCard,
+  };
 })(window);
