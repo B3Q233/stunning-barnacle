@@ -142,7 +142,7 @@ def train_wmf_from_meta(cfg: TrainingConfig, meta: Dict[str, Any],
             res, target_details = build_attack_eval_metrics(
                 scores, users, user_items, test_pos_local,
                 clean_user_items or {}, targets or [], ks,
-                list(tracker.directions),
+                list(tracker.directions), device=model._device,
             )
             entry.update(res)
             if target_details:

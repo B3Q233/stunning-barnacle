@@ -208,4 +208,4 @@ def compute_clean_baseline(cfg: Dict[str, Any], k: int) -> Dict[str, float]:
     return compute_metrics(
         scores, meta["user_items"], test_pos, k=k,
         mask_indices=(rows, cols),
-        topk_device=getattr(model._device, "type", "cpu"))
+        topk_device=model._device)

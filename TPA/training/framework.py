@@ -68,7 +68,7 @@ class TrainableModel(nn.Module,ABC):
 
         # 核心逻辑：智能选择设备
         requested_device = config.device.lower()
-        if requested_device == "cuda" and not torch.cuda.is_available():
+        if requested_device.startswith("cuda") and not torch.cuda.is_available():
             print("⚠️ [警告] 环境不支持 CUDA，已自动切换到 CPU。")
             self._device = torch.device("cpu")
         else:

@@ -78,7 +78,7 @@ models\wmf\outputs\rank_cdf.png   # 论文 Fig.2 对应物：观看节目秩累�
 | model | `init_std` | 0.01 | 初始化标准差；>0 |
 | training | `lambda_reg` | 0.01 | L2 正则 λ；论文未给（recpack/implicit 默认），≥0 |
 | training | `epochs` | 15 | ALS 交替轮数；论文约 10 轮收敛，加多不一定更好 |
-| training | `device` | cpu | `cpu` / `cuda`；ALS 为 CPU 线性代数，GPU 收益有限 |
+| training | `device` | cpu | `cpu` / `cuda` / `cuda:0..N`；ALS 为 CPU 线性代数，GPU 收益有限 |
 | training | `save_every_n_epochs` | 5 | checkpoint 保存间隔 |
 | training | `num_workers` | 0 | DataLoader 子进程数；单批全量矩阵 worker 无收益 |
 | training | `persistent_workers` | false | 跨 epoch 复用 worker（需 num_workers>0） |

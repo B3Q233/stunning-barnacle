@@ -71,7 +71,8 @@ def ranking_scores(model, test_pairs: List[Tuple[int, int]],
 def compute_target_metrics(scores: torch.Tensor, user_ids: List[int],
                            clean_user_items: Dict[int, set],
                            target_items: List[int], k: int,
-                           chunk_size: int = 1024) -> Dict[int, Dict[str, Any]]:
+                           chunk_size: int = 1024,
+                           device=None) -> Dict[int, Dict[str, Any]]:
     """目标物品的攻击效果指标（HR@K / NDCG@K）。
 
     只统计"训练集中未交互过该目标物品"的合法用户（攻击的目标人群），
@@ -88,7 +89,9 @@ def compute_target_metrics(scores: torch.Tensor, user_ids: List[int],
     # 显存安全：分数先回 CPU，避免 GPU 上整矩阵 topk/argsort 分配数 GB
     if scores.is_cuda:
         scores = scores.cpu()
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device is None:
+        device = scores.device if scores.is_cuda else (
+            "cuda:0" if torch.cuda.is_available() else "cpu")
     out: Dict[int, Dict[str, Any]] = {}
     if not target_items:
         return out
@@ -177,7 +180,8 @@ def build_attack_eval_metrics(scores: torch.Tensor, user_ids: List[int],
                               test_pos: Dict[int, set],
                               clean_user_items: Dict[int, set],
                               targets: List[int], ks: List[int],
-                              metric_names: List[str]
+                              metric_names: List[str],
+                              device=None
                               ) -> Tuple[Dict[str, float], Dict[int, Dict[str, Any]]]:
     """训练中单次评估：整体指标 + （可选）目标指标，与配置指标名对齐。
 
@@ -190,18 +194,21 @@ def build_attack_eval_metrics(scores: torch.Tensor, user_ids: List[int],
       target_details 为最大 K 下的 {target: {...}} 明细（写入 history）。
     """
     target_by_k: Dict[int, Dict[int, Dict[str, Any]]] = {}
+    if device is None:
+        device = scores.device if scores.is_cuda else (
+            "cuda:0" if torch.cuda.is_available() else "cpu")
+
     if any(name.startswith("target_") for name in metric_names):
         for K in ks:
             target_by_k[K] = compute_target_metrics(
-                scores, user_ids, clean_user_items, targets, K)
+                scores, user_ids, clean_user_items, targets, K, device=device)
 
     # 快速路径：掩码索引预计算 + GPU 分块 topk（大矩阵 CPU topk 慢 ~9 倍）
     mask_indices = None
-    topk_device = None
+    topk_device = device if (str(device).startswith("cuda")
+                             and torch.cuda.is_available()) else None
     if not scores.is_cuda:
         mask_indices = build_train_mask_indices(user_items, user_ids)
-        if torch.cuda.is_available():
-            topk_device = "cuda"
     res_by_k: Dict[int, Dict[str, float]] = {
         K: compute_metrics(scores, user_items, test_pos, k=K,
                            mask_indices=mask_indices,
@@ -232,10 +239,12 @@ def compare_models(clean_model, poisoned_model, clean_meta: Dict[str, Any],
         clean_util = poisoned_util = None
 
     # 攻击效果（统一用干净训练集过滤目标人群）
-    clean_att = compute_target_metrics(scores_c, users_c, clean_meta["user_items"],
-                                       target_items, k)
-    poisoned_att = compute_target_metrics(scores_p, users_p, clean_meta["user_items"],
-                                          target_items, k)
+    clean_att = compute_target_metrics(
+        scores_c, users_c, clean_meta["user_items"], target_items, k,
+        device=clean_model._device)
+    poisoned_att = compute_target_metrics(
+        scores_p, users_p, clean_meta["user_items"], target_items, k,
+        device=poisoned_model._device)
 
     return {
         "k": k,

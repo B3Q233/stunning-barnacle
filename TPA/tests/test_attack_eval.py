@@ -133,6 +133,26 @@ class AggregateTargetMetricsTest(unittest.TestCase):
 
 
 class BuildAttackEvalMetricsTest(unittest.TestCase):
+
+    def test_device_kwarg_accepted(self):
+        scores = make_scores([
+            [5.0, 4.0, 3.0, 2.0, 1.0],
+            [1.0, 2.0, 3.0, 4.0, 5.0],
+        ])
+        user_ids = [0, 1]
+        user_items = {0: {1}, 1: {3}}
+        test_pos = {0: {2}, 1: {0}}
+        metrics_cfg = [
+            {"target_ndcg@3": "upper"}, {"target_hr@3": "upper"},
+            {"recall@3": "upper"}, {"ndcg@3": "upper"},
+        ]
+        a, _ = build_attack_eval_metrics(
+            scores, user_ids, user_items, test_pos,
+            clean_user_items={}, targets=[2], ks=[3],
+            metric_names=["target_ndcg@3", "target_hr@3",
+                          "recall@3", "ndcg@3"],
+            device="cpu")
+        self.assertIn("recall@3", a)
     """与 ComputeTargetMetricsTest 同夹具；整体指标按测试计划手算。"""
 
     SCORES = make_scores([

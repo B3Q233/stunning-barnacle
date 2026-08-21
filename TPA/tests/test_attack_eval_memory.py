@@ -43,6 +43,17 @@ class RankingScoresTest(unittest.TestCase):
 
 class ComputeTargetMetricsChunkTest(unittest.TestCase):
 
+    def test_device_kwarg_accepts_cpu(self):
+        torch.manual_seed(3)
+        scores = torch.randn(5, 7)
+        user_ids = list(range(5))
+        clean = {1: {2}}
+        a = compute_target_metrics(
+            scores, user_ids, clean, [2, 5], k=3, device="cpu")
+        b = compute_target_metrics(
+            scores, user_ids, clean, [2, 5], k=3)
+        self.assertEqual(a, b)
+
     def test_chunked_equals_unchunked(self):
         torch.manual_seed(1)
         scores = torch.randn(6, 8)
