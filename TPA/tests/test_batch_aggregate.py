@@ -19,6 +19,11 @@ def _make_run(root, group, tier, item, best):
         encoding="utf-8")
 
 
+def _best_entry(value):
+    """BestTracker.best_results() 的真实条目格式。"""
+    return {"epoch": 1, "value": value, "metrics": {}, "checkpoint": "x.pt"}
+
+
 class AggregateTest(unittest.TestCase):
 
     def test_scan_and_rows(self):
@@ -27,14 +32,20 @@ class AggregateTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _make_run(root, group, "cold", 251,
-                      {"target_hr@10": 0.5, "target_ndcg@10": 0.4,
-                       "recall@10": 0.3, "ndcg@10": 0.2})
+                      {"target_hr@10": _best_entry(0.5),
+                       "target_ndcg@10": _best_entry(0.4),
+                       "recall@10": _best_entry(0.3),
+                       "ndcg@10": _best_entry(0.2)})
             _make_run(root, group, "cold", 987,
-                      {"target_hr@10": 0.7, "target_ndcg@10": 0.6,
-                       "recall@10": 0.31, "ndcg@10": 0.21})
+                      {"target_hr@10": _best_entry(0.7),
+                       "target_ndcg@10": _best_entry(0.6),
+                       "recall@10": _best_entry(0.31),
+                       "ndcg@10": _best_entry(0.21)})
             _make_run(root, group, "popular", 32,
-                      {"target_hr@10": 0.2, "target_ndcg@10": 0.18,
-                       "recall@10": 0.32, "ndcg@10": 0.22})
+                      {"target_hr@10": _best_entry(0.2),
+                       "target_ndcg@10": _best_entry(0.18),
+                       "recall@10": _best_entry(0.32),
+                       "ndcg@10": _best_entry(0.22)})
             self.assertEqual(len(scan_runs(root, group)), 3)
             rows = build_results_rows(root, group, cfg, 10)
             self.assertEqual(len(rows), 3)

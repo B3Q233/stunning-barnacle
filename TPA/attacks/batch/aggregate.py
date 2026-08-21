@@ -25,6 +25,15 @@ def load_best_metrics(run_dir: Path) -> Optional[Dict[str, Any]]:
     return data.get("best")
 
 
+def _metric_value(best: Dict[str, Any], key: str):
+    """BestTracker 格式为 {指标: {epoch, value, metrics, checkpoint}}，
+    提取 value；兼容旧式扁平 {指标: 数值}。"""
+    entry = best.get(key)
+    if isinstance(entry, dict) and "value" in entry:
+        return entry["value"]
+    return entry
+
+
 def scan_runs(runs_root: Path, group: str) -> List[Tuple[str, int, Dict[str, Any]]]:
     """扫描分层 runs 目录，返回 [(tier, item_id, best_metrics), ...]。"""
     base = runs_root / group
@@ -57,7 +66,7 @@ def build_results_rows(runs_root: Path, group: str, cfg: Dict[str, Any],
         }
         for key in (f"target_hr@{k}", f"target_ndcg@{k}",
                     f"recall@{k}", f"ndcg@{k}"):
-            row[key] = best.get(key)
+            row[key] = _metric_value(best, key)
         rows.append(row)
     return rows
 
@@ -145,8 +154,10 @@ def compute_clean_baseline(cfg: Dict[str, Any], k: int) -> Dict[str, float]:
         Path(str(gen_mod.DEFAULT_RAW_META).format(dataset=dataset)))
     base = build_atomic_base(cfg)
     train_cfg = fit_mod.build_training_config(base, dataset, model_name)
+    edge_index = torch.LongTensor(
+        [[u, i] for u, i in meta["train_pairs"]]).T
     model = reg_mod.get_model_cls(model_name)(
-        train_cfg, meta["num_users"], meta["num_items"], None)
+        train_cfg, meta["num_users"], meta["num_items"], edge_index)
     ckpt = resolve_from_root(cfg["classification"]["checkpoint"], PROJECT_ROOT)
     model.load_state_dict(torch.load(
         ckpt, map_location=model._device, weights_only=True)["model_state_dict"])

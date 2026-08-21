@@ -126,12 +126,14 @@ def run_batch(cfg, batch_tag, out_root, cache,
             logger.info("run %s", atomic["run_tag"])
             run_atomic(atomic, "data")
             run_atomic(atomic, "model")
-            src = staging_dir(runs_root, atomic)
-            dst = runs_root / rel[:-len(".yaml")]
-            if src != dst and src.exists():
-                dst.parent.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(src), str(dst))
-            logger.info("done %s", atomic["run_tag"])
+        src = staging_dir(runs_root, atomic)
+        dst = runs_root / rel[:-len(".yaml")]
+        if src != dst and src.exists():
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            if dst.exists():
+                shutil.rmtree(str(dst))
+            shutil.move(str(src), str(dst))
+        logger.info("done %s", atomic["run_tag"])
     finally:
         logger.removeHandler(handler)
         handler.close()

@@ -1,8 +1,15 @@
 """批量投毒攻击编排 CLI。"""
+import sys
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]  # G:\Idea\TPA
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 if __name__ == "__main__":
     import argparse
     import shutil
-    from pathlib import Path
 
     import yaml
 
@@ -28,7 +35,7 @@ if __name__ == "__main__":
 
     cfg = load_batch_config(Path(args.config))
     batch_tag = args.batch_tag or resolve_run_tag(cfg)
-    out_root = Path(cfg.get("output", {}).get(
+    out_root = PROJECT_ROOT / Path(cfg.get("output", {}).get(
         "dir", "attacks/batch/output")) / batch_tag
     configs_dir, runs_root = out_root / "configs", out_root / "runs"
     k = cfg.get("evaluation", {}).get("k", 10)
@@ -53,6 +60,8 @@ if __name__ == "__main__":
             dst = runs_root / p.relative_to(configs_dir).with_suffix("")
             if src != dst and src.exists():
                 dst.parent.mkdir(parents=True, exist_ok=True)
+                if dst.exists():
+                    shutil.rmtree(str(dst))
                 shutil.move(str(src), str(dst))
     if args.mode in ("aggregate", "all") and not args.dry_run:
         rows = build_results_rows(runs_root, group, cfg, k)
