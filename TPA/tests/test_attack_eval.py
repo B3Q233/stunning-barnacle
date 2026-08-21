@@ -59,6 +59,21 @@ class ComputeTargetMetricsTest(unittest.TestCase):
         self.assertEqual(out[0]["hr@k"], 1.0)
         self.assertAlmostEqual(out[0]["ndcg@k"], 1.0)  # rank1：dcg=1，IDCG=1
 
+    def test_mean_rank_all_uses_strict_greater_count(self):
+        # rank = 严格高于目标分的候选数 + 1（论文 rank_ui 定义；并列不算高于）
+        scores = make_scores([
+            [5.0, 4.0, 3.0, 2.0, 9.0],   # target=4: >9 的有 0 个 → rank 1
+            [1.0, 8.0, 6.0, 7.0, 5.0],   # target=4: >5 的有 3 个 → rank 4
+        ])
+        out = compute_target_metrics(scores, [0, 1], {0: set(), 1: set()}, [4], 3)
+        self.assertAlmostEqual(out[4]["mean_rank_all"], 2.5)  # (1 + 4) / 2
+
+    def test_ties_not_counted_above(self):
+        # 并列值不算"严格高于"：target=0 与另一物品同分 → rank=1
+        scores = make_scores([[1.0, 1.0, 0.5]])
+        out = compute_target_metrics(scores, [0], {0: set()}, [0], 3)
+        self.assertEqual(out[0]["mean_rank_all"], 1.0)
+
 
 class AggregateTargetMetricsTest(unittest.TestCase):
     def test_single_target(self):

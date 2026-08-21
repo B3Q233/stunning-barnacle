@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 import torch
 
-from evaluation.metrics import compute_metrics
+from evaluation.metrics import build_train_mask_indices, compute_metrics
 from training.metrics import match_metric_values
 
 
@@ -81,13 +81,14 @@ def compute_target_metrics(scores: torch.Tensor, user_ids: List[int],
     - hr@k: 目标物品进入 Top-K 的用户比例（= 经典 Hit Rate @K）
     - ndcg@k: 单目标 NDCG（命中用户按排名位置折损，IDCG=1）
     - mean_rank: 命中用户的平均排名（未命中记 None；越小攻击越强）
-    - mean_rank_all: 全体合格用户的平均排名（不受 Top-K 截断，更灵敏）
+    - mean_rank_all: 全体合格用户的平均排名（= 严格高于目标分的候选数 + 1，
+      与论文 rank_ui 定义一致；不受 Top-K 截断，更灵敏）
     - n_elig: 合格用户数（聚合时跳过 n_elig == 0 的目标）
     """
     # 显存安全：分数先回 CPU，避免 GPU 上整矩阵 topk/argsort 分配数 GB
     if scores.is_cuda:
         scores = scores.cpu()
-    topk = torch.topk(scores, k, dim=1).indices  # (n_users, k)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     out: Dict[int, Dict[str, Any]] = {}
     for t in target_items:
         eligible = [
@@ -105,19 +106,24 @@ def compute_target_metrics(scores: torch.Tensor, user_ids: List[int],
         dcg = 0.0
         ranks: List[int] = []
         ranks_all_list: List[int] = []
-        # mean_rank_all 按块做 argsort，避免整矩阵一次性分配
+        # 分块：topk 在设备上做；rank_all 用"严格高于目标分的候选数 + 1"
+        # （论文 rank_ui 定义），避免逐行 argsort（大矩阵 O(n log n) 极慢）
         for start in range(0, n_elig, chunk_size):
             rows = eligible[start:start + chunk_size]
-            order = torch.argsort(scores[rows], dim=1, descending=True)
+            chunk = scores[rows].to(device)
+            topk = torch.topk(chunk, k, dim=1).indices
+            target_col = chunk[:, t]
+            rank_all = (chunk > target_col.unsqueeze(1)).sum(dim=1) + 1
+            topk = topk.cpu()
+            rank_all = rank_all.cpu()
             for j, r in enumerate(rows):
-                pos = (topk[r] == t).nonzero(as_tuple=False)
+                pos = (topk[j] == t).nonzero(as_tuple=False)
                 if pos.numel():
                     rank = int(pos.item()) + 1
                     hits += 1
                     dcg += 1.0 / np.log2(rank + 1)
                     ranks.append(rank)
-                pos_all = (order[j] == t).nonzero(as_tuple=False)
-                ranks_all_list.append(int(pos_all.item()) + 1)
+                ranks_all_list.append(int(rank_all[j].item()))
 
         out[t] = {
             "hr@k": hits / n_elig,
@@ -175,8 +181,18 @@ def build_attack_eval_metrics(scores: torch.Tensor, user_ids: List[int],
             target_by_k[K] = compute_target_metrics(
                 scores, user_ids, clean_user_items, targets, K)
 
+    # 快速路径：掩码索引预计算 + GPU 分块 topk（大矩阵 CPU topk 慢 ~9 倍）
+    mask_indices = None
+    topk_device = None
+    if not scores.is_cuda:
+        mask_indices = build_train_mask_indices(user_items, user_ids)
+        if torch.cuda.is_available():
+            topk_device = "cuda"
     res_by_k: Dict[int, Dict[str, float]] = {
-        K: compute_metrics(scores, user_items, test_pos, k=K) for K in ks
+        K: compute_metrics(scores, user_items, test_pos, k=K,
+                           mask_indices=mask_indices,
+                           topk_device=topk_device)
+        for K in ks
     }
     for K in ks:
         if K in target_by_k:

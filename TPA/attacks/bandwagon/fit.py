@@ -97,7 +97,7 @@ def build_training_config(config: Dict[str, Any], dataset: str,
     # 攻击配置的 training 段覆盖模型默认值
     tr = config.get("training", {})
     for key in ("lr", "epochs", "batch_size", "weight_decay", "neg_ratio",
-                "device", "k", "eval_every"):
+                "device", "k", "eval_every", "num_workers", "persistent_workers"):
         if key in tr:
             overrides[key] = tr[key]
     # 显式模型 overrides 最后生效
@@ -205,10 +205,14 @@ def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
                            mode="train", neg_ratio=neg_ratio)
     val_ds = dataset_cls(val_pairs, num_items, user_items, num_users,
                          mode="train", neg_ratio=neg_ratio)
+    num_workers = int(cfg.get("num_workers", 0))
+    persistent = num_workers > 0 and bool(cfg.get("persistent_workers", False))
     train_loader = DataLoader(train_ds, batch_size=cfg.batch_size, shuffle=True,
-                              num_workers=0, pin_memory=True)
+                              num_workers=num_workers,
+                              persistent_workers=persistent, pin_memory=True)
     val_loader = DataLoader(val_ds, batch_size=cfg.batch_size, shuffle=False,
-                            num_workers=0, pin_memory=True)
+                            num_workers=num_workers,
+                            persistent_workers=persistent, pin_memory=True)
 
     test_pos: Dict[int, set] = {}
     for u, i in poisoned_meta["test_pairs"]:
