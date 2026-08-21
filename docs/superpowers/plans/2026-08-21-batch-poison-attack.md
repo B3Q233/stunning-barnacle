@@ -1,10 +1,10 @@
-# 批量投毒攻击系统（v1 优化版）实施计划
+# 批量投毒攻击系统（v1 最终版）实施计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: 本会话按 multi_agent_mode 不启用子代理，采用 inline 执行（executing-plans），每个任务结束跑测试并提交。
 
-**Goal:** 按用户优化方案实现 `TPA/attacks/batch/` 批跑系统：`experiment+batch` 批跑配置 → 分层采样生成原子配置（分层目录命名）→ 公共分类缓存 → 逐个训练 → results.csv + summary.md + meta.json 整合，先以 ml100k + bandwagon mini 实验跑通。
+**Goal:** 按 v1.0 Design Freeze 实现 `TPA/attacks/batch/` 批跑系统：插件化 Attack Registry + 四层 Deep Merge 配置继承 + 分层采样生成原子配置（分层目录）→ 公共分类缓存 → 逐个训练 → results.csv/summary.md/meta.json/logs 整合，先以 ml100k + bandwagon mini 实验跑通。
 
-**Architecture:** 纯新增，不改任何现有攻击代码。`utils.py`（路径/命名/JSON）+ `generator.py`（采样与原子配置）+ `runner.py`（公共缓存、调度、目录整理）+ `aggregate.py`（整合）+ `run.py`（CLI）。原子配置 `run_tag={batch_tag}-{tier}-item{id}` 保持攻击管线数据隔离；fit 产物从 staging 移动到分层目录。
+**Architecture:** 纯新增，不改任何现有攻击代码。`utils.py`（deep_merge/路径/JSON）+ `registry.py`（AttackSpec 插件注册，内置注册四个攻击）+ `generator.py`（四层合并 + 采样 + 原子配置）+ `runner.py`（registry 调度 + 公共缓存 + 目录整理 + 日志）+ `aggregate.py`（整合）+ `run.py`（CLI）。
 
 **Tech Stack:** Python 3.12 / PyTorch 2.5 / stdlib unittest / PyYAML
 
@@ -15,19 +15,20 @@
 - 只用 `git add` 加明确路径，禁止 `git add -A` / `git add -f`。
 - **不修改**任何 `attacks/{bandwagon,pgd,random,tpa}/*` 与 `models/*` 代码；仅新增 `attacks/batch/`、`TPA/tests/` 与 `.gitignore` 一行。
 - 单测全部 CPU 可跑、不训练真实模型（用 fixture）；实验产物（output/、cache/、data/poisoned/、*.pt）不入库。
-- 分层命名固定：层 = `popular | normal | cold`；攻击侧分类缓存的 `ordinary` 在归一化时映射为 `normal`。
+- 配置合并：Deep Merge 嵌套 dict 递归、list/标量覆盖、不改入参；优先级 P1 运行时 > P2 override > P3 Batch > P4 攻击默认。
+- 分层命名固定：`popular | normal | cold`；攻击侧分类缓存 `ordinary` 在归一化时映射为 `normal`。
 
 ---
 
-### Task 1: batch 骨架 + utils.py + 配置校验
+### Task 1: 骨架 + utils（deep_merge）+ Registry + 配置校验
 
 **Files:**
-- Create: `TPA/attacks/batch/__init__.py`、`TPA/attacks/batch/utils.py`、`TPA/attacks/batch/generator.py`
+- Create: `TPA/attacks/batch/__init__.py`、`TPA/attacks/batch/utils.py`、`TPA/attacks/batch/registry.py`、`TPA/attacks/batch/generator.py`
 - Modify: `G:\Idea\.gitignore`（追加一行）
-- Test: `TPA/tests/test_batch_config.py`
+- Test: `TPA/tests/test_batch_config.py`、`TPA/tests/test_batch_registry.py`
 
 **Interfaces:**
-- Produces: `utils.flatten_experiment(cfg) -> dict`；`utils.group_name(cfg) -> str`；`utils.resolution_k(cfg) -> int`；`utils.read_json/write_json`；`utils.public_cache_dir(cfg)/public_rec_freq_path(cfg) -> Path`；`generator.validate_batch_config(cfg)`；`generator.load_batch_config(path) -> dict`。
+- Produces: `utils.deep_merge(base, overlay) -> dict`；`utils.flatten_experiment(cfg)`；`utils.group_name(cfg)`；`utils.resolution_k(cfg)`；`utils.read_json/write_json`；`utils.public_cache_dir/public_rec_freq_path`；`registry.AttackSpec`；`registry.register/get/registered_names`；`generator.validate_batch_config/load_batch_config`。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -41,25 +42,22 @@ import unittest
 from pathlib import Path
 
 from attacks.batch.generator import load_batch_config, validate_batch_config
-from attacks.batch.utils import flatten_experiment, group_name, public_rec_freq_path
+from attacks.batch.utils import deep_merge, flatten_experiment, group_name
 
 
 def _base_cfg():
     return {
-        "experiment": {"dataset": "ml100k", "mode": "all", "seed": 42},
+        "attack": {"name": "bandwagon"},
+        "experiment": {"dataset": "ml100k", "seed": 42},
         "model": {"name": "lightgcn", "overrides": {}},
         "classification": {"k": 10, "popular_ratio": 0.2,
                            "checkpoint": "models/lightgcn/checkpoints/best.pt"},
-        "attack": {"name": "bandwagon", "ratio": 0.03, "filler_size": 20,
-                   "target_items": {"strategy": "specified", "ids": []}},
         "warm_start": {"enabled": True,
                        "checkpoint": "models/lightgcn/checkpoints/best.pt"},
-        "training": {"epochs": 5, "batch_size": 256, "lr": 0.001,
-                     "weight_decay": 0.0001, "neg_ratio": 1, "device": "cpu"},
-        "evaluation": {"k": 10, "report_model_utility": True},
-        "output": {"dir": "attacks/batch/output"},
+        "training": {"epochs": 5, "device": "cpu"},
         "batch": {"tiers": ["popular", "normal", "cold"], "per_tier": 3,
                   "strategy": "random", "seed": 42},
+        "override": {},
     }
 
 
@@ -112,19 +110,61 @@ class UtilsTest(unittest.TestCase):
     def test_flatten_experiment(self):
         flat = flatten_experiment(_base_cfg())
         self.assertEqual(flat["dataset"], "ml100k")
-        self.assertEqual(flat["mode"], "all")
+        self.assertEqual(flat["seed"], 42)
         self.assertNotIn("experiment", flat)
         self.assertNotIn("batch", flat)
 
-    def test_public_cache_path(self):
-        p = public_rec_freq_path(_base_cfg())
-        self.assertTrue(p.as_posix().endswith(
-            "attacks/batch/cache/classification/ml100k/lightgcn/top10/rec_freq.json"))
+    def test_deep_merge_nested_and_priority(self):
+        attack_default = {"attack": {"ratio": 0.03, "filler_size": 20},
+                          "training": {"epochs": 30}}
+        batch = {"training": {"epochs": 10}}
+        override = {"attack": {"filler_size": 40}}
+        merged = deep_merge(deep_merge(attack_default, batch), override)
+        self.assertEqual(merged, {
+            "attack": {"ratio": 0.03, "filler_size": 40},
+            "training": {"epochs": 10},
+        })
+        self.assertEqual(attack_default["training"]["epochs"], 30)
+```
+
+`TPA/tests/test_batch_registry.py`：
+
+```python
+"""Attack Registry 插件注册单测（CPU）。"""
+import unittest
+
+from attacks.batch import registry
+
+
+class RegistryTest(unittest.TestCase):
+
+    def test_builtin_attacks_registered(self):
+        names = registry.registered_names()
+        for name in ("bandwagon", "random", "pgd", "tpa"):
+            self.assertIn(name, names)
+
+    def test_get_returns_spec(self):
+        spec = registry.get("bandwagon")
+        self.assertEqual(spec.name, "bandwagon")
+        self.assertTrue(spec.config_path.endswith(
+            "attacks/bandwagon/config.yaml"))
+        self.assertTrue(callable(spec.classify))
+        self.assertTrue(callable(spec.generate))
+        self.assertTrue(callable(spec.fit))
+
+    def test_unknown_raises(self):
+        with self.assertRaises(KeyError):
+            registry.get("not_exist")
+
+    def test_duplicate_register_raises(self):
+        with self.assertRaises(ValueError):
+            registry.register("bandwagon", "x.yaml",
+                              lambda: None, lambda: None, lambda: None)
 ```
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run（在 `G:\Idea\TPA`）：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_config -v`
+Run（在 `G:\Idea\TPA`）：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_config tests.test_batch_registry -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'attacks.batch.utils'`。
 
 - [ ] **Step 3: 最小实现**
@@ -132,9 +172,10 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'attacks.batch.utils'`
 `TPA/attacks/batch/__init__.py`（空）。`TPA/attacks/batch/utils.py`：
 
 ```python
-"""Batch 公共工具：路径/命名/JSON。"""
+"""Batch 公共工具：deep_merge / 路径 / 命名 / JSON。"""
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 from typing import Any, Dict
@@ -143,20 +184,29 @@ from typing import Any, Dict
 PROJECT_ROOT = Path(__file__).resolve().parents[2]  # G:\Idea\TPA
 
 
+def deep_merge(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
+    """递归合并：嵌套 dict 深合并，list/标量整体覆盖；不修改入参。"""
+    out = dict(base)
+    for key, value in overlay.items():
+        if key in out and isinstance(out[key], dict) and isinstance(value, dict):
+            out[key] = deep_merge(out[key], value)
+        else:
+            out[key] = copy.deepcopy(value)
+    return out
+
+
 def resolution_k(cfg: Dict[str, Any]) -> int:
     return int(cfg.get("classification", {}).get("k")
                or cfg.get("training", {}).get("k") or 20)
 
 
 def group_name(cfg: Dict[str, Any]) -> str:
-    attack = cfg["attack"]["name"]
-    dataset = cfg["experiment"]["dataset"]
-    model = cfg["model"]["name"]
-    return f"{attack}_{dataset}_{model}_top{resolution_k(cfg)}"
+    return (f"{cfg['attack']['name']}_{cfg['experiment']['dataset']}_"
+            f"{cfg['model']['name']}_top{resolution_k(cfg)}")
 
 
 def flatten_experiment(cfg: Dict[str, Any]) -> Dict[str, Any]:
-    """原子配置：展开 experiment.* 到顶层，删除 batch 段。"""
+    """把 experiment.* 展开到顶层，删除 batch 段（override 由生成器另行处理）。"""
     out = dict(cfg)
     out.update(out.pop("experiment"))
     out.pop("batch", None)
@@ -174,21 +224,75 @@ def write_json(obj: Dict[str, Any], path: Path) -> None:
 
 
 def public_cache_dir(cfg: Dict[str, Any]) -> Path:
-    dataset = cfg["experiment"]["dataset"]
-    model = cfg["model"]["name"]
-    k = resolution_k(cfg)
     return (PROJECT_ROOT / "attacks" / "batch" / "cache" / "classification"
-            / dataset / model / f"top{k}")
+            / cfg["experiment"]["dataset"] / cfg["model"]["name"]
+            / f"top{resolution_k(cfg)}")
 
 
 def public_rec_freq_path(cfg: Dict[str, Any]) -> Path:
     return public_cache_dir(cfg) / "rec_freq.json"
 ```
 
-`TPA/attacks/batch/generator.py`（本任务只写配置校验与加载）：
+`TPA/attacks/batch/registry.py`：
 
 ```python
-"""批量投毒攻击：分层采样 + 原子配置生成。"""
+"""Batch 攻击插件注册器（Plugin Registry）。"""
+from __future__ import annotations
+
+import importlib
+from dataclasses import dataclass
+from typing import Callable, Dict, List
+
+
+@dataclass(frozen=True)
+class AttackSpec:
+    name: str
+    config_path: str
+    classify: Callable
+    generate: Callable
+    fit: Callable
+
+
+_REGISTRY: Dict[str, AttackSpec] = {}
+
+
+def register(name: str, config_path: str, classify: Callable,
+             generate: Callable, fit: Callable) -> None:
+    if name in _REGISTRY:
+        raise ValueError(f"攻击 {name} 已注册")
+    _REGISTRY[name] = AttackSpec(
+        name=name, config_path=config_path,
+        classify=classify, generate=generate, fit=fit)
+
+
+def get(name: str) -> AttackSpec:
+    if name not in _REGISTRY:
+        raise KeyError(f"未注册的攻击 {name!r}，可用：{sorted(_REGISTRY)}")
+    return _REGISTRY[name]
+
+
+def registered_names() -> List[str]:
+    return sorted(_REGISTRY)
+
+
+def _register_builtin() -> None:
+    for name in ("bandwagon", "random", "pgd", "tpa"):
+        register(
+            name,
+            f"attacks/{name}/config.yaml",
+            classify=importlib.import_module(f"attacks.{name}.classify").main,
+            generate=importlib.import_module(f"attacks.{name}.generate").main,
+            fit=importlib.import_module(f"attacks.{name}.fit").main,
+        )
+
+
+_register_builtin()
+```
+
+`TPA/attacks/batch/generator.py`（本任务只写校验与加载）：
+
+```python
+"""批量投毒攻击：配置生成（四层 Deep Merge + 分层采样）。"""
 from __future__ import annotations
 
 import sys
@@ -239,34 +343,64 @@ def load_batch_config(path: Path) -> Dict[str, Any]:
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_config -v`
-Expected: `OK`（9 个用例）。
+Run：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_config tests.test_batch_registry -v`
+Expected: `OK`（9 + 4 个用例）。
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add .gitignore TPA/attacks/batch/__init__.py TPA/attacks/batch/utils.py TPA/attacks/batch/generator.py TPA/tests/test_batch_config.py
-git commit -m "feat(attacks): Batch 公共工具与批跑配置校验（v1）"
+git add .gitignore TPA/attacks/batch/__init__.py TPA/attacks/batch/utils.py TPA/attacks/batch/registry.py TPA/attacks/batch/generator.py TPA/tests/test_batch_config.py TPA/tests/test_batch_registry.py
+git commit -m "feat(attacks): Batch 公共工具、插件 Registry 与配置校验"
 ```
 
 ---
 
-### Task 2: Generator（分层采样 + 原子配置生成 + yaml 写出）
+### Task 2: Generator（四层合并 + 分层采样 + 原子配置）
 
 **Files:**
 - Modify: `TPA/attacks/batch/generator.py`
-- Test: `TPA/tests/test_batch_generator.py`
+- Test: `TPA/tests/test_batch_merge.py`、`TPA/tests/test_batch_generator.py`
 
 **Interfaces:**
-- Consumes: Task 1 `utils.group_name` / `utils.flatten_experiment` / `utils.resolution_k`。
-- Produces: `sample_targets(categories, tiers, per_tier, strategy, seed) -> Dict[str, List[int]]`；`atomic_run_tag(cfg, tier, item_id, batch_tag) -> str`；`build_atomic_config(cfg, item_id, tier, batch_tag) -> dict`；`config_rel_path(cfg, tier, item_id) -> str`；`generate_configs(cfg, categories, batch_tag) -> List[Tuple[str, dict]]`；`write_configs(entries, configs_dir) -> List[Path]`。
+- Consumes: Task 1 `utils.deep_merge/flatten_experiment/group_name/resolution_k`、`registry.get`。
+- Produces: `load_attack_default(cfg) -> dict`；`build_atomic_base(cfg) -> dict`；`sample_targets(categories, tiers, per_tier, strategy, seed) -> Dict[str, List[int]]`；`atomic_run_tag(cfg, tier, item_id, batch_tag)`；`build_atomic_config(cfg, item_id, tier, batch_tag) -> dict`；`config_rel_path(cfg, tier, item_id) -> str`；`generate_configs(cfg, categories, batch_tag) -> List[Tuple[str, dict]]`；`write_configs(entries, configs_dir) -> List[Path]`。
 
 - [ ] **Step 1: 写失败测试**
+
+`TPA/tests/test_batch_merge.py`：
+
+```python
+"""Deep Merge 配置继承单测（CPU）。"""
+import unittest
+
+from attacks.batch.utils import deep_merge
+
+
+class DeepMergeTest(unittest.TestCase):
+
+    def test_nested_dict_merge(self):
+        out = deep_merge(
+            {"attack": {"ratio": 0.03, "filler_size": 20},
+             "training": {"epochs": 30}},
+            {"training": {"epochs": 10}})
+        self.assertEqual(out["training"]["epochs"], 10)
+        self.assertEqual(out["attack"]["ratio"], 0.03)
+
+    def test_scalar_and_list_overwrite(self):
+        out = deep_merge({"a": 1, "b": [1, 2], "c": {"x": 1}},
+                         {"b": [3], "c": 5})
+        self.assertEqual(out, {"a": 1, "b": [3], "c": 5})
+
+    def test_inputs_not_mutated(self):
+        base = {"a": {"x": 1}}
+        deep_merge(base, {"a": {"y": 2}})
+        self.assertEqual(base, {"a": {"x": 1}})
+```
 
 `TPA/tests/test_batch_generator.py`：
 
 ```python
-"""Generator：分层采样与原子配置生成单测（CPU）。"""
+"""Generator：分层采样 + 四层合并原子配置单测（CPU）。"""
 import tempfile
 import unittest
 from pathlib import Path
@@ -302,8 +436,8 @@ class SampleTargetsTest(unittest.TestCase):
         self.assertEqual(len(a["cold"]), 2)
 
     def test_first_takes_head(self):
-        categories = {"cold": [20, 21, 22]}
-        out = sample_targets(categories, ["cold"], 2, "first", 42)
+        out = sample_targets({"cold": [20, 21, 22]}, ["cold"], 2,
+                             "first", 42)
         self.assertEqual(out["cold"], [20, 21])
 
     def test_empty_tier_skipped(self):
@@ -313,17 +447,22 @@ class SampleTargetsTest(unittest.TestCase):
 
 class AtomicConfigTest(unittest.TestCase):
 
-    def test_atomic_config(self):
+    def test_merged_atomic_config(self):
         cfg = _base_cfg()
+        cfg["override"] = {"attack": {"filler_size": 40}}
         atomic = build_atomic_config(cfg, 251, "cold", "2026-08-21-15-30")
-        self.assertEqual(atomic["run_tag"], "2026-08-21-15-30-cold-item251")
+        self.assertEqual(atomic["attack"]["ratio"], 0.03)       # P4 默认
+        self.assertEqual(atomic["attack"]["filler_size"], 40)   # P2 override
+        self.assertEqual(atomic["training"]["epochs"], 5)       # P3 batch
         self.assertEqual(atomic["attack"]["target_items"],
                          {"strategy": "specified", "ids": [251]})
+        self.assertEqual(atomic["run_tag"], "2026-08-21-15-30-cold-item251")
+        self.assertEqual(atomic["output"]["dir"],
+                         "attacks/batch/output/2026-08-21-15-30/runs")
         self.assertEqual(atomic["dataset"], "ml100k")
         self.assertNotIn("experiment", atomic)
         self.assertNotIn("batch", atomic)
-        self.assertEqual(atomic["output"]["dir"],
-                         "attacks/batch/output/2026-08-21-15-30/runs")
+        self.assertNotIn("override", atomic)
 
     def test_run_tag_and_rel_path(self):
         cfg = _base_cfg()
@@ -355,22 +494,40 @@ class GenerateAndWriteTest(unittest.TestCase):
             content = yaml.safe_load((Path(tmp) / rel).read_text(encoding="utf-8"))
             self.assertEqual(content["attack"]["target_items"]["ids"], [9])
             self.assertNotIn("batch", content)
+            self.assertNotIn("override", content)
 ```
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_generator -v`
+Run：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_merge tests.test_batch_generator -v`
 Expected: FAIL with `ImportError: cannot import name 'sample_targets'`。
 
 - [ ] **Step 3: 最小实现（追加到 generator.py）**
 
 ```python
-import copy
 import random
 from typing import List, Tuple
 
-from attacks.batch.utils import flatten_experiment, group_name, resolution_k
+from attacks.batch.registry import get as get_attack
+from attacks.batch.utils import (
+    deep_merge, flatten_experiment, group_name)
 from training.run_tag import sanitize_run_tag
+
+
+def load_attack_default(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    import yaml
+    spec = get_attack(cfg["attack"]["name"])
+    with open(PROJECT_ROOT / spec.config_path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def build_atomic_base(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """四层合并（P4 攻击默认 ← P3 Batch ← P2 override），剔除扩展段。"""
+    merged = deep_merge(load_attack_default(cfg), flatten_experiment(cfg))
+    if isinstance(cfg.get("override"), dict):
+        merged = deep_merge(merged, cfg["override"])
+    merged.pop("override", None)
+    return merged
 
 
 def sample_targets(categories, tiers, per_tier, strategy="random",
@@ -393,7 +550,7 @@ def atomic_run_tag(cfg, tier, item_id, batch_tag) -> str:
 
 
 def build_atomic_config(cfg, item_id, tier, batch_tag) -> dict:
-    atomic = flatten_experiment(cfg)
+    atomic = build_atomic_base(cfg)
     atomic["attack"]["target_items"] = {
         "strategy": "specified", "ids": [int(item_id)]}
     atomic["run_tag"] = atomic_run_tag(cfg, tier, item_id, batch_tag)
@@ -432,27 +589,27 @@ def write_configs(entries, configs_dir) -> List[Path]:
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_generator -v`
-Expected: `OK`（7 个用例）。
+Run：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_merge tests.test_batch_generator -v`
+Expected: `OK`（3 + 7 个用例）。
 
 - [ ] **Step 5: 提交**
 
 ```bash
-git add TPA/attacks/batch/generator.py TPA/tests/test_batch_generator.py
-git commit -m "feat(attacks): 分层采样与原子配置生成（分层目录命名）"
+git add TPA/attacks/batch/generator.py TPA/tests/test_batch_merge.py TPA/tests/test_batch_generator.py
+git commit -m "feat(attacks): 四层配置合并与原子配置生成"
 ```
 
 ---
 
-### Task 3: 公共分类缓存（runner 归一化）
+### Task 3: 公共分类缓存（registry 驱动）
 
 **Files:**
 - Create: `TPA/attacks/batch/runner.py`
 - Test: `TPA/tests/test_batch_cache.py`
 
 **Interfaces:**
-- Consumes: Task 1 `utils.public_cache_dir/public_rec_freq_path/read_json/write_json`、`utils.flatten_experiment`。
-- Produces: `attack_cache_path(cfg) -> Path`；`normalize_cache(attack_cache, cache_dir) -> None`；`ensure_classify_cache(cfg, cache_dir=None) -> dict`。
+- Consumes: Task 1/2 的 `utils` 与 `generator.build_atomic_base`。
+- Produces: `attack_cache_path(cfg) -> Path`；`normalize_cache(cfg, attack_cache, cache_dir)`；`ensure_classify_cache(cfg, cache_dir=None) -> dict`。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -465,10 +622,7 @@ import unittest
 from pathlib import Path
 
 from attacks.batch.runner import (
-    attack_cache_path,
-    ensure_classify_cache,
-    normalize_cache,
-)
+    attack_cache_path, ensure_classify_cache, normalize_cache)
 from attacks.batch.utils import read_json
 
 from tests.test_batch_config import _base_cfg
@@ -476,19 +630,25 @@ from tests.test_batch_config import _base_cfg
 
 class NormalizeCacheTest(unittest.TestCase):
 
-    def test_ordinary_mapped_to_normal(self):
+    def test_ordinary_mapped_to_normal_and_meta(self):
+        cfg = _base_cfg()
         attack_cache = {
             "categories": {"popular": [1, 5], "ordinary": [31, 42],
                            "cold": [251, 987]},
             "summary": {"num_items": 1000},
         }
         with tempfile.TemporaryDirectory() as tmp:
-            normalize_cache(attack_cache, Path(tmp))
-            rec = read_json(Path(tmp) / "rec_freq.json")
+            cache_dir = Path(tmp)
+            normalize_cache(cfg, attack_cache, cache_dir)
+            rec = read_json(cache_dir / "rec_freq.json")
             self.assertEqual(rec["popular"], [1, 5])
             self.assertEqual(rec["normal"], [31, 42])
             self.assertEqual(rec["cold"], [251, 987])
-            self.assertTrue((Path(tmp) / "meta.json").exists())
+            meta = read_json(cache_dir / "meta.json")
+            for key in ("dataset", "model", "topk", "checkpoint", "generated_at"):
+                self.assertIn(key, meta)
+            self.assertEqual(meta["dataset"], "ml100k")
+            self.assertEqual(meta["topk"], 10)
 
     def test_ensure_reads_existing_cache(self):
         cfg = _base_cfg()
@@ -508,10 +668,6 @@ class NormalizeCacheTest(unittest.TestCase):
             "attacks/bandwagon/data/rec_freq/ml100k/lightgcn_top10.json"))
 ```
 
-> 说明：`ensure_classify_cache(cfg, cache_dir=None)` 增加可选 `cache_dir` 便于测试
-> （缺省用 `public_cache_dir(cfg)`）；"缓存缺失时调攻击 classify 生成"分支在 Task 7
-> E2E 覆盖（需真实模型）。
-
 - [ ] **Step 2: 运行测试确认失败**
 
 Run：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_cache -v`
@@ -523,8 +679,8 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'attacks.batch.runner'
 """批量投毒：调度器（公共分类缓存 + 原子实验执行）。"""
 from __future__ import annotations
 
-import importlib
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -533,25 +689,20 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from attacks.batch.generator import build_atomic_base
+from attacks.batch.registry import get as get_attack
 from attacks.batch.utils import (
-    flatten_experiment,
-    public_cache_dir,
-    read_json,
-    resolution_k,
-    write_json,
-)
+    public_cache_dir, read_json, resolution_k, write_json)
 
 
 def attack_cache_path(cfg: Dict[str, Any]) -> Path:
-    attack = cfg["attack"]["name"]
-    dataset = cfg["experiment"]["dataset"]
-    model = cfg["model"]["name"]
-    k = resolution_k(cfg)
-    return (PROJECT_ROOT / "attacks" / attack / "data" / "rec_freq"
-            / dataset / f"{model}_top{k}.json")
+    return (PROJECT_ROOT / "attacks" / cfg["attack"]["name"]
+            / "data" / "rec_freq" / cfg["experiment"]["dataset"]
+            / f"{cfg['model']['name']}_top{resolution_k(cfg)}.json")
 
 
-def normalize_cache(attack_cache: Dict[str, Any], cache_dir: Path) -> None:
+def normalize_cache(cfg: Dict[str, Any], attack_cache: Dict[str, Any],
+                    cache_dir: Path) -> None:
     categories = attack_cache["categories"]
     write_json({
         "popular": categories["popular"],
@@ -559,8 +710,11 @@ def normalize_cache(attack_cache: Dict[str, Any], cache_dir: Path) -> None:
         "cold": categories["cold"],
     }, cache_dir / "rec_freq.json")
     write_json({
-        "source": "attack classify cache",
-        "generated_from": attack_cache.get("summary", {}),
+        "dataset": cfg["experiment"]["dataset"],
+        "model": cfg["model"]["name"],
+        "topk": resolution_k(cfg),
+        "checkpoint": cfg.get("classification", {}).get("checkpoint"),
+        "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
     }, cache_dir / "meta.json")
 
 
@@ -570,17 +724,11 @@ def ensure_classify_cache(cfg: Dict[str, Any],
     target = cache_dir / "rec_freq.json"
     if target.exists():
         return read_json(target)
-    attack = cfg["attack"]["name"]
-    try:
-        classify_mod = importlib.import_module(f"attacks.{attack}.classify")
-    except ImportError:
-        raise RuntimeError(
-            f"攻击 {attack} 无 classify 模块；v1 支持 bandwagon/pgd/random，"
-            "tpa 待 v2 适配")
-    base = flatten_experiment(cfg)
+    spec = get_attack(cfg["attack"]["name"])
+    base = build_atomic_base(cfg)
     base["mode"] = "classify"
-    classify_mod.main(base)
-    normalize_cache(read_json(attack_cache_path(cfg)), cache_dir)
+    spec.classify(base)
+    normalize_cache(cfg, read_json(attack_cache_path(cfg)), cache_dir)
     return read_json(target)
 ```
 
@@ -593,27 +741,27 @@ Expected: `OK`（3 个用例）。
 
 ```bash
 git add TPA/attacks/batch/runner.py TPA/tests/test_batch_cache.py
-git commit -m "feat(attacks): 公共分类缓存归一化（ordinary→normal）"
+git commit -m "feat(attacks): 公共分类缓存（registry 驱动 + ordinary→normal）"
 ```
 
 ---
 
-### Task 4: Runner 调度（dry-run + 目录整理）
+### Task 4: Runner 调度（dry-run + 目录整理 + logs）
 
 **Files:**
 - Modify: `TPA/attacks/batch/runner.py`
 - Test: `TPA/tests/test_batch_runner.py`
 
 **Interfaces:**
-- Consumes: Task 2/3 的 `generate_configs` / `write_configs` / `ensure_classify_cache`。
-- Produces: `plan_runs(cfg, categories, batch_tag) -> List[Tuple[str, dict]]`；`write_meta(cfg, batch_tag, entries, meta_path)`；`staging_dir(runs_root, atomic_cfg) -> Path`；`run_atomic(atomic_cfg, stage)`；`run_batch(cfg, batch_tag, out_root, cache, max_targets=None, dry_run=False)`。
+- Consumes: Task 2/3。
+- Produces: `plan_runs(cfg, categories, batch_tag)`；`write_meta(cfg, batch_tag, entries, meta_path)`；`staging_dir(runs_root, atomic_cfg)`；`run_atomic(atomic_cfg, stage)`；`run_batch(cfg, batch_tag, out_root, cache, max_targets=None, dry_run=False)`。
 
 - [ ] **Step 1: 写失败测试**
 
 `TPA/tests/test_batch_runner.py`：
 
 ```python
-"""Runner 调度单测：dry-run 与目录整理（stub run_atomic，不训练模型）。"""
+"""Runner 调度单测：dry-run、目录整理、logs（stub run_atomic，不训练模型）。"""
 import tempfile
 import unittest
 from pathlib import Path
@@ -652,8 +800,8 @@ class RunnerTest(unittest.TestCase):
         try:
             with tempfile.TemporaryDirectory() as tmp:
                 out_root = Path(tmp)
-                runner.run_batch(cfg, "t", out_root,
-                                 _categories(), dry_run=True)
+                runner.run_batch(cfg, "t", out_root, _categories(),
+                                 dry_run=True)
                 self.assertEqual(calls, [])
                 self.assertTrue((out_root / "configs").exists())
                 self.assertTrue((out_root / "meta.json").exists())
@@ -662,7 +810,7 @@ class RunnerTest(unittest.TestCase):
         finally:
             runner.run_atomic = original
 
-    def test_run_moves_staging_to_hierarchy(self):
+    def test_run_moves_staging_and_writes_logs(self):
         cfg = _base_cfg()
 
         def fake_run(atomic, stage):
@@ -683,6 +831,7 @@ class RunnerTest(unittest.TestCase):
                          / "cold" / "item9")
                 self.assertTrue(moved.exists())
                 self.assertTrue((moved / "history.json").exists())
+                self.assertTrue((out_root / "logs" / "runner.log").exists())
         finally:
             runner.run_atomic = original
 ```
@@ -695,10 +844,12 @@ Expected: FAIL——`runner.run_batch` 不存在（AttributeError）。
 - [ ] **Step 3: 最小实现（追加到 runner.py）**
 
 ```python
+import logging
 import shutil
 from typing import List, Tuple
 
 from attacks.batch.generator import generate_configs, write_configs
+from attacks.batch.registry import get as get_attack
 
 
 def plan_runs(cfg, categories, batch_tag):
@@ -725,10 +876,21 @@ def staging_dir(runs_root: Path, atomic_cfg: Dict[str, Any]) -> Path:
 
 
 def run_atomic(atomic_cfg: Dict[str, Any], stage: str) -> None:
-    attack = atomic_cfg["attack"]["name"]
-    mod_name = {"data": "generate", "model": "fit"}[stage]
-    mod = importlib.import_module(f"attacks.{attack}.{mod_name}")
-    mod.main(atomic_cfg)
+    spec = get_attack(atomic_cfg["attack"]["name"])
+    fn = {"data": spec.generate, "model": spec.fit}[stage]
+    fn(atomic_cfg)
+
+
+def _logger(out_root: Path) -> logging.Logger:
+    log_dir = out_root / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    logger = logging.getLogger(f"batch.{out_root.name}")
+    if not logger.handlers:
+        handler = logging.FileHandler(log_dir / "runner.log", encoding="utf-8")
+        handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+    return logger
 
 
 def run_batch(cfg, batch_tag, out_root, cache,
@@ -740,11 +902,15 @@ def run_batch(cfg, batch_tag, out_root, cache,
         entries = entries[:max_targets]
     write_configs(entries, configs_dir)
     write_meta(cfg, batch_tag, entries, out_root / "meta.json")
+    logger = _logger(out_root)
+    logger.info("batch_tag=%s total_runs=%d dry_run=%s",
+                batch_tag, len(entries), dry_run)
     print(f"[batch] 原子配置 {len(entries)} 个 -> {configs_dir}")
     if dry_run:
         return
     for rel, atomic in entries:
         print(f"[batch] {atomic['run_tag']}")
+        logger.info("run %s", atomic["run_tag"])
         run_atomic(atomic, "data")
         run_atomic(atomic, "model")
         src = staging_dir(runs_root, atomic)
@@ -752,6 +918,7 @@ def run_batch(cfg, batch_tag, out_root, cache,
         if src != dst and src.exists():
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(str(src), str(dst))
+        logger.info("done %s", atomic["run_tag"])
 ```
 
 - [ ] **Step 4: 运行测试确认通过**
@@ -762,8 +929,8 @@ Expected: `OK`（3 个用例）。
 - [ ] **Step 5: 提交**
 
 ```bash
-git add TPA/attacks/batch/runner.py TPA/tests/test_batch_runner.py TPA/tests/test_batch_generator.py
-git commit -m "feat(attacks): Batch 调度器（dry-run 与分层目录整理）"
+git add TPA/attacks/batch/runner.py TPA/tests/test_batch_runner.py
+git commit -m "feat(attacks): Batch 调度器（dry-run、分层整理、runner.log）"
 ```
 
 ---
@@ -775,8 +942,7 @@ git commit -m "feat(attacks): Batch 调度器（dry-run 与分层目录整理）
 - Test: `TPA/tests/test_batch_aggregate.py`
 
 **Interfaces:**
-- Consumes: Task 1 `utils`（路径）；分层 runs 目录（Task 4 产出）。
-- Produces: `scan_runs(runs_root, group) -> List[Tuple[str, int, dict]]`；`build_results_rows(runs_root, group, cfg, k) -> List[dict]`；`write_results_csv(rows, k, path)`；`tier_summary(rows, k) -> dict`；`write_summary_md(batch_tag, summary, clean_baseline, k, path)`；`compute_clean_baseline(cfg, k) -> dict`（Task 6 补齐）。
+- Produces: `scan_runs(runs_root, group)`；`build_results_rows(runs_root, group, cfg, k)`；`write_results_csv(rows, k, path)`；`tier_summary(rows, k)`；`write_summary_md(batch_tag, summary, clean_baseline, k, path)`；`compute_clean_baseline(cfg, k)`（Task 6 补齐）。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -790,12 +956,8 @@ import unittest
 from pathlib import Path
 
 from attacks.batch.aggregate import (
-    build_results_rows,
-    scan_runs,
-    tier_summary,
-    write_results_csv,
-    write_summary_md,
-)
+    build_results_rows, scan_runs, tier_summary,
+    write_results_csv, write_summary_md)
 
 from tests.test_batch_config import _base_cfg
 
@@ -824,8 +986,7 @@ class AggregateTest(unittest.TestCase):
             _make_run(root, group, "popular", 32,
                       {"target_hr@10": 0.2, "target_ndcg@10": 0.18,
                        "recall@10": 0.32, "ndcg@10": 0.22})
-            scanned = scan_runs(root, group)
-            self.assertEqual(len(scanned), 3)
+            self.assertEqual(len(scan_runs(root, group)), 3)
             rows = build_results_rows(root, group, cfg, 10)
             self.assertEqual(len(rows), 3)
             self.assertEqual(rows[0]["attack"], "bandwagon")
@@ -999,13 +1160,13 @@ git commit -m "feat(attacks): 批量投毒结果整合（results.csv + 按层汇
 
 ---
 
-### Task 6: CLI（run.py）+ clean 基线 + 文档
+### Task 6: CLI（run.py）+ clean 基线 + 配置与文档
 
 **Files:**
 - Create: `TPA/attacks/batch/run.py`、`TPA/attacks/batch/config.yaml`、`TPA/attacks/batch/docs/USAGE.md`、`TPA/attacks/batch/docs/DESIGN.md`
 
 **Interfaces:**
-- Consumes: Task 1-5 全部函数；Task 4 `write_meta`（meta.json 已含 total_runs）。
+- Consumes: Task 1-5 全部函数。
 - Produces: CLI `python attacks/batch/run.py --mode all|generate|run|aggregate [--batch-tag] [--dry-run] [--skip-classify] [--max-targets]`。
 
 - [ ] **Step 1: 实现 `compute_clean_baseline`（追加到 aggregate.py）**
@@ -1013,10 +1174,10 @@ git commit -m "feat(attacks): 批量投毒结果整合（results.csv + 按层汇
 ```python
 def compute_clean_baseline(cfg: Dict[str, Any], k: int) -> Dict[str, float]:
     """用 w_clean 在 clean 数据上算 recall@k / ndcg@k。"""
-    import importlib
     import torch
 
-    from attacks.batch.utils import flatten_experiment
+    from attacks.batch.generator import build_atomic_base
+    from attacks.batch.registry import get as get_attack
     from evaluation.attack_eval import ranking_scores
     from evaluation.metrics import build_train_mask_indices, compute_metrics
     from training.paths import resolve_from_root
@@ -1024,15 +1185,18 @@ def compute_clean_baseline(cfg: Dict[str, Any], k: int) -> Dict[str, float]:
     attack = cfg["attack"]["name"]
     model_name = cfg["model"]["name"]
     dataset = cfg["experiment"]["dataset"]
-    registry = importlib.import_module(f"attacks.{attack}.registry")
-    fit_mod = importlib.import_module(f"attacks.{attack}.fit")
-    gen_mod = importlib.import_module(f"attacks.{attack}.generate")
+    spec = get_attack(attack)
+    gen_mod = __import__(f"attacks.{attack}.generate", fromlist=["load_meta"])
+    fit_mod = __import__(f"attacks.{attack}.fit",
+                         fromlist=["build_training_config"])
 
     meta = gen_mod.load_meta(
         Path(str(gen_mod.DEFAULT_RAW_META).format(dataset=dataset)))
-    base = flatten_experiment(cfg)
+    base = build_atomic_base(cfg)
     train_cfg = fit_mod.build_training_config(base, dataset, model_name)
-    model = registry.get_model_cls(model_name)(
+    reg_mod = __import__(f"attacks.{attack}.registry",
+                         fromlist=["get_model_cls"])
+    model = reg_mod.get_model_cls(model_name)(
         train_cfg, meta["num_users"], meta["num_items"], None)
     ckpt = resolve_from_root(cfg["classification"]["checkpoint"], PROJECT_ROOT)
     model.load_state_dict(torch.load(
@@ -1113,13 +1277,16 @@ if __name__ == "__main__":
         print(f"[batch] 整合完成：{len(rows)} 个原子实验 -> {out_root}")
 ```
 
-- [ ] **Step 3: 写 `config.yaml`（默认 mini 规模）**
+- [ ] **Step 3: 写 `config.yaml`（默认 mini 规模，四层继承只需写差异项）**
 
 ```yaml
-# 批量投毒攻击批跑配置（v1）
+# 批量投毒攻击批跑配置（v1 最终版）
+# 其余参数继承 attacks/bandwagon/config.yaml 默认值（P4）
+attack:
+  name: bandwagon
+
 experiment:
   dataset: ml100k
-  mode: all
   seed: 42
 
 model:
@@ -1131,57 +1298,36 @@ classification:
   popular_ratio: 0.2
   checkpoint: models/lightgcn/outputs/clean-ml100k/checkpoints/latest.pt
 
-attack:
-  name: bandwagon
-  ratio: 0.03
-  filler_size: 20
-  target_items: {strategy: specified, ids: []}
-
 warm_start:
   enabled: true
   checkpoint: models/lightgcn/outputs/clean-ml100k/checkpoints/latest.pt
 
 training:
   epochs: 5
-  batch_size: 256
-  lr: 0.001
-  weight_decay: 0.0001
-  neg_ratio: 1
   device: cuda
-
-evaluation:
-  k: 10
-  report_model_utility: true
-  metrics:
-  - target_ndcg@10: upper
-  - target_hr@10: upper
-  - recall@10: upper
-  - ndcg@10: upper
-  checkpoint_mode: per_metric
-
-output:
-  dir: attacks/batch/output
 
 batch:
   tiers: [popular, normal, cold]
   per_tier: 2
   strategy: random
   seed: 42
+
+override: {}
 ```
 
-- [ ] **Step 4: 验证配置可加载**
+- [ ] **Step 4: 验证配置可加载且合并正确**
 
 Run（在 `G:\Idea\TPA`）：
-`G:\Idea\.venv\Scripts\python.exe -c "from pathlib import Path; from attacks.batch.generator import load_batch_config; c=load_batch_config(Path('attacks/batch/config.yaml')); print(c['experiment']['dataset'], c['batch']['per_tier'])"`
-Expected: `ml100k 2`。
+`G:\Idea\.venv\Scripts\python.exe -c "from pathlib import Path; from attacks.batch.generator import load_batch_config, build_atomic_base; c=load_batch_config(Path('attacks/batch/config.yaml')); b=build_atomic_base(c); print(c['experiment']['dataset'], b['training']['epochs'], b['attack']['ratio'])"`
+Expected: `ml100k 5 0.03`（epochs 来自 Batch P3，ratio 继承攻击默认 P4）。
 
 - [ ] **Step 5: 写 USAGE.md / DESIGN.md 并提交**
 
-USAGE.md：结构、前置条件（w_clean checkpoint / 数据集 meta）、运行方式（`--mode all|generate|run|aggregate`、`--dry-run`、`--max-targets`、`--batch-tag`）、输出目录、config 字段表。DESIGN.md：引用对应 spec，说明两层架构与 v2 迭代方向（pgd/random/tpa、多数据集×多划分）。
+USAGE.md：结构、前置条件（w_clean checkpoint / 数据集 meta）、运行方式（`--mode all|generate|run|aggregate`、`--dry-run`、`--max-targets`、`--batch-tag`）、输出目录、四层配置说明。DESIGN.md：引用对应 spec，说明插件化/配置继承/SRP 与 v2 迭代方向（多数据集×多划分、tpa 缓存适配）。
 
 ```bash
 git add TPA/attacks/batch/run.py TPA/attacks/batch/config.yaml TPA/attacks/batch/aggregate.py TPA/attacks/batch/docs
-git commit -m "feat(attacks): Batch CLI 与 clean 基线（批量投毒 v1）"
+git commit -m "feat(attacks): Batch CLI、clean 基线与使用文档"
 ```
 
 ---
@@ -1203,10 +1349,9 @@ Expected：loss 下降，无 NaN，文件生成。
 `batch.tiers: [cold]`，Run（在 `G:\Idea\TPA`）：
 `G:\Idea\.venv\Scripts\python.exe attacks/batch/run.py --config ../tmp/batch_smoke.yaml --mode all`
 Expected：classify 一次 → 1 个原子实验 data+model 跑通；
-`attacks/batch/output/{batch_tag}/` 下
-`configs/bandwagon_ml100k_lightgcn_top10/cold/item{id}.yaml` 1 个、
-`runs/bandwagon_ml100k_lightgcn_top10/cold/item{id}/` 1 个、
-`results.csv` 1 行、`summary.md` 含 cold 行与 Clean Model Utility、`meta.json` 字段齐全。
+`attacks/batch/output/{batch_tag}/` 下 `configs/.../cold/item{id}.yaml` 1 个、
+`runs/.../cold/item{id}/` 1 个、results.csv 1 行、summary.md 含 cold 与
+Clean Model Utility、meta.json 字段齐全、logs/runner.log 存在。
 
 - [ ] **Step 3: 正式 mini 批量**
 
