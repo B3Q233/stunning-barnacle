@@ -8,6 +8,9 @@
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
 
+  // 浏览器没有 global 标识符（只有 window/globalThis），统一从这里取命名空间
+  const NS = (typeof globalThis !== 'undefined' ? globalThis : window).TPAVisualizer;
+
   const CHART_TYPES = ['line', 'bar', 'pie', 'metric'];
   const TYPE_LABELS = { line: '折线图', bar: '柱状图', pie: '饼图', metric: '指标卡' };
 
@@ -18,9 +21,9 @@
 
   // 未识别的 JSON 结构 → 打开设计器：选图类型 + 树状勾选字段 + 别名 → 保存并注册。
   function openSchemaDesigner(json, onSave) {
-    const detector = global.TPAVisualizer.detector;
-    const registry = global.TPAVisualizer.registry;
-    const treeBuilder = global.TPAVisualizer.treeBuilder;
+    const detector = NS.detector;
+    const registry = NS.registry;
+    const treeBuilder = NS.treeBuilder;
 
     const fp = detector.fingerprint(json);
     const id = detector.schemaId(fp);
