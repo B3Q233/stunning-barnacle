@@ -78,8 +78,13 @@ KEY_DATASET = "dataset"
 
 ### 邻接矩阵
 - 对称归一化: A_hat = D^(-1/2) A D^(-1/2)
-- 格式: PyTorch sparse COO
+- 格式: PyTorch sparse CSR（构建时由 COO 转换，加速 GPU/CPU 稀疏乘法，数值一致）
 - Gowalla: 70839×70839, 1,539,242 非零元
+
+### 训练优化
+- `train_step` / `eval_step` 内只传播一次并复用 `final_emb`（数学等价于逐调用传播）
+- `num_workers` / `persistent_workers` 在 `config.yaml` 的 `training:` 段配置，
+  缺省 `num_workers=0` 保持旧行为
 
 ### 验证结果
 ```

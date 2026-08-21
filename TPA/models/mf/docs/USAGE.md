@@ -49,6 +49,8 @@ python TPA/models/mf/main.py
 | training.epochs | 100 | 训练轮数 |
 | training.batch_size | 256 | batch 大小 |
 | training.weight_decay | 0.0001 | L2 正则系数 |
+| training.num_workers | 4 | DataLoader 子进程数（0=主进程串行） |
+| training.persistent_workers | true | 跨 epoch 复用 worker（需 num_workers>0） |
 | evaluation.k | 20 | 评估 Top-K |
 
 ## 6. 常见问题

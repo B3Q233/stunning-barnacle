@@ -96,6 +96,8 @@ data/raw/gowalla/
 | batch_size | 批大小 | 1024 | 正整数, Amazon-Book 用 2048 | [paper] |
 | weight_decay | L2 正则系数 λ | 1e-4 | {1e-6,...,1e-2} | [paper] |
 | device | 设备 | cuda | cuda / cpu | [unreported] |
+| num_workers | DataLoader 子进程数 | 4 | 0~8 | [ai] |
+| persistent_workers | 跨 epoch 复用 worker（需 num_workers>0） | true | true/false | [ai] |
 
 ### evaluation 模块
 | 参数 | 含义 | 默认值 | 来源 |
