@@ -25,7 +25,7 @@ from training.metrics import (
 )
 from models.mf.dataset import MFDataLoader, KEY_NUM_USERS, KEY_NUM_ITEMS, KEY_DATASET
 from models.mf.model import MatrixFactorization
-from evaluation.metrics import compute_metrics
+from evaluation.metrics import build_train_mask_indices, compute_metrics
 
 
 OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__)) + "/outputs"
@@ -59,6 +59,9 @@ class FullRankingCallback(Callback):
         for u, i in loader.test_pairs:
             self.test_pos.setdefault(u, set()).add(i)
         self.train_pos = loader.user_items
+        self.test_users = sorted(self.test_pos.keys())
+        self.mask_indices = build_train_mask_indices(
+            self.train_pos, self.test_users)
 
         os.makedirs(OUTPUT_DIR, exist_ok=True)
         os.makedirs(self.tag_checkpoint_dir, exist_ok=True)
@@ -77,7 +80,7 @@ class FullRankingCallback(Callback):
         with torch.no_grad():
             user_emb = self.model.get_user_embeddings()
             item_emb = self.model.get_item_embeddings()
-            test_users = sorted(self.test_pos.keys())
+            test_users = self.test_users
             test_user_ids = torch.LongTensor(test_users).to(user_emb.device)
             scores_list = []
             for i in range(0, len(test_user_ids), 1024):
@@ -87,7 +90,9 @@ class FullRankingCallback(Callback):
 
         ks = eval_ks_from_metrics(self.config.get("metrics"), self.eval_k)
         res_by_k = {
-            K: compute_metrics(scores, self.train_pos, self.test_pos, k=K)
+            K: compute_metrics(scores, self.train_pos, self.test_pos, k=K,
+                               mask_indices=self.mask_indices,
+                               topk_device=user_emb.device)
             for K in ks
         }
         result = match_metric_values(self.metric_names, res_by_k)
