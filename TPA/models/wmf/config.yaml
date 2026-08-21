@@ -21,6 +21,8 @@ training:
   device: cuda                      # [unreported] ALS 为 CPU 线性代数求解，无需 GPU
   save_every_n_epochs: 5           # [unreported] checkpoint 保存间隔（epoch）
   shuffle: false                   # [unreported] ALS 与批次顺序无关
+  num_workers: 0                   # [unreported] 单批全量矩阵，worker 无收益；0=主进程
+  persistent_workers: false        # [unreported] 需 num_workers>0 才生效
 
 evaluation:
   k: 10                            # [unreported] 无 @K 指标时的回退 K

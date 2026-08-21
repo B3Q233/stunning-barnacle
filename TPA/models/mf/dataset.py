@@ -96,7 +96,7 @@ class MFDataLoader:
         )
         return TorchDataLoader(
             dataset, batch_size=self.config.batch_size, shuffle=True,
-            num_workers=0, pin_memory=True,
+            **self._loader_kwargs(), pin_memory=True,
         )
 
     def val_loader(self) -> TorchDataLoader:
@@ -106,7 +106,7 @@ class MFDataLoader:
         )
         return TorchDataLoader(
             dataset, batch_size=self.config.batch_size, shuffle=False,
-            num_workers=0, pin_memory=True,
+            **self._loader_kwargs(), pin_memory=True,
         )
 
     def test_loader(self) -> TorchDataLoader:
@@ -116,11 +116,20 @@ class MFDataLoader:
         )
         return TorchDataLoader(
             dataset, batch_size=self.config.batch_size, shuffle=False,
-            num_workers=0, pin_memory=True,
+            **self._loader_kwargs(), pin_memory=True,
         )
 
     def get_init_params(self) -> Dict[str, Any]:
         return {KEY_NUM_USERS: self.num_users, KEY_NUM_ITEMS: self.num_items}
+
+    def _loader_kwargs(self) -> Dict[str, Any]:
+        """DataLoader 并发参数：从 config.yaml 读取，缺省保持 num_workers=0。"""
+        num_workers = int(self.config.get("num_workers", 0))
+        persistent = bool(self.config.get("persistent_workers", False))
+        return {
+            "num_workers": num_workers,
+            "persistent_workers": persistent and num_workers > 0,
+        }
 
     def get_dataset(self, split: str):
         if split == "train":

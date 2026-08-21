@@ -148,7 +148,7 @@ class WMFDataLoader:
     def _full_loader(self, dataset: WMFDataset) -> TorchDataLoader:
         return TorchDataLoader(
             dataset, batch_size=len(dataset), shuffle=False,
-            num_workers=0, pin_memory=False,
+            **self._loader_kwargs(), pin_memory=False,
         )
 
     def train_loader(self) -> TorchDataLoader:
@@ -160,7 +160,7 @@ class WMFDataLoader:
         """
         ds = self._dataset(self._train_pairs)
         return TorchDataLoader(
-            ds, batch_size=len(ds), shuffle=False, num_workers=0,
+            ds, batch_size=len(ds), shuffle=False, **self._loader_kwargs(),
             pin_memory=False,
             collate_fn=lambda b: (
                 ds.users, ds.items, ds.conf, ds.p,
@@ -176,6 +176,15 @@ class WMFDataLoader:
 
     def get_init_params(self) -> Dict[str, Any]:
         return {KEY_NUM_USERS: self.num_users, KEY_NUM_ITEMS: self.num_items}
+
+    def _loader_kwargs(self) -> Dict[str, Any]:
+        """DataLoader 并发参数：从 config.yaml 读取，缺省保持 num_workers=0。"""
+        num_workers = int(self.config.get("num_workers", 0))
+        persistent = bool(self.config.get("persistent_workers", False))
+        return {
+            "num_workers": num_workers,
+            "persistent_workers": persistent and num_workers > 0,
+        }
 
     def get_dataset(self, split: str) -> WMFDataset:
         if split == "train":
