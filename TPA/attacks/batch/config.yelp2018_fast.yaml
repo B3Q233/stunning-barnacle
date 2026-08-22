@@ -14,7 +14,8 @@ model:
 k: 10                            # 统一评估 K（最外层唯一入口）
 
 classification:
-  popular_ratio: 0.2
+  popular_ratio: 0.05
+  medium_ratio: 0.40
   checkpoint: models/lightgcn/outputs/checkpoints/latest.pt   # 按实际 clean 模型替换
 
 warm_start:

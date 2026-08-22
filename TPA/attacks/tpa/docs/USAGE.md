@@ -25,14 +25,15 @@ G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\tpa\train_surrogate.py --co
 
 ## 2. 快速开始
 
-### 第 1 步：推荐频次分类（classify）
+### 第 1 步：交互数分类（classify）
 
 ```powershell
 G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\tpa\run.py --mode classify
 ```
 
 产出 `attacks/tpa/data/rec_freq/{dataset}/{model}_top{k}.json`
-（流行/普通/冷门三档，用于目标选择与统计）。
+（流行/普通/冷门三档，按训练集交互数划分，用于目标选择与统计；victim 与
+surrogate 共用同一份交互数分类，仅缓存文件名后缀按代理模式区分）。
 
 ### 第 2 步：路径画像构造（paths，TPA 核心）
 
@@ -93,10 +94,10 @@ surrogate:
     eval_every: 5
 
 classification:
-  k: 10                    # 推荐频次分类 Top-K（默认取 training.k）
-  popular_ratio: 0.2
-  batch_size: 1024
-  checkpoint: models/lightgcn/outputs/checkpoints/latest.pt
+  k: 10                    # 缓存文件名保留（默认取 training.k；分类本身与 K 无关）
+  popular_ratio: 0.05      # 流行物品 = 训练集交互数前 5%
+  medium_ratio: 0.40       # 普通物品 = 交互数 5%~40%；其余为冷门
+  checkpoint: models/lightgcn/outputs/checkpoints/latest.pt  # 仅聚合报告使用
 
 attack:
   name: tpa

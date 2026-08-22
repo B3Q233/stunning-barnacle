@@ -15,9 +15,9 @@ model:
 
 # 第 1 步：基于模型推荐频次的物品分类（流行/普通/冷门）
 classification:
-  popular_ratio: 0.2             # 流行物品 = 推荐频次前 20%
-  batch_size: 1024               # 评分矩阵分批大小（大数据集防爆显存）
-  checkpoint: models/lightgcn/outputs/2026-08-09-23-01/checkpoints/ndcg@10-best-model.pt  # 打分用干净模型（相对 TPA 根）
+  popular_ratio: 0.05            # 流行物品 = 训练集交互数前 5%
+  medium_ratio: 0.40             # 普通物品 = 交互数 5%~40%；其余为冷门（Tail）
+  checkpoint: models/lightgcn/outputs/2026-08-09-23-01/checkpoints/ndcg@10-best-model.pt  # 仅聚合报告使用（classify 已不加载模型）
 
 attack:
   name: bandwagon

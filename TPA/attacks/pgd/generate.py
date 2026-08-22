@@ -48,7 +48,7 @@ from training.run_tag import (
 
 def load_rec_freq_cache(config: Dict[str, Any], model_name: str, k: int,
                         required: bool = False) -> Dict[str, Any] | None:
-    """读取推荐频次分类缓存（classify.py 产出）。"""
+    """读取交互数分类缓存（classify.py 产出）。"""
     from attacks.pgd.classify import load_cache
     return load_cache(config, model_name, k, required=required)
 
@@ -93,7 +93,7 @@ def select_target_items(popularity: Counter, num_items: int, strategy: str,
     elif strategy == "category":
         if categories is None:
             raise FileNotFoundError(
-                "strategy=category 需要推荐频次分类缓存，"
+                "strategy=category 需要交互数分类缓存，"
                 "请先运行 python attacks/pgd/run.py --mode classify"
             )
         if category not in categories:
@@ -544,10 +544,10 @@ def main(config: Dict[str, Any], raw_meta: Path | None = None,
         rec_counts=rec_cache["counts"] if rec_cache else None,
     )
 
-    # filler 池：优先模型推荐频次 Top 20% 流行物品（无缓存时回退训练集热门）
+    # filler 池：优先训练集交互数前 5% 流行物品（无缓存时回退训练集热门）
     if rec_cache is not None:
         hot_pool = categories["popular"][:]
-        print(f"[generate] filler 池 = 模型推荐频次流行物品 "
+        print(f"[generate] filler 池 = 训练集交互数流行物品 "
               f"({len(hot_pool)} 个，来自 classify 缓存)")
     else:
         hot_pool = [i for i, _ in popularity.most_common(
@@ -602,7 +602,7 @@ def main(config: Dict[str, Any], raw_meta: Path | None = None,
             {
                 "item_id": t,
                 "popularity_before": popularity[t],
-                "rec_count": rec_cache["counts"].get(t, 0) if rec_cache else None,
+                "interaction_count": rec_cache["counts"].get(t, 0) if rec_cache else None,
                 "category": (
                     "popular" if rec_cache and t in categories["popular"]
                     else "ordinary" if rec_cache and t in categories["ordinary"]

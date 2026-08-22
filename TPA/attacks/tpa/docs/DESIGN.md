@@ -35,14 +35,14 @@
 | 路径约束 | 跳数上限 = max_bridge_items+1 | 默认 3 个桥接物品（4 跳）；每跳 τ 阈值暂不启用（per_hop_tau: null） |
 | 平庸基座 | 高流行度池 P(i) 采样 base_size 个 | 语义接近兴趣中心 c 的约束留待语义阶段；起点=基座中离目标 CF 最近且有可行路径者 |
 | 无路径回退 | direct | 基座 + 目标（等价两跳直连），计入 path_stats |
-| 模型访问假设 | 支持白盒 / 代理两种模式 | `surrogate.enabled: false`=白盒（用受害模型嵌入，攻击效果上限）；`true`=代理（黑盒，路径/分类只用代理模型嵌入，受害模型仅评估） |
+| 模型访问假设 | 支持白盒 / 代理两种模式 | `surrogate.enabled: false`=白盒（用受害模型嵌入，攻击效果上限）；`true`=代理（黑盒，路径只用代理模型嵌入；交互数分类与模型无关，victim/surrogate 共用） |
 | 数据集 | 当前 ml100k | 与基线同口径：608 用户 / 6298 物品，Top-10，目标 251，3% 假用户 |
 
 ## 3. 模块设计（四阶段，no-subgoal）
 
 | 模式 | 职责 | 是否新建模型 |
 |------|------|--------------|
-| `classify`（classify.py） | 推荐频次分类（流行/普通/冷门），供目标选择与统计 | 否（只读 checkpoint） |
+| `classify`（classify.py） | 按训练集交互数划分流行/普通/冷门，供目标选择与统计 | 否（纯数据层，零模型依赖） |
 | `paths`（path_builder.py） | 共现图 + CF 最短路径 + 基座/路径/目标画像缓存 | 否（只读 checkpoint） |
 | `data`（generate.py） | 读路径缓存 → 注入中毒数据 | 否（纯数据层） |
 | `model`（fit.py） | 按 `model.name` 新建受害模型（warm-start）→ 训练 → 对比评估 | 是（新实例） |
@@ -50,7 +50,7 @@
 
 ### 白盒 vs 代理（黑盒）说明
 
-- **白盒（v1 默认对照）**：`surrogate.enabled: false`，路径距离 / 频次分类使用
+- **白盒（v1 默认对照）**：`surrogate.enabled: false`，路径距离使用
   受害模型自身嵌入——攻击效果是"信息上限"，论文中作为上界对照
 - **代理（黑盒，推荐）**：`surrogate.enabled: true`，攻击者只用自己的代理模型
   （`train_surrogate.py` 以不同划分种子训练）构造路径与分类；受害模型只出现在
@@ -61,7 +61,7 @@
 数据流：
 
 ```
-clean 模型（checkpoint）──classify──▶ rec_freq.json（流行/普通/冷门）
+训练集交互数 ──classify──▶ rec_freq.json（流行/普通/冷门）
                           └──paths──▶ paths/profiles.json（基座+路径+目标）
                                           │
 clean meta.pkl ──generate（读缓存注入）──▶ poisoned meta.pkl

@@ -1,13 +1,13 @@
 """TPA（传递式路径投毒攻击）编排入口
 
 攻击流程（已冻结：无 PGD、最短路径法、数据集不变）：
-  1. classify: 加载干净模型 → 推荐频次分类（流行/普通/冷门），供目标选择与统计
+  1. classify: 统计训练集交互数 → 按交互数划分（流行/普通/冷门），供目标选择与统计
   2. paths:    构建物品共现图 → CF 距离最短路径 → 平庸基座 + 路径 + 目标画像
   3. data:     读取路径画像缓存 → 注入中毒数据
   4. model:    选择模型（config model.name）→ 投毒训练 → 对比评估
 
 用法:
-  python attacks/tpa/run.py --mode classify  # 第 1 步：推荐频次分类
+  python attacks/tpa/run.py --mode classify  # 第 1 步：交互数分类
   python attacks/tpa/run.py --mode paths     # 第 2 步：共现图 + 路径画像构造
   python attacks/tpa/run.py --mode data      # 第 3 步：只生成中毒数据
   python attacks/tpa/run.py --mode model     # 第 4 步：拟合中毒模型 + 评估
@@ -15,7 +15,7 @@
   python attacks/tpa/run.py --mode all       # classify + paths + data + model 全流程
 
 模块分离：
-- classify / paths 模式依赖模型 checkpoint（只读，产出缓存）
+- classify 模式为纯数据层（按训练集交互数产出分类缓存）；paths 模式依赖模型 checkpoint（只读）
 - data 模式是纯数据层（只读路径缓存，不 import 模型代码）
 - model 模式才新建受害模型实例并训练
 """
@@ -45,7 +45,7 @@ def main() -> None:
     parser.add_argument(
         "--mode", type=str, default=None,
         choices=["classify", "paths", "data", "model", "both", "all"],
-        help="classify=推荐频次分类；paths=共现图+路径画像；data=只生成中毒数据；"
+        help="classify=交互数分类；paths=共现图+路径画像；data=只生成中毒数据；"
              "model=拟合中毒模型；both=data+model；all=全流程（默认按配置）",
     )
     parser.add_argument(

@@ -1,13 +1,13 @@
 """PGD 攻击编排入口
 
 攻击流程（与确认过的口径一致）：
-  1. classify: 加载干净模型 → 全量评分 → 每用户 Top-K → 统计推荐频次
-                → 划分 流行(前20%) / 普通 / 冷门，缓存供后续使用
+  1. classify: 统计训练集每个物品的交互数 → 按交互数排名
+               → 划分 流行(前5%) / 普通(5%~40%) / 冷门(其余)，缓存供后续使用
   2. data:     指定目标物品 → PGD 投影梯度上升生成假用户画像 → 注入中毒数据
   3. model:    选择模型（config model.name: mf / lightgcn）→ 投毒训练 → 对比评估
 
 用法:
-  python attacks/pgd/run.py --mode classify  # 第 1 步：推荐频次分类
+  python attacks/pgd/run.py --mode classify  # 第 1 步：交互数分类
   python attacks/pgd/run.py --mode data      # 第 2 步：PGD 生成中毒数据
   python attacks/pgd/run.py --mode model     # 第 3 步：拟合中毒模型 + 评估
   python attacks/pgd/run.py --mode both      # data + model（默认）
@@ -44,7 +44,7 @@ def main() -> None:
     parser.add_argument(
         "--mode", type=str, default=None,
         choices=["classify", "data", "model", "both", "all"],
-        help="classify=推荐频次分类；data=PGD 生成中毒数据；"
+        help="classify=交互数分类；data=PGD 生成中毒数据；"
              "model=拟合中毒模型；both=data+model；all=全流程（默认按配置）",
     )
     parser.add_argument(

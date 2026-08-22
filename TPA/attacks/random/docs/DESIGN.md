@@ -32,21 +32,21 @@
 | 假用户数 | 18（≈3% 真实用户） | 【用户指定】 | `ratio: 0.03`，可调 |
 | filler_size K | 20 | 【AI推断补全】 | 从全量物品均匀随机采样 K 个 |
 | 目标物品 | 手动指定 | 【用户指定】 | `strategy: specified` 填 ID |
-| 流行度划分 | 前 20% 流行 / 其余普通 / 零频次冷门 | 【用户指定】 | 基于干净模型每用户 Top-K 推荐频次 |
+| 流行度划分 | 前 5% 流行 / 5~40% 普通 / 其余冷门 | 【用户指定】 | 基于训练集每物品交互次数 |
 | warm-start | 开启 | 【用户指定】 | 用干净模型参数初始化中毒模型 |
 
 ## 3. 模块设计（三阶段，no-subgoal）
 
 | 模式 | 职责 | 是否新建模型 |
 |------|------|--------------|
-| `classify`（classify.py） | 加载干净模型 → 全量评分 → 每用户 Top-K → 推荐频次分类并缓存 | 否（只读 checkpoint） |
+| `classify`（classify.py） | 统计训练集交互数 → 按交互数排名划分流行/普通/冷门并缓存 | 否（纯数据层，零模型依赖） |
 | `data`（generate.py） | 选目标（默认手动指定）→ 构造假画像 → 注入训练集 | 否（纯数据层） |
 | `model`（fit.py） | 按 `model.name` 新建受害模型（可选 warm-start）→ 训练 → 对比评估 | 是（新实例） |
 
 数据流：
 
 ```
-clean 模型（checkpoint）──classify──▶ rec_freq.json（流行/普通/冷门）
+训练集交互数 ──classify──▶ rec_freq.json（流行/普通/冷门）
                                           │
 clean meta.pkl ──generate（指定目标 + filler）──▶ poisoned meta.pkl
                                                           │

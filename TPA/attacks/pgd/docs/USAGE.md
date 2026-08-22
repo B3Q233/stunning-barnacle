@@ -46,7 +46,7 @@ checkpoint。当前项目已有：
 
 ## 4. 完整流程
 
-### 第 1 步：推荐频次分类（可选但推荐）
+### 第 1 步：交互数分类（可选但推荐）
 
 ```powershell
 G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\pgd\run.py --mode classify
@@ -103,8 +103,8 @@ PGD 引擎自动切换：`mf → engine=als`（论文 §4.1 精确 KKT 梯度）
 |------|------|------|
 | dataset | ml100k | 受害数据集 |
 | model.name | lightgcn | 受害/打分模型（mf / lightgcn）|
-| classification.k / popular_ratio | 20 / 0.2 | 频次分类参数 |
-| classification.checkpoint | lightgcn latest.pt | 打分用干净模型 |
+| classification.k / popular_ratio / medium_ratio | 20 / 0.05 / 0.40 | 交互数分类参数 |
+| classification.checkpoint | lightgcn latest.pt | 仅聚合报告使用 |
 | attack.ratio | 0.01 | 假用户比例（假用户数 = ratio × 真实用户数）|
 | attack.filler_size | 20 | B：每个假用户交互的物品数（PGD 预算）|
 | attack.target_items.strategy | specified | 目标选择策略 |

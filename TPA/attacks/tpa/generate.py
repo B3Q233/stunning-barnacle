@@ -65,7 +65,7 @@ def load_paths_cache(config: Dict[str, Any],
 
 def load_rec_freq_cache(config: Dict[str, Any], model_name: str, k: int,
                         required: bool = False) -> Dict[str, Any] | None:
-    """读取推荐频次分类缓存（classify.py 产出）。"""
+    """读取交互数分类缓存（classify.py 产出）。"""
     from attacks.tpa.classify import load_cache
     return load_cache(config, model_name, k, required=required)
 
@@ -103,7 +103,7 @@ def select_target_items(popularity: Counter, num_items: int, strategy: str,
     """选择攻击目标物品（与模板一致，供 path_builder 复用）。
 
     - specified: 手动指定 ID（推荐；目标物品由用户自行确定）
-    - category:  按模型推荐频次分类挑选（需先跑 classify）
+    - category:  按交互数分类挑选（需先跑 classify）
     - coldest:   训练集流行度最低的物品（旧口径，仅作对照）
     - random:    从有交互的物品中随机挑
     """
@@ -118,7 +118,7 @@ def select_target_items(popularity: Counter, num_items: int, strategy: str,
     elif strategy == "category":
         if categories is None:
             raise FileNotFoundError(
-                "strategy=category 需要推荐频次分类缓存，"
+                "strategy=category 需要交互数分类缓存，"
                 "请先运行 python attacks/tpa/run.py --mode classify"
             )
         if category not in categories:
@@ -241,7 +241,7 @@ def main(config: Dict[str, Any], raw_meta: Path | None = None,
             {
                 "item_id": t,
                 "popularity_before": popularity[t],
-                "rec_count": rec_cache["counts"].get(t, 0) if rec_cache else None,
+                "interaction_count": rec_cache["counts"].get(t, 0) if rec_cache else None,
                 "category": (
                     "popular" if rec_cache and t in categories["popular"]
                     else "ordinary" if rec_cache and t in categories["ordinary"]

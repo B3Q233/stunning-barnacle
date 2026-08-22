@@ -26,7 +26,8 @@ P4 攻击默认配置（attacks/{attack}/config.yaml）
 ## 3. 调度与产物
 
 - classify 只执行一次（公共分类缓存 `cache/classification/{dataset}/{model}/top{k}/`，
-  与攻击算法无关；攻击侧 `ordinary` 归一化为 `normal`）；
+  按训练集交互数划分 popular/ordinary/cold，与攻击算法和模型无关；
+  攻击侧 `ordinary` 归一化为 `normal`）；
 - generate + fit 串行、单 GPU；fit 产物从 staging 移动到分层目录
   `runs/{攻击}_{数据集}_{模型}_top{k}/{层}/item{id}/`（不改 fit.py）；
 - 每次 Batch 独立时间目录，互不覆盖；`logs/runner.log` 记录调度过程。

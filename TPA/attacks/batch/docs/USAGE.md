@@ -141,8 +141,8 @@ attacks/batch/output/{batch_tag}/
 
 ## 6. 常见问题
 
-- **classify 报 checkpoint 不存在**：确认 `classification.checkpoint` 指向已存在的
-  w_clean 权重。
+- **classify 不再需要模型**：分类基于训练集交互数（`classification.popular_ratio`
+  / `medium_ratio`）；`classification.checkpoint` 仅用于聚合报告的 clean 效用基线。
 - **原子配置出现 batch/override 字段**：不应出现；Generator 会自动剔除。
 - **runs/ 里没有历史**：检查 `attacks/{attack}/data/poisoned/{dataset}/{model}/`
   下是否有对应 run_tag 的中毒数据（fit 依赖 generate 阶段产物）。

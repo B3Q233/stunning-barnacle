@@ -12,11 +12,10 @@ G:\Idea\.venv\Scripts\python.exe --version
 
 ## 2. 快速开始
 
-### 第 1 步：推荐频次分类（classify，可选但推荐）
+### 第 1 步：交互数分类（classify，可选但推荐）
 
-先有训练好的干净模型 checkpoint，然后对全量用户做 Top-K 推荐，统计每个物品的
-出现次数并划分为 **流行（前 20%）/ 普通 / 冷门**，结果缓存后供目标选择和
-filler 采样使用：
+直接统计训练集每个物品的交互次数，按交互数降序排名划分为 **流行（前 5%）/
+普通（5%~40%）/ 冷门（其余）**，结果缓存后供目标选择和 filler 采样使用：
 
 ```powershell
 G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\bandwagon\run.py --mode classify
@@ -26,7 +25,7 @@ G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\bandwagon\run.py --mode cla
 
 ```
 attacks/bandwagon/data/rec_freq/{dataset}/lightgcn_top20.json
-├── counts        # 每个物品在 Top-K 中出现的次数
+├── counts        # 每个物品在训练集中的交互次数
 ├── categories    # popular（流行）/ ordinary（普通）/ cold（冷门）三类 ID
 └── summary       # 各档数量、流行阈值、热门/冷门样例
 ```
@@ -88,10 +87,10 @@ model:
   overrides: {}            # 可选：覆盖模型超参（emb_dim / n_layers / init_method ...）
 
 classification:
-  k: 20                    # 每用户取 Top-K 推荐（默认取 training.k）
-  popular_ratio: 0.2       # 流行物品 = 推荐频次前 20%
-  batch_size: 1024         # 评分矩阵分批大小（大数据集防爆显存）
-  checkpoint: models/lightgcn/outputs/checkpoints/latest.pt  # 打分用干净模型
+  k: 20                    # 缓存文件名保留（默认取 training.k；分类本身与 K 无关）
+  popular_ratio: 0.05      # 流行物品 = 训练集交互数前 5%
+  medium_ratio: 0.40       # 普通物品 = 交互数 5%~40%；其余为冷门
+  checkpoint: models/lightgcn/outputs/checkpoints/latest.pt  # 仅聚合报告使用
 
 attack:
   name: bandwagon
@@ -137,7 +136,7 @@ output:
 - 首选：`strategy: specified` + `ids`，直接把攻击目标物品 ID 填进配置，
   想攻击谁由你决定；
 - 想从某档物品里挑：`strategy: category` + `category: popular / ordinary / cold`，
-  会分别从模型推荐频次最高的流行物品、普通物品、冷门物品中挑相对最冷的 `count` 个；
+  会分别从训练集交互数最高的流行物品、普通物品、冷门物品中挑相对最冷的 `count` 个；
 - 想看每档具体有哪些物品：读 classify 产出的
   `data/rec_freq/{dataset}/lightgcn_top{k}.json` 里的 `categories`。
 

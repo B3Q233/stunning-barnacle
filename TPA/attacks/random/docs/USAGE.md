@@ -11,11 +11,10 @@
 
 ## 2. 快速开始
 
-### 第 1 步：推荐频次分类（classify，可选但推荐）
+### 第 1 步：交互数分类（classify，可选但推荐）
 
-先有训练好的干净模型 checkpoint，然后对全量用户做 Top-K 推荐，统计每个物品的
-出现次数并划分为 **流行（前 20%）/ 普通 / 冷门**，结果缓存后供目标选择和
-filler 采样使用：
+直接统计训练集每个物品的交互次数，按交互数降序排名划分为 **流行（前 5%）/
+普通（5%~40%）/ 冷门（其余）**，结果缓存后供目标选择和 filler 采样使用：
 
 ```powershell
 G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\random\run.py --mode classify
@@ -25,7 +24,7 @@ G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\random\run.py --mode classi
 
 ```
 attacks/random/data/rec_freq/{dataset}/{model}_top{k}.json
-├── counts        # 每个物品在 Top-K 中出现的次数
+├── counts        # 每个物品在训练集中的交互次数
 ├── categories    # popular（流行）/ ordinary（普通）/ cold（冷门）三类 ID
 └── summary       # 各档数量、流行阈值、热门/冷门样例
 ```
@@ -84,10 +83,10 @@ model:
   overrides: {}            # 可选：覆盖模型超参
 
 classification:
-  k: 10                    # 每用户取 Top-K 推荐（默认取 training.k）
-  popular_ratio: 0.2       # 流行物品 = 推荐频次前 20%
-  batch_size: 1024         # 评分矩阵分批大小（大数据集防爆显存）
-  checkpoint: <干净模型 checkpoint 路径>
+  k: 10                    # 缓存文件名保留（默认取 training.k；分类本身与 K 无关）
+  popular_ratio: 0.05      # 流行物品 = 训练集交互数前 5%
+  medium_ratio: 0.40       # 普通物品 = 交互数 5%~40%；其余为冷门
+  checkpoint: <干净模型 checkpoint 路径>   # 仅聚合报告使用
 
 attack:
   name: random  # 攻击名，驱动数据/输出路径与日志前缀

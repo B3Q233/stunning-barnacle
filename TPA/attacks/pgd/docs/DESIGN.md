@@ -112,14 +112,14 @@ compute"），因此纯 integrity 效用下 filler 评分的梯度恒为 0，PGD
 
 | 模式 | 职责 | 是否新建模型 |
 |------|------|--------------|
-| classify（classify.py）| 加载干净模型 → 全量评分 → 每用户 Top-K → 推荐频次 → 流行/普通/冷门缓存 | 否 |
+| classify（classify.py）| 统计训练集交互数 → 按交互数排名划分流行/普通/冷门并缓存 | 否（纯数据层，零模型依赖） |
 | data（generate.py）| 选目标（默认指定）→ PGD 梯度上升生成假画像 → 注入训练集 | 否（PGD 需要加载干净模型权重计算梯度）|
 | model（fit.py）| 按 model.name 新建受害模型（可选 warm-start）→ 投毒训练 → 对比评估 | 是 |
 
 数据流：
 
 ```
-干净模型 checkpoint ─┬─ classify → rec_freq.json（流行/普通/冷门）
+训练集交互数 ────────┬─ classify → rec_freq.json（流行/普通/冷门）
                      ├─ PGD（模型权重 + 目标物品）→ poisoned meta.pkl
                      └─ warm-start → 投毒模型 → 对比报告 pgd_comparison.md
 ```
@@ -142,7 +142,7 @@ compute"），因此纯 integrity 效用下 filler 评分的梯度恒为 0，PGD
 
 ## 7. 缺口与风险（需人工确认）
 
-- 【论文未提及】filler 初始化池：默认取模型推荐频次 Top 20% 流行物品（与 bandwagon
+- 【论文未提及】filler 初始化池：默认取训练集交互数前 5% 流行物品（与 bandwagon
   一致）；`init: random` 可改为全物品均匀采样（更接近论文 Algorithm 1）。
 - 【AI 推断】neighbor 引擎是 LightGCN 的一阶线性化代理，不是 GCN 训练过程的精确
   隐式梯度；如需精确需对 BPR-SGD 训练做 unrolled/implicit 微分（超出本任务范围）。
@@ -158,7 +158,7 @@ compute"），因此纯 integrity 效用下 filler 评分的梯度恒为 0，PGD
 
 - 顶层：`dataset` / `mode` / `seed` / `model.name` / `model.overrides` /
   `clean_checkpoint` / `output.dir` / `run_tag`（实验隔离，缺省当前时间）
-- `classification`：`k` / `popular_ratio` / `batch_size` / `checkpoint`
+- `classification`：`k` / `popular_ratio` / `medium_ratio` / `checkpoint`
 - `attack`：`num_fake_users`（可选）/ `ratio` / `filler_size` /
   `target_items.{strategy,category,count,ids}` / `pgd.*`
 - `attack.pgd`：`iterations` / `step_size` / `lambda_rating` / `lambda_u` /

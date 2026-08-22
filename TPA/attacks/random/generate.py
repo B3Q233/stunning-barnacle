@@ -53,7 +53,7 @@ from training.run_tag import (  # noqa: E402
 
 def load_rec_freq_cache(config: Dict[str, Any], model_name: str, k: int,
                         required: bool = False) -> Dict[str, Any] | None:
-    """读取推荐频次分类缓存（classify.py 产出）。"""
+    """读取交互数分类缓存（classify.py 产出）。"""
     from attacks.random.classify import load_cache
     return load_cache(config, model_name, k, required=required)
 
@@ -91,7 +91,7 @@ def select_target_items(popularity: Counter, num_items: int, strategy: str,
     """选择攻击目标物品。
 
     - specified: 手动指定 ID（推荐；目标物品由用户自行确定）
-    - category:  按模型推荐频次分类挑选（需先跑 classify）
+    - category:  按交互数分类挑选（需先跑 classify）
                  popular=最热 / ordinary、cold=该分类中相对最冷的
     - coldest:   训练集流行度最低的物品（旧口径，仅作对照）
     - random:    从有交互的物品中随机挑
@@ -107,7 +107,7 @@ def select_target_items(popularity: Counter, num_items: int, strategy: str,
     elif strategy == "category":
         if categories is None:
             raise FileNotFoundError(
-                "strategy=category 需要推荐频次分类缓存，"
+                "strategy=category 需要交互数分类缓存，"
                 "请先运行 python attacks/random/run.py --mode classify"
             )
         if category not in categories:
@@ -116,7 +116,7 @@ def select_target_items(popularity: Counter, num_items: int, strategy: str,
             )
         pool = categories[category]
         if category == "popular":
-            # 流行：取推荐频次最高的 count 个（平手按训练流行度）
+            # 流行：取交互数最高的 count 个（平手按交互数）
             selected = sorted(
                 pool,
                 key=lambda i: (-(rec_counts or {}).get(i, 0), popularity[i]),
@@ -291,7 +291,7 @@ def main(config: Dict[str, Any], raw_meta: Path | None = None,
             {
                 "item_id": t,
                 "popularity_before": popularity[t],
-                "rec_count": rec_cache["counts"].get(t, 0) if rec_cache else None,
+                "interaction_count": rec_cache["counts"].get(t, 0) if rec_cache else None,
                 "category": (
                     "popular" if rec_cache and t in categories["popular"]
                     else "ordinary" if rec_cache and t in categories["ordinary"]
