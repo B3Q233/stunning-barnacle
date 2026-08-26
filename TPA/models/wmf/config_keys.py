@@ -29,6 +29,7 @@ KEY_BATCH_SIZE = "batch_size"
 KEY_DEVICE = "device"
 KEY_SAVE_EVERY_N_EPOCHS = "save_every_n_epochs"
 KEY_SHUFFLE = "shuffle"
+KEY_OPTIMIZER = "optimizer"
 KEY_RUN_TAG = "run_tag"
 
 # evaluation 模块

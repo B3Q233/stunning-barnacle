@@ -1,0 +1,4 @@
+interface:
+  display_name: "Paper Tutor（论文深度教学器）"
+  short_description: "Paper md → Paper Tutor derivation.html（背景演化/符号/100% 推导/实验验证）→ knowledge graph JSON + learning path（附录/高级视图）"
+  default_prompt: "Use $knowledge-point-visualization to turn this paper Markdown into meta.json, all.json, learning-cost.json, learning-path.json, knowledge-graph.html, cost-editor.html, and derivation.html. derivation.html is the default Paper Tutor entry with fixed chapters (0 研究背景演化 → 1 基础工具箱 → 2 符号总表 → 3 核心公式 → 4 实验验证 → 附录), formula source levels (Definition/Assumption/Transformation/Optimization/Result), four-question why-cards, hand-computable numeric examples, at most one visualization per section with a formula caption, and a 100% formula coverage table. Then run scripts/verify_outputs.py --browser-check and iterate until VERIFY PASSED."

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>论文深度教学器（Paper Tutor）</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script src="mathjax/tex-svg.js"></script>
+<script src="interactive-components.js"></script>
+<style>
+:root{--bg:#f5f6fa;--card:#fff;--ink:#20242f;--muted:#5b6472;--line:#e2e5ee;--accent:#4f46e5;--green:#16a34a;--blue:#0ea5e9;--amber:#f59e0b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;line-height:1.75}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+header{background:linear-gradient(135deg,#312e81,#4f46e5 55%,#0ea5e9);color:#fff;padding:30px 0 24px}
+header h1{margin:0 0 8px;font-size:1.5rem}
+header p{margin:0;font-size:.92rem;opacity:.92}
+nav{margin:14px 0 0}
+nav a{color:#fff;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:3px 14px;margin-right:8px;text-decoration:none;font-size:.85rem;display:inline-block;margin-bottom:6px}
+section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 26px;margin:20px 0}
+h2{margin:0 0 12px;font-size:1.18rem;border-left:5px solid var(--accent);padding-left:10px}
+h3{margin:18px 0 8px;font-size:1rem;color:#312e81}
+.eq{background:#fafbff;border:1px dashed #c7cde8;border-radius:10px;padding:10px 16px;margin:10px 0;overflow-x:auto}
+.step{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:14px 0}
+.step .num{display:inline-block;background:var(--accent);color:#fff;border-radius:999px;width:26px;height:26px;line-height:26px;text-align:center;font-size:.85rem;margin-right:8px}
+.step h3{display:inline;border:0;padding:0;margin:0}
+.goal{background:#eef7ff;border-left:4px solid var(--blue);padding:8px 12px;border-radius:8px;margin:8px 0;font-size:.92rem}
+.micro{background:#fbfcfe;border-left:3px solid var(--accent);padding:8px 12px;margin:8px 0;border-radius:6px;font-size:.93rem}
+.micro .why{color:var(--muted);font-size:.88rem}
+.tag{display:inline-block;background:#eef0fe;color:#4338ca;border:1px solid #d6daf6;border-radius:6px;padding:0 8px;font-size:.76rem;margin:2px 3px 2px 0}
+.demo{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:12px 0;background:#fafbff}
+.kpy-demo-title{font-weight:600;margin-bottom:6px}
+.kpy-info{font-size:.88rem;color:var(--muted);margin-bottom:8px}
+.kpy-formula{margin:8px 0;overflow-x:auto;font-size:.95rem;color:var(--ink)}
+.kpy-ctls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px}
+.kpy-ctl{display:inline-flex;gap:6px;align-items:center;font-size:.85rem}
+.kpy-btn{background:var(--accent);color:#fff;border:0;border-radius:6px;padding:5px 12px;cursor:pointer}
+.kpy-tip{position:absolute;z-index:10;background:#20242f;color:#fff;padding:6px 10px;border-radius:6px;font-size:.8rem;max-width:280px}
+.kpy-demo-error{outline:2px solid #dc2626}
+.ok{color:var(--green);font-weight:600}
+.src-badge{display:inline-block;background:#312e81;color:#fff;border-radius:6px;padding:1px 9px;font-size:.76rem;margin-left:6px;vertical-align:2px}
+.why-card{background:#fffbeb;border:1px solid #fcd34d;border-left:5px solid var(--amber);border-radius:10px;padding:12px 16px;margin:12px 0}
+.why-card .q{font-weight:600;color:#92400e;margin:4px 0}
+.why-card .a{color:var(--ink);margin:0 0 6px}
+.numeric-example{background:#f0fdf4;border:1px solid #bbf7d0;border-left:5px solid var(--green);border-radius:10px;padding:10px 14px;margin:12px 0;font-size:.93rem}
+.viz{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:12px 0;background:#fafbff}
+.viz-caption{color:var(--muted);font-size:.85rem;margin:8px 0 0;text-align:center}
+.note{background:#fff7ed;border-left:4px solid var(--amber);padding:8px 12px;border-radius:8px;margin:8px 0;font-size:.9rem}
+table{width:100%;border-collapse:collapse;font-size:.87rem;margin:10px 0}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:#f1f3f9}
+code{background:#eef1f7;border-radius:5px;padding:1px 5px;font-family:Consolas,monospace;font-size:.85em}
+pre{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px 16px;overflow-x:auto;font-size:.85rem;line-height:1.55}
+footer{color:var(--muted);font-size:.82rem;padding:18px 0 34px;text-align:center}
+.symbol td:first-child{font-family:Consolas,monospace;white-space:nowrap}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1>论文深度教学器（Paper Tutor）</h1>
+  <p>背景演化 → 直觉/例子 → 100% 逐步推导 → 实验验证</p>
+  <nav>
+    <a href="#evolution">0 研究背景</a>
+    <a href="#toolbox">1 基础工具箱</a>
+    <a href="#symbols">2 符号总表</a>
+    <a href="#core">3 核心公式</a>
+    <a href="#experiments">4 实验验证</a>
+    <a href="#appendix">附录</a>
+    <a href="#formulas">公式索引</a>
+    <a href="#check">覆盖自检</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+<section id="evolution">
+  <h2>Chapter 0 研究背景：演化 → 缺陷 → 创新 → 效果</h2>
+  <p>按时间顺序讲清“论文在解决谁的问题”，禁止直接进入模型。演化时间轴 3–6 个阶段、不超过一页：</p>
+  <table>
+    <thead><tr><th>阶段</th><th>内容</th></tr></thead>
+    <tbody>
+      <tr><td>① 方法</td><td>以前怎么做（按时间顺序列出上一代方法）</td></tr>
+      <tr><td>② 缺陷</td><td>为什么不够（每个方法一个核心缺陷 + 一个具体例子）</td></tr>
+      <tr><td>③ 创新</td><td>本文如何解决（每个创新回答“解决上一代哪个问题”）</td></tr>
+      <tr><td>④ 效果</td><td>提升了什么、代价是什么（创新 → 指标 → 代价）</td></tr>
+    </tbody>
+  </table>
+  <p>因果链示例（按论文实际替换）：</p>
+  <table>
+    <thead><tr><th>阶段</th><th>为什么出现</th></tr></thead>
+    <tbody>
+      <tr><td>UserCF</td><td>利用相似用户推荐</td></tr>
+      <tr><td>MF</td><td>解决稀疏问题，学习隐向量</td></tr>
+      <tr><td>WMF</td><td>隐式反馈没有负样本，不能把 0 当负例</td></tr>
+      <tr><td>LightGCN</td><td>MF 无法传播高阶协同关系</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="toolbox">
+  <h2>Chapter 1 基础工具箱（字典，不是先修课程）</h2>
+  <p>只保留打开第一页就需要的基础概念（≤8 行）；Gram 矩阵、半正定、Hessian、链式法则、
+     加权最小二乘等复杂概念一律在首次出现处就地解释，不进本章。背景公式做概念推导
+     （例如点积四步），范例见 <code>references/teaching-examples.md</code>。</p>
+  <table>
+    <thead><tr><th>概念</th><th>通俗解释（生活例子）</th><th>最小公式</th><th>论文哪里用到</th></tr></thead>
+    <tbody>
+      <tr><td>向量点积</td><td>两份清单对应项相乘再相加</td><td>\(a^\top b = \sum_i a_i b_i\)</td><td>预测 \(p̂_{ui} = x_u^\top y_i\)</td></tr>
+      <tr><td>矩阵（乘法/转置/单位阵）</td><td>数字表格；I 相当于 1</td><td>\((AB)^\top = B^\top A^\top\)</td><td>Y 是 n×f 表</td></tr>
+      <tr><td>对角矩阵</td><td>只在主对角线有值</td><td>\(\mathrm{diag}(c_1,\dots,c_n)\)</td><td>置信度 Cᵘ</td></tr>
+      <tr><td>正则化</td><td>防止“背答案”</td><td>\(\lambda\|x\|^2\)</td><td>式 (3) 第二项</td></tr>
+      <tr><td>向量范数（长度）</td><td>箭头长度</td><td>\(\|x\|^2 = \sum_i x_i^2\)</td><td>正则项</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="symbols">
+  <h2>Chapter 2 符号总表（每个符号为什么存在）</h2>
+  <p>每个公式前必须出现或链接到本表；易混符号要说明“输入还是输出、来自哪一步”。</p>
+  <table class="symbol">
+    <thead><tr><th>符号</th><th>形状</th><th>意义</th><th>为什么需要</th></tr></thead>
+    <tbody>
+      <tr><td>X</td><td>m × f</td><td>用户因子矩阵</td><td>示例：第 u 行是 x_u，是用户侧输出/物品侧输入</td></tr>
+      <tr><td>x_u</td><td>f 维</td><td>用户 u 的隐因子</td><td>示例：一次解一个，与 X 区分</td></tr>
+      <tr><td>Y</td><td>n × f</td><td>物品因子矩阵</td><td>示例：固定 Y 求 X</td></tr>
+      <tr><td>y_i</td><td>f 维</td><td>物品 i 的隐因子</td><td>示例：与 Y 区分</td></tr>
+      <tr><td>λ, I</td><td>标量 / f×f</td><td>正则系数 / 单位阵</td><td>示例：防过拟合 + 保证可逆</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="core">
+  <h2>Chapter 3 核心公式（Why → 例子 → 推导 → 回例子）</h2>
+  <p>每个公式按 Formula Teaching Flow：提出问题 → 微型例子 → 局部符号 → 公式来源等级 → Why Card（自适应）→ 一步一解释推导 → 回到论文（它影响了哪一个实验）。</p>
+  <p>Why Card 与公式绑定：方法总览放完整卡片；推导子步骤只解释“这一步为什么成立”，不重复总览动机。
+     对称推导（如物品侧）用镜像映射表（Y→X、x_u→y_i、Cᵘ→Cⁱ、p(u)→p(i)）+ 同构论证，不逐行重复用户侧推导。</p>
+
+  <div class="step">
+    <span class="num">1</span><h3>公式 (N) 示例步骤<span class="src-badge" data-src="optimization">Optimization</span></h3>
+    <div class="goal">动机：为什么需要这个公式（解决什么问题；一句话 + 生活例子）。</div>
+    <div class="micro">
+      <div class="numeric-example">微型例子（第一次遇到立即理解；只覆盖当前一步，同一组数字贯穿本章）：
+        用户 u 的两个物品 \(y_1=1\)、\(y_2=0.5\)，置信度 4 和 1。
+        （若公式含矩阵/向量/求逆：必须给出显式矩阵形式 + 维度标注 + 至少一次乘法过程 +
+        数值结果，且全部用 LaTeX 渲染，例如
+        \(Y=\begin{bmatrix}1\\0.5\end{bmatrix}\in\mathbb{R}^{2\times1}\)；
+        禁止只写标量缩写 A=4.25 或纯文本 [1; 0.5]。）</div>
+      <div class="why">局部符号：只列当前公式用到的符号（如 x_u、Y、Cᵘ），完整表见 <a href="#symbols">Chapter 2</a>。</div>
+      <div class="why">公式来源等级：这是优化问题的解，不是定义，也不是结论；先说明类别再推导。</div>
+    </div>
+    <div class="why-card"><!-- 自适应 Why Card：Definition（为什么这样定义/它描述什么对象）；Assumption（为什么这样假设/放弃了什么）；Transformation（为什么能这样变形/用到了哪个数学性质）；Optimization（为什么这样优化/为什么不是 SGD/为什么梯度置零成立/代价是什么）；Result（它说明了什么/它由哪些公式得到）；方法总览放完整卡片，子步骤不重复总览动机 -->
+      <p class="q">为什么这样优化？</p>
+      <p class="a">示例答案：固定一侧后子问题是凸二次，闭式求解一步到位。</p>
+      <p class="q">为什么不是 SGD？</p>
+      <p class="a">示例答案：全量 m×n 目标对逐项 SGD 不可行。</p>
+      <p class="q">为什么梯度置零成立？</p>
+      <p class="a">示例答案：目标凸，梯度 = 0 是唯一全局最优。</p>
+      <p class="q">代价是什么？</p>
+      <p class="a">示例答案：得到可并行的闭式更新，失去联合非凸问题的全局最优保证。</p>
+    </div>
+    <div class="micro">
+      <div class="why">推导一步：对应维度相乘再相加（只解释这一步，不提前讲后续变量）。</div>
+      <div class="eq">\[ \text{公式 (N)} \tag{N} \]</div>
+      <div class="why">回到论文：于是得到……（对应原文与后续作用，预告下一步沿用同一组数字）。</div>
+    </div>
+    <div class="viz" data-formula="tagN">
+      <p>（按需触发：空间关系 / 结构关系 / 前后变化 / 矩阵模式，满足其一才画；同一章节最多 1 张）</p>
+      <p class="viz-caption">这张图帮助理解公式 (N)。</p>
+    </div>
+    <div class="demo" data-demo="gradient-descent" data-config='{"lr":0.25,"x0":1.4,"y0":1.2}'></div>
+  </div>
+</section>
+
+<section id="experiments">
+  <h2>Chapter 4 实验验证：理论如何对应实验</h2>
+  <table>
+    <thead><tr><th>对应公式</th><th>验证假设</th><th>实验结果</th><th>结论</th><th>代价</th><th>论文位置</th></tr></thead>
+    <tbody>
+      <tr><td>Eq.(3)</td><td>偏好+置信度有效：高频行为只增加置信度</td><td>8.56% vs 10.49%</td><td>支持</td><td>多一个超参 α</td><td>论文 §6</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="appendix">
+  <h2>附录（知识导航 / 高级视图）</h2>
+  <p><a href="knowledge-graph.html">知识图谱</a>（附录/高级视图）・ <a href="learning-path.json">学习路径</a>・
+     <a href="cost-editor.html">学习代价编辑器</a></p>
+</section>
+
+<section id="formulas">
+  <h2>公式索引（论文 tag 全覆盖）</h2>
+  <table>
+    <thead><tr><th>编号</th><th>含义</th><th>所在章节</th></tr></thead>
+    <tbody>
+      <tr><td>(N)</td><td>示例</td><td><a href="#core">Chapter 3</a></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="check">
+  <h2>覆盖自检（覆盖率必须 100%）</h2>
+  <table>
+    <thead><tr><th>公式</th><th>状态</th><th>所在章节</th></tr></thead>
+    <tbody>
+      <tr><td>(1)</td><td>✅</td><td><a href="#core">Chapter 3</a></td></tr>
+    </tbody>
+  </table>
+  <p class="ok">✅ 全部覆盖，无跳步。</p>
+</section>
+
+</main>
+<footer>由 knowledge-point-visualization 技能生成（Paper Tutor）・ MathJax 离线渲染・ 交互演示离线可用</footer>
+
+<script>
+(function () {
+  var mj = "missing", finished = false;
+  function finish() {
+    if (finished) return;
+    finished = true;
+    document.documentElement.setAttribute("data-mathjax", mj);
+    var demos = window.KPV ? KPV.initAll(document) : { total: 0, ok: 0, failed: ["KPV missing"] };
+    document.documentElement.setAttribute("data-demos-total", String(demos.total));
+    document.documentElement.setAttribute("data-demos-ok", String(demos.ok));
+    document.documentElement.setAttribute("data-demos-failed", demos.failed.join("|") || "none");
+    document.documentElement.setAttribute("data-kpv-ready",
+      (mj === "ok" && demos.failed.length === 0 && demos.total > 0) ? "ok" : "errors");
+  }
+  function waitForMathJax(tries) {
+    if (window.MathJax && MathJax.startup && MathJax.startup.promise) {
+      MathJax.startup.promise.then(function () { mj = "ok"; finish(); },
+                                   function () { mj = "error"; finish(); });
+    } else if (tries > 0) {
+      setTimeout(function () { waitForMathJax(tries - 1); }, 200);
+    } else {
+      finish();
+    }
+  }
+  waitForMathJax(50);
+})();
+</script>
+</body>
+</html>

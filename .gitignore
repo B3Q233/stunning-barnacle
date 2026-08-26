@@ -25,7 +25,9 @@ Thumbs.db
 
 # 私人/本地内容（不入库）
 .claude/
-.codex/
+.codex/*
+!.codex/skills/
+!.codex/skills/**
 .chrome-headless-test/
 tmp/
 papers/

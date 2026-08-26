@@ -1,0 +1,4 @@
+interface:
+  display_name: "Research Code Reproduction"
+  short_description: "只读分析科研代码仓库并生成复现指南"
+  default_prompt: "使用 $research-code-reproduction 分析这个科研代码仓库，生成从环境、数据和权重到训练、评估、推理与排错的中文复现指南；只读分析，不修改仓库。"

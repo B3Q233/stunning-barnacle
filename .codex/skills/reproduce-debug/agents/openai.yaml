@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reproduce Debug"
+  short_description: "Systematically debug reproduction code result mismatches"
+  default_prompt: "Use $reproduce-debug to find why my reproduction differs from the official implementation."

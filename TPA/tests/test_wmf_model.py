@@ -74,6 +74,18 @@ class WMFModelStructureTest(unittest.TestCase):
         self.assertGreaterEqual(X.min().item(), -0.2)
         self.assertLessEqual(X.max().item(), 0.2)
 
+    def test_sgd_step_is_differentiable_and_updates(self):
+        config = make_config(factors=4)
+        config["optimizer"] = "sgd"
+        config["lr"] = 0.01
+        model = WMFModel(config, num_users=3, num_items=4)
+        batch = (torch.tensor([0, 1, 2]), torch.tensor([1, 2, 3]),
+                 torch.ones(3), torch.ones(3), {}, {})
+        before = model.user_factors.detach().clone()
+        result = model.train_step(batch)
+        self.assertTrue(torch.isfinite(torch.tensor(result["loss"])))
+        self.assertFalse(torch.equal(before, model.user_factors.detach()))
+
 
 if __name__ == "__main__":
     unittest.main()

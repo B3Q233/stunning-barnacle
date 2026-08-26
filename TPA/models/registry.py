@@ -33,6 +33,11 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 AVAILABLE_MODELS: Dict[str, Dict[str, Any]] = {
+    "itemcf": {"model_cls": "models.itemcf.model:ItemCFModel", "dataset_cls": "models.itemcf.dataset:ItemCFDataLoader", "config_path": "models/itemcf/config.yaml", "description": "ItemCF"},
+    "itemae": {"model_cls": "models.itemae.model:ItemAEModel", "dataset_cls": "models.itemae.dataset:ItemAEModelDataLoader", "config_path": "models/itemae/config.yaml", "description": "ItemAE"},
+    "ncf": {"model_cls": "models.ncf.model:NCFModel", "dataset_cls": "models.ncf.dataset:NCFModelDataLoader", "config_path": "models/ncf/config.yaml", "description": "NCF"},
+    "multvae": {"model_cls": "models.multvae.model:MultVAEModel", "dataset_cls": "models.multvae.dataset:MultVAEModelDataLoader", "config_path": "models/multvae/config.yaml", "description": "MultVAE"},
+    "cml": {"model_cls": "models.cml.model:CMLModel", "dataset_cls": "models.cml.dataset:CMLModelDataLoader", "config_path": "models/cml/config.yaml", "description": "CML"},
     "lightgcn": {
         "model_cls": "models.lightgcn.model:LightGCN",
         "dataset_cls": "models.lightgcn.dataset:LightGCNDataset",

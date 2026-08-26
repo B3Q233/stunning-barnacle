@@ -15,6 +15,7 @@ model:
   init_std: 0.01                   # [ai] 初始化标准差（normal: N(0, 0.01)）
 
 training:
+  optimizer: als                 # als=???? / sgd=????
   lambda_reg: 0.01                 # [unreported] 论文未给（说明交叉验证决定）；recpack/implicit 默认 0.01
   epochs: 100                       # [paper] 约 10 轮交替收敛；参考 implicit 15 / recpack 20
   batch_size: 0                    # [paper] ALS 为全量闭式更新，0=单批全量

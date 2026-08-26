@@ -1,0 +1,15 @@
+data:
+  dataset: ml100k
+  source_model: wmf
+run_tag: null  # CLI ????????????? run_tag ??
+model:
+  emb_dim: 64
+  hidden_dim: 128
+  latent_dim: 64
+training:
+  epochs: 10
+  batch_size: 256
+  lr: 0.001
+  device: cpu
+evaluation:
+  k: 20

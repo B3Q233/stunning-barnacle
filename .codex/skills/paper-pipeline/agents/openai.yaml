@@ -1,0 +1,4 @@
+interface:
+  display_name: "Paper Pipeline"
+  short_description: "Turn paper PDFs into structured understanding documents"
+  default_prompt: "Use $paper-pipeline to analyze this paper PDF."

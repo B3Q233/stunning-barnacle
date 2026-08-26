@@ -23,6 +23,7 @@ from models.wmf.config_keys import (
     KEY_INIT_METHOD,
     KEY_INIT_STD,
     KEY_LAMBDA_REG,
+    KEY_OPTIMIZER,
 )
 from training.framework import TrainableModel, TrainingConfig
 
@@ -217,6 +218,8 @@ class WMFModel(TrainableModel):
 
         返回 {"loss", "obs_loss", "reg"}，均为标量。
         """
+        if self.config.get(KEY_OPTIMIZER, "als").lower() in {"sgd", "adam"}:
+            return self.train_sgd_step(batch)
         users, items, conf, p, user_obs, item_obs = batch
         users_np = users.cpu().numpy()
         items_np = items.cpu().numpy()
@@ -235,13 +238,37 @@ class WMFModel(TrainableModel):
         return {"loss": float(loss), "obs_loss": float(obs),
                 "reg": float(reg)}
 
+    def train_sgd_step(self, batch):
+        """?? WMF SGD ???? surrogate/victim ?????"""
+        users, items, conf, p = batch[:4]
+        users = users.to(self._device)
+        items = items.to(self._device)
+        conf = conf.to(self._device)
+        p = p.to(self._device)
+        if not hasattr(self, "_optimizer"):
+            self._optimizer = torch.optim.Adam(
+                self.parameters(), lr=float(self.config.get("lr", 1e-3)))
+        self._optimizer.zero_grad(set_to_none=True)
+        scores = self.forward(users, items)
+        lam = float(self.config.get(KEY_LAMBDA_REG, 0.01))
+        reg = 0.5 * lam * (
+            self.user_factors[users].pow(2).sum() +
+            self.item_factors[items].pow(2).sum()) / max(1, len(users))
+        obs_loss = (conf * (p - scores).pow(2)).mean()
+        loss = obs_loss + reg
+        if not torch.isfinite(loss):
+            raise FloatingPointError("WMF SGD loss ????")
+        loss.backward()
+        self._optimizer.step()
+        return {"loss": float(loss.item()), "obs_loss": float(obs_loss.item()), "reg": float(reg.item())}
+
     def eval_step(self, batch):
         """验证损失：Eq.(3) 全量损失限制在本批用户上 + 全物品正则。
 
         S_val = Σ_{u∈batch} x_uᵀ(YᵀY)x_u + Σ_obs(c(p−s)² − s²)
                 + λ(Σ_{u∈batch}‖x‖² + Σ_i‖y‖²)
         """
-        users, items, conf, p = batch
+        users, items, conf, p = batch[:4]
         users_np = users.cpu().numpy()
         items_np = items.cpu().numpy()
         conf_np = conf.cpu().numpy()

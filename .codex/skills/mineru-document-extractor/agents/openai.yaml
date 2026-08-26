@@ -1,0 +1,4 @@
+interface:
+  display_name: "MinerU Document Extractor"
+  short_description: "Convert PDFs and documents to Markdown with the MinerU CLI"
+  default_prompt: "Use $mineru-document-extractor to convert this PDF to Markdown."

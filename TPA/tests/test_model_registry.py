@@ -18,7 +18,7 @@ class PublicRegistryTest(unittest.TestCase):
     def test_all_models_registered(self):
         self.assertEqual(
             sorted(AVAILABLE_MODELS),
-            ["lightgcn", "mf", "wmf"],
+            ["cml", "itemae", "itemcf", "lightgcn", "mf", "multvae", "ncf", "wmf"],
         )
 
     def test_mf_entry(self):
