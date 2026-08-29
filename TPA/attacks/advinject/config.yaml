@@ -1,0 +1,43 @@
+# AdvInject 代理模型投毒复现配置
+# 数值来源：上游 revisit_adv_rec/generate_attack_args.py；未报告项标为 [unreported]
+dataset: ml100k
+mode: all
+seed: 1
+use_cuda: false
+run_tag: null
+output_dir: outputs
+model:
+  name: wmf
+  # victim model；通过 models/registry.py 解析
+classification:
+  popular_percentile: 95
+  torso_percentile: 75
+  tail_percentile: 50
+surrogate:
+  name: itemae                 # [upstream] Sur-ItemAE；可选 wmf_sgd / wmf_als
+  epochs: 50                   # [upstream]
+  lr: 0.001                    # [upstream]
+  l2: 0.000001                 # [upstream]
+  batch_size: 2048             # [upstream]
+  hidden_dims: [256, 128]      # [upstream]
+  weight_alpha: 20.0           # [upstream] ItemAE recon / WMF confidence
+attack:
+  attack_type: adversarial      # [upstream] adversarial / random
+  n_fakes: 0.01                # [upstream] ratio；大于 1 时解释为绝对数量
+  n_target_items: 5             # [upstream]
+  target_item_popularity: head  # [upstream] head / upper_torso / lower_torso / tail
+  target_items: null            # [upstream] 固定目标时填写整数列表
+  adv_epochs: 30                # [upstream]
+  unroll_steps: 5               # [upstream] 有限 unroll；0 表示直接优化
+  adv_lr: 1.0                   # [upstream]
+  adv_momentum: 0.95            # [upstream]
+  proj_threshold: 0.1           # [upstream]
+  click_targets: false          # [upstream]
+training:
+  epochs: 15                    # victim [unreported in attack generator]
+  batch_size: 256               # victim [unreported in attack generator]
+  lr: 0.001                     # victim [unreported in attack generator]
+  weight_decay: 0.00001         # victim [unreported in attack generator]
+evaluation:
+  k: 50
+  report_model_utility: true
