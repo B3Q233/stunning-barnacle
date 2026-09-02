@@ -223,6 +223,7 @@ def main(tag: str | None = None, resume: bool = False):
     # 手动训练循环
     history = []
     try:
+        from training.epoch_log import log_train_line, write_history
         for epoch in range(start_epoch + 1, config.epochs + 1):
             _t_epoch = section_enter(f"Epoch {epoch}/{config.epochs}")
             # === Train ===
@@ -250,13 +251,13 @@ def main(tag: str | None = None, resume: bool = False):
                 print(f"  [diag] grad_norm={grad_norm:.6f} emb_norm={emb_norm:.1f} "
                       f"lr={config.lr} wd={config.get('weight_decay', 0)}")
 
-            print(f"[epoch {epoch}/{config.epochs}] train_loss={avg_loss:.4f} "
-                  f"val_loss={avg_val:.4f}")
+            log_train_line(epoch, config.epochs, avg_loss, avg_val)
 
             entry = {
                 "epoch": epoch, "train_loss": avg_loss, "val_loss": avg_val,
             }
-            section_exit(f"Epoch {epoch}/{config.epochs}", _t_epoch)
+            entry["epoch_seconds"] = section_exit(
+                f"Epoch {epoch}/{config.epochs}", _t_epoch)
             history.append(entry)
 
             if epoch % config.save_every_n_epochs == 0:
@@ -266,11 +267,8 @@ def main(tag: str | None = None, resume: bool = False):
             if eval_result:
                 entry.update(eval_result)
 
-            with open(tag_history_path, 'w') as f:
-                json.dump({
-                    "history": history,
-                    "best": full_rank.tracker.best_results(),
-                }, f, indent=2)
+            write_history(Path(tag_history_path).parent, history,
+                          full_rank.tracker.best_results())
 
     except KeyboardInterrupt:
         print("\n[train] 训练中断，保存 checkpoint...")
