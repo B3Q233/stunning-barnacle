@@ -13,8 +13,40 @@ from typing import Union
 
 PathLike = Union[str, Path]
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+IMPLICIT_RAW_DIR = PROJECT_ROOT / "data" / "implicit" / "raw"
+EXPLICIT_RAW_DIR = PROJECT_ROOT / "data" / "explicit" / "raw"
+
+DATASET_INTERACTION = {
+    "gowalla": "implicit",
+    "amazon-book": "implicit",
+    "yelp2018": "implicit",
+    "ml100k": "implicit",
+}
+
 
 def resolve_from_root(path: PathLike, root: Path) -> Path:
     """把相对路径解析到 ``root`` 下；绝对路径保持原样。"""
     p = Path(path)
     return p if p.is_absolute() else root / p
+
+
+def raw_data_root(interaction: str) -> Path:
+    """返回 implicit/explicit 的 raw 根目录；未知类型报错。"""
+    if interaction == "implicit":
+        return IMPLICIT_RAW_DIR
+    if interaction == "explicit":
+        return EXPLICIT_RAW_DIR
+    raise ValueError(
+        f"未知交互类型 {interaction!r}，可选: implicit | explicit"
+    )
+
+
+def raw_data_dir(dataset: str) -> Path:
+    """返回 {dataset} 的原始数据目录；未知数据集报错并列出可用项。"""
+    if dataset not in DATASET_INTERACTION:
+        raise ValueError(
+            f"未知数据集 {dataset!r}，已登记: {sorted(DATASET_INTERACTION)}"
+        )
+    return raw_data_root(DATASET_INTERACTION[dataset]) / dataset

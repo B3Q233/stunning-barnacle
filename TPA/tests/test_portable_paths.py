@@ -92,6 +92,45 @@ class PreprocessDefaultPathTest(unittest.TestCase):
         self._assert_defaults(pre, "lightgcn")
 
 
+class RawDataResolverTest(unittest.TestCase):
+    """raw 根目录与数据集解析（implicit/explicit 分层）。"""
+
+    def test_raw_roots(self):
+        from training.paths import (
+            EXPLICIT_RAW_DIR,
+            IMPLICIT_RAW_DIR,
+            raw_data_root,
+        )
+
+        self.assertEqual(IMPLICIT_RAW_DIR,
+                         PROJECT_ROOT / "data" / "implicit" / "raw")
+        self.assertEqual(EXPLICIT_RAW_DIR,
+                         PROJECT_ROOT / "data" / "explicit" / "raw")
+        self.assertEqual(raw_data_root("implicit"), IMPLICIT_RAW_DIR)
+        self.assertEqual(raw_data_root("explicit"), EXPLICIT_RAW_DIR)
+
+    def test_raw_data_dir_for_known_datasets(self):
+        from training.paths import raw_data_dir
+
+        for ds in ("gowalla", "amazon-book", "yelp2018", "ml100k"):
+            self.assertEqual(
+                raw_data_dir(ds),
+                PROJECT_ROOT / "data" / "implicit" / "raw" / ds,
+            )
+
+    def test_raw_data_dir_unknown_raises(self):
+        from training.paths import raw_data_dir
+
+        with self.assertRaises(ValueError):
+            raw_data_dir("filmtrust")
+
+    def test_raw_data_root_unknown_raises(self):
+        from training.paths import raw_data_root
+
+        with self.assertRaises(ValueError):
+            raw_data_root("unknown")
+
+
 class AttackConfigPathTest(unittest.TestCase):
     """攻击 config 中的 checkpoint 一律使用相对 TPA 根的路径。"""
 
