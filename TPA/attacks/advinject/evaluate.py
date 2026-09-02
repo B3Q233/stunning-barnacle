@@ -28,11 +28,14 @@ def _edge_index(pairs):
 
 def _train_pair_model(model, name, meta, cfg, epochs):
     from models.revisit_training import sample_negative_items
+    from training.epoch_log import log_train_line
+    from training.timing import section_enter, section_exit
     loader = pair_loader(meta["train_pairs"], int(cfg.get("batch_size", 256)), True)
     optimizer = torch.optim.Adam(model.parameters(), lr=float(cfg.get("lr", 1e-3)))
     device = getattr(model, "_device", torch.device("cpu"))
     history = []
-    for _ in range(epochs):
+    for epoch in range(1, epochs + 1):
+        _t_epoch = section_enter(f"Epoch {epoch}/{epochs}")
         model.train()
         total = 0.0
         count = 0
@@ -53,7 +56,12 @@ def _train_pair_model(model, name, meta, cfg, epochs):
             optimizer.step()
             total += float(loss.item()) * len(users)
             count += len(users)
-        history.append({"loss": total / max(1, count)})
+        avg = total / max(1, count)
+        log_train_line(epoch, epochs, avg)
+        entry = {"epoch": epoch, "loss": avg,
+                 "epoch_seconds": section_exit(
+                     f"Epoch {epoch}/{epochs}", _t_epoch)}
+        history.append(entry)
     return history
 
 def retrain_victim(meta,config):
@@ -66,21 +74,38 @@ def retrain_victim(meta,config):
         history=[model.fit(meta["train_pairs"])]
     elif name=="wmf":
         from models.wmf.dataset import WMFDataset
+        from training.epoch_log import log_train_line
+        from training.timing import section_enter, section_exit
         dataset=WMFDataset(meta["train_pairs"],alpha=float(cfg.get("alpha",40)),epsilon=float(cfg.get("epsilon",1e-8)),scheme=cfg.get("confidence_scheme","minimal"))
         batch=(dataset.users,dataset.items,dataset.conf,dataset.p,dataset.user_obs,dataset.item_obs)
-        history=[model.train_step(batch) for _ in range(epochs)]
+        history=[]
+        for epoch in range(1, epochs + 1):
+            _t_epoch = section_enter(f"Epoch {epoch}/{epochs}")
+            res=model.train_step(batch)
+            log_train_line(epoch, epochs, res["loss"])
+            entry={"epoch": epoch, "loss": res["loss"],
+                   "epoch_seconds": section_exit(
+                       f"Epoch {epoch}/{epochs}", _t_epoch)}
+            history.append(entry)
     elif name in {"itemae", "multvae"}:
         matrix=pairs_to_csr(meta["train_pairs"],meta["num_users"],meta["num_items"]).toarray()
         history=[model.fit(torch.tensor(matrix,dtype=torch.float32),epochs=epochs,lr=float(cfg.get("lr",1e-3)))]
     elif name == "lightgcn":
         from models.lightgcn.dataset import LightGCNDataset
         from torch.utils.data import DataLoader
+        from training.epoch_log import log_train_line
+        from training.timing import section_enter, section_exit
         dataset=LightGCNDataset(meta["train_pairs"], int(meta["num_items"]), meta["user_items"], int(meta["num_users"]), neg_ratio=int(cfg.get("neg_ratio", 1)))
         loader=DataLoader(dataset, batch_size=int(cfg.get("batch_size", 256)), shuffle=True)
         history=[]
-        for _ in range(epochs):
+        for epoch in range(1, epochs + 1):
+            _t_epoch = section_enter(f"Epoch {epoch}/{epochs}")
             losses=[float(model.train_step(batch)["loss"]) for batch in loader]
-            history.append({"loss": sum(losses)/max(1,len(losses))})
+            avg=sum(losses)/max(1,len(losses))
+            log_train_line(epoch, epochs, avg)
+            history.append({"epoch": epoch, "loss": avg,
+                            "epoch_seconds": section_exit(
+                                f"Epoch {epoch}/{epochs}", _t_epoch)})
     elif name in {"mf", "ncf", "cml"}:
         history=_train_pair_model(model, name, meta, cfg, epochs)
     else:

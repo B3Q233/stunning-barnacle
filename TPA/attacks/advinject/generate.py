@@ -1,6 +1,7 @@
 ﻿"""AdvInject data stage: initialize and optimize fake-user interactions."""
 from __future__ import annotations
 import argparse
+import time
 from pathlib import Path
 import numpy as np
 import torch
@@ -37,13 +38,21 @@ def generate(config):
     best_current = current.copy()
     best_loss = float("inf")
     for epoch in range(1, attack.adv_epochs + 1):
+        from training.epoch_log import log_train_line
+        from training.timing import section_enter, section_exit
+
+        _t_epoch = section_enter(f"Epoch {epoch}/{attack.adv_epochs}")
         gradient, record = compute_adversarial_gradient(train_csr, current, meta["num_items"], targets, config)
         row_norm = np.linalg.norm(gradient, axis=1, keepdims=True).clip(min=1e-12)
         before = current.copy()
         updated = before - attack.adv_lr * gradient / row_norm
         current = project_fake(torch.as_tensor(updated), attack.proj_threshold, targets, attack.click_targets).numpy()
-        record.update({"epoch": epoch, "changed": int(np.count_nonzero(current != before))})
-        history.append(record)
+        log_train_line(epoch, attack.adv_epochs, record["loss"])
+        entry = {"epoch": epoch,
+                 "epoch_seconds": section_exit(
+                     f"Epoch {epoch}/{attack.adv_epochs}", _t_epoch),
+                 "loss": record["loss"]}
+        history.append(entry)
         if record["loss"] < best_loss:
             best_loss = record["loss"]
             best_current = current.copy()
@@ -54,9 +63,8 @@ def generate(config):
     return {"data_dir": str(data_dir), "output_dir": str(output_dir), "targets": targets.tolist(), "num_fakes": n_fakes, "history": history, "best_loss": best_loss}
 
 if __name__ == "__main__":
-    import yaml
+    from training.config_utils import load_config
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="attacks/advinject/config.yaml")
     args = parser.parse_args()
-    with open(args.config, encoding="utf-8") as handle:
-        print(generate(yaml.safe_load(handle)))
+    print(generate(load_config(args.config)))
