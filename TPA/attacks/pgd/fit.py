@@ -216,6 +216,7 @@ def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
           f"train={len(train_pairs)}, val={len(val_pairs)}, epochs={cfg.epochs}")
 
     for epoch in range(1, cfg.epochs + 1):
+        from training.epoch_log import log_eval_line, log_train_line
         _t_epoch = section_enter(f"Epoch {epoch}/{cfg.epochs}")
         model.set_train()
         epoch_losses: List[float] = []
@@ -230,8 +231,7 @@ def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
 
         avg_loss = sum(epoch_losses) / len(epoch_losses)
         avg_val = sum(epoch_val) / len(epoch_val)
-        print(f"  [epoch {epoch}/{cfg.epochs}] train_loss={avg_loss:.4f} "
-              f"val_loss={avg_val:.4f}")
+        log_train_line(epoch, cfg.epochs, avg_loss, avg_val)
 
         entry = {"epoch": epoch, "train_loss": avg_loss, "val_loss": avg_val}
 
@@ -247,8 +247,7 @@ def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
             entry.update(res)
             if target_details:
                 entry["targets"] = target_details
-            eval_str = ", ".join(f"{n}={res[n]:.4f}" for n in res)
-            print(f"    [eval] {eval_str}")
+            log_eval_line(res)
             improved = tracker.update(res, epoch)
             for name in improved:
                 ckpt_path = ckpt_dir / f"{safe_checkpoint_name(name)}-best-model.pt"
@@ -261,19 +260,16 @@ def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
                 torch.save(payload, ckpt_path)
                 print(f"    [ckpt] best -> {ckpt_path} ({name}={res[name]:.4f})")
 
-        section_exit(f"Epoch {epoch}/{cfg.epochs}", _t_epoch)
+        entry["epoch_seconds"] = section_exit(
+            f"Epoch {epoch}/{cfg.epochs}", _t_epoch)
         history.append(entry)
 
     torch.save({
         "epoch": cfg.epochs,
         "model_state_dict": model.state_dict(),
     }, ckpt_dir / "latest.pt")
-    (out_dir / "history.json").write_text(
-        json.dumps({
-            "history": history,
-            "best": tracker.best_results(),
-        }, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    from training.epoch_log import write_history
+    write_history(out_dir, history, tracker.best_results())
     print(f"[fit] 训练完成 -> {out_dir}")
     return model, history
 
