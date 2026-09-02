@@ -33,6 +33,11 @@ evaluation / tests）；论文资料见 `papers/`；流程文档见
   （USAGE.md + DESIGN.md）。
 - 实验隔离：使用 run_tag 机制，数据与输出按 `{dataset}/{model}/{tag}/`
   分层，随实验保存 config.yaml 快照。
+- 配置规范：复现/新增模型与攻击时，config.yaml 必须参照
+  `TPA/docs/config-template.unified.yaml` 的 canonical 键组织；禁止新增
+  同义键；历史别名仅由 `training/config_utils.py` 的兼容层接受，新文件
+  不得使用。新复现模型/攻击如需新增配置项，必须同步更新该模板
+  （canonical 键与别名映射），模板未覆盖的新键不允许合入。
 - 测试：stdlib unittest，测试文件放 `TPA/tests/test_*.py`；运行命令
   `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_* -v`；改动必须
   运行相关测试，交付前全量回归通过。
@@ -96,6 +101,8 @@ evaluation / tests）；论文资料见 `papers/`；流程文档见
   仅作投毒代价参考。
 - run_tag 优先级：`--tag` > `config.run_tag` > 当前时间；数据与输出按
   `{dataset}/{model}/{tag}/` 分层，每个实验目录保存本次 config 快照。
+- config 结构以 `TPA/docs/config-template.unified.yaml` 为唯一参考模板
+  （canonical 键与别名映射见模板文末映射表）。
 
 ### 6.3 数据契约与产物卫生
 
