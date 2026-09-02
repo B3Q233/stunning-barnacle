@@ -1,8 +1,8 @@
 run_tag: null                      # 实验标签（--tag 或此处指定；null=自动当前时间）
 
 data:
-  dataset: ml100k                  # [unreported] 仓库内数据集名（本地 TPA/data/raw/ml100k）
-  raw_data_path: data/raw/ml100k   # [unreported] 原始成对数据目录（train.txt / test.txt）
+  dataset: ml100k                  # [unreported] 仓库内数据集名（本地 TPA/data/implicit/raw/ml100k）
+  raw_data_path: data/implicit/raw/ml100k   # [unreported] 原始成对数据目录（train.txt / test.txt）
   processed_data_path: models/wmf/data/processed/ml100k   # [unreported] 步骤①预处理产物
   val_ratio: 0.05                  # [ai] 论文用时间切分（TV 专属）；公开数据无时间戳，从训练集随机划 5%
 

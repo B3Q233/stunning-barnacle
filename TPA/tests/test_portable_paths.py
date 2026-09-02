@@ -72,7 +72,10 @@ class PreprocessDefaultPathTest(unittest.TestCase):
     """preprocess 默认输入/输出目录必须基于 TPA 根，禁止盘符硬编码。"""
 
     def _assert_defaults(self, module, model_dir):
-        self.assertEqual(module.DEFAULT_RAW_DIR, PROJECT_ROOT / "data" / "raw")
+        self.assertEqual(
+            module.DEFAULT_RAW_DIR,
+            PROJECT_ROOT / "data" / "implicit" / "raw",
+        )
         self.assertEqual(
             module.DEFAULT_OUT_DIR,
             PROJECT_ROOT / "models" / model_dir / "data" / "processed",

@@ -1,16 +1,21 @@
 """MF 数据预处理脚本
 
 与 LightGCN 的 preprocess.py 同一套逻辑（NGCF 多物品行 / 单对行均可解析），
-把 data/raw/{dataset}/ 下的 train.txt / test.txt 转为 BPR 训练所需的
+把 data/implicit/raw/{dataset}/ 下的 train.txt / test.txt 转为 BPR 训练所需的
 models/mf/data/processed/{dataset}/meta.pkl。
 """
 import os
 import argparse
+import sys
 from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]  # TPA 项目根
-DEFAULT_RAW_DIR = PROJECT_ROOT / "data" / "raw"
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+from training.paths import IMPLICIT_RAW_DIR
+
+DEFAULT_RAW_DIR = IMPLICIT_RAW_DIR
 DEFAULT_OUT_DIR = PROJECT_ROOT / "models" / "mf" / "data" / "processed"
 
 

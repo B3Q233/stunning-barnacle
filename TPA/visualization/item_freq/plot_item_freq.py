@@ -1,6 +1,6 @@
 """统计每个物品的交互数，按交互数降序重映射后绘制顶会风格曲线。
 
-数据格式（与 ``TPA/data/raw/{dataset}/train.txt`` 一致）：
+数据格式（与 ``TPA/data/implicit/raw/{dataset}/train.txt`` 一致）：
     每行 = "用户id 物品id1 物品id2 ..."
 例如 ``1 3 4 5`` 表示用户 1 与物品 3/4/5 各交互一次。
 
@@ -24,11 +24,17 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 from pathlib import Path
+import sys
 from typing import Iterable, List, Sequence, Tuple
 
 import numpy as np
 
-RAW_ROOT = Path(__file__).resolve().parents[2] / "data" / "raw"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+from training.paths import IMPLICIT_RAW_DIR
+
+RAW_ROOT = IMPLICIT_RAW_DIR
 DEFAULT_DATASETS = ["gowalla", "yelp2018", "amazon-book"]
 
 # Okabe-Ito 通用配色：色觉安全、灰度打印可区分
