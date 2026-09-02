@@ -51,11 +51,6 @@ classification:
   percentile_upper_torso: 75         # [advinject] 上躯干区间上界（旧 torso_percentile）
   percentile_lower_torso: 50         # [advinject] 下躯干/尾部交界（旧 tail_percentile）
   # batch_size: 1024                 # [.codex 攻击模板资产] 疑似残留/未使用字段，勿沿用
-  # 别名（advinject 旧字段，同义不同口径，需换算）：
-  #   popular_percentile: 95         # ≈ popular_ratio 0.05 的百分位表述
-  #   torso_percentile: 75           # ≈ medium_ratio 0.40 的上界表述
-  #   tail_percentile: 50            # 冷门区间下界表述
-  checkpoint: null                   # 干净模型权重（仅聚合报告/clean 基线用；旧别名 clean_checkpoint；canonical 见 checkpoint.clean）
 
 # ================= attack（攻击公共部分） =================
 attack:
