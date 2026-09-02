@@ -55,9 +55,10 @@ def prepare_experiment_dir(model_name: str, config: dict) -> Path:
 
 def save_training_artifacts(out_dir, model, history, metrics=None):
     import json
+    from training.epoch_log import write_history
     out_dir=Path(out_dir); (out_dir/"checkpoints").mkdir(parents=True,exist_ok=True)
     torch.save(model.state_dict(),out_dir/"checkpoints"/"last.pt")
-    (out_dir/"history.json").write_text(json.dumps(history,ensure_ascii=False,indent=2),encoding="utf-8")
+    write_history(out_dir, history, {})
     if metrics is not None:
         (out_dir/"metrics.json").write_text(json.dumps(metrics,ensure_ascii=False,indent=2),encoding="utf-8")
 
