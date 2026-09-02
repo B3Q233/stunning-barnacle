@@ -12,7 +12,8 @@
 
 ## 数据集
 
-默认统计 LightGCN 三个数据集（源文件：`TPA/data/raw/{dataset}/train.txt`）：
+默认统计 LightGCN 三个隐式交互数据集（源文件：
+`TPA/data/implicit/raw/{dataset}/train.txt`）：
 
 | 数据集 | 用户数 | 物品数 | train 交互数 |
 | --- | ---: | ---: | ---: |

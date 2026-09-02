@@ -4,7 +4,7 @@
 
 ```
 TPA/
-├── data/raw/                          ← 原始数据集（需手动下载）
+├── data/implicit/raw/                 ← 隐式交互原始数据集（需手动下载）
 │   ├── gowalla/  (train.txt, test.txt, user_list.txt, item_list.txt)
 │   ├── yelp2018/ (同上)
 │   └── amazon-book/ (同上)
@@ -44,10 +44,10 @@ python models/lightgcn/main.py
 
 ## 3. 数据集准备
 
-数据集来自 NGCF 论文作者。请将数据放入 `data/raw/{dataset}/`：
+数据集来自 NGCF 论文作者。请将数据放入 `data/implicit/raw/{dataset}/`：
 
 ```
-data/raw/gowalla/
+data/implicit/raw/gowalla/
 ├── train.txt       ← 每行: user_id item1 item2 ...（NGCF 格式）
 ├── test.txt
 ├── user_list.txt   ← org_id remap_id

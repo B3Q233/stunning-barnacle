@@ -40,8 +40,9 @@ evaluation / tests）；论文资料见 `papers/`；流程文档见
 
 ## 4. 数据与产物卫生（必须）
 
-- 数据集允许入库：原始数据 `data/raw/` 与预处理产物 `models/*/data/processed/`
-  随代码提交，保证克隆后可复现；新增/更新数据集时同步提交。
+- 数据集允许入库：原始数据 `data/{implicit|explicit}/raw/`（隐式交互 /
+  显式评分分目录）与预处理产物 `models/*/data/processed/` 随代码提交，
+  保证克隆后可复现；新增/更新数据集时同步提交。
 - 以下内容一律不入库（.gitignore 已定义，禁止 `git add -f` 绕过）：
   `attacks/*/data/`（poisoned / rec_freq 等实验产物）、`outputs/`、`checkpoints/`、
   `*.pt / *.pth / *.png / *.log`、`.venv/`、`tmp/`、`papers/`、`MinerU-Skill/`、

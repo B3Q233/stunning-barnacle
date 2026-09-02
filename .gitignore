@@ -35,7 +35,7 @@ MinerU-Skill/
 # 私有设计方案（不入库，防止泄露）
 基于物品共现图的传递式多跳中毒攻击.md
 
-# 数据集入库：原始数据 data/raw/ 与预处理产物 models/*/data/processed/ 随代码提交；
+# 数据集入库：原始数据 data/{implicit|explicit}/raw/ 与预处理产物 models/*/data/processed/ 随代码提交；
 # 攻击实验产物（poisoned / rec_freq 等）不入库
 **/attacks/*/data/
 *.pkl

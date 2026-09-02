@@ -13,8 +13,8 @@ NGCF 格式 (user_id item1 item2 ...) → BPR 训练对 (user, item)。ID 已 re
 
 ### 输入 → 输出
 ```
-输入: data/raw/{dataset}/train.txt, test.txt
-      data/raw/{dataset}/user_list.txt, item_list.txt
+输入: data/implicit/raw/{dataset}/train.txt, test.txt
+      data/implicit/raw/{dataset}/user_list.txt, item_list.txt
 
 输出: models/lightgcn/data/processed/{dataset}/
       ├── train_pairs.txt    (user item 对，每行一对)

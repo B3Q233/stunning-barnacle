@@ -34,9 +34,11 @@ G:\Idea\.venv\Scripts\python.exe -m pip install -r G:\Idea\requirements.txt
 
 ## 3. 数据集准备
 
-数据集使用仓库本地 `TPA/data/raw/ml100k/`（成对格式 `user item`，
+数据集使用仓库本地 `TPA/data/implicit/raw/ml100k/`（成对格式 `user item`，
 train.txt + test.txt），无需下载。若换数据集：把新数据放入
-`TPA/data/raw/{dataset}/`（同名 train.txt / test.txt），再改 config 的
+`TPA/data/implicit/raw/{dataset}/`（隐式交互）或
+`TPA/data/explicit/raw/{dataset}/`（显式评分，同名 train.txt / test.txt），
+再改 config 的
 `data.dataset` 并重跑预处理。
 
 ## 4. 复现完整流程

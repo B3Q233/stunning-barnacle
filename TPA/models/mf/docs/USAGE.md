@@ -21,7 +21,8 @@ models/mf/
 
 ## 3. 数据准备
 
-把数据集放到 `<仓库>/TPA/data/raw/{dataset}/train.txt / test.txt`，然后：
+把隐式交互数据集放到 `<仓库>/TPA/data/implicit/raw/{dataset}/train.txt / test.txt`
+（显式评分数据集放 `data/explicit/raw/`），然后：
 
 ```powershell
 python TPA/models/mf/scripts/preprocess.py --dataset ml100k
