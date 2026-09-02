@@ -2,7 +2,7 @@
 from __future__ import annotations
 import argparse
 import json
-import yaml
+from attacks.advinject.common import canonical_config
 from attacks.advinject.classify import classify
 from attacks.advinject.generate import generate
 from attacks.advinject.fit import fit
@@ -10,6 +10,7 @@ from attacks.advinject.generate import attack_paths
 from training.run_tag import read_latest_tag, resolve_run_tag
 
 def run(config, mode=None):
+    config=canonical_config(config)
     mode=mode or config.get("mode","all")
     result={}
     if mode in {"classify","all"}: result["classify"]=classify(config)
@@ -32,6 +33,6 @@ def run(config, mode=None):
     return result
 
 if __name__=="__main__":
+    from training.config_utils import load_config
     parser=argparse.ArgumentParser(); parser.add_argument("--config",default="attacks/advinject/config.yaml"); parser.add_argument("--mode",choices=["classify","data","model","all"],default=None); args=parser.parse_args()
-    with open(args.config,encoding="utf-8") as handle: config=yaml.safe_load(handle)
-    print(run(config,args.mode))
+    print(run(load_config(args.config),args.mode))

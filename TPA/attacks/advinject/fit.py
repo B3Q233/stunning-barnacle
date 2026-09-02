@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 import yaml
-from attacks.advinject.common import load_poisoned_meta, load_meta, save_json
+from attacks.advinject.common import canonical_config, load_poisoned_meta, load_meta, save_json
 from attacks.advinject.evaluate import evaluate, retrain_victim
 from attacks.advinject.generate import attack_paths
 
@@ -14,9 +14,11 @@ def save_checkpoint(model, path):
     torch.save({"model_state_dict": model.state_dict()}, path)
 
 def fit(config, generated=None):
+    config=canonical_config(config)
     if generated is None:
         data_dir, output_dir = attack_paths(config)
-        generated = {"data_dir": str(data_dir), "output_dir": str(output_dir), "targets": config.get("attack", {}).get("target_items") or []}
+        generated = {"data_dir": str(data_dir), "output_dir": str(output_dir),
+                     "targets": config.get("attack", {}).get("target_items", {}).get("ids", [])}
     else:
         data_dir, output_dir = Path(generated["data_dir"]), Path(generated["output_dir"])
     poisoned_meta = load_poisoned_meta(data_dir)
@@ -44,5 +46,6 @@ def fit(config, generated=None):
     return {"data_dir": str(data_dir), "output_dir": str(output_dir), "clean": clean, "poisoned": poisoned, "comparison": report}
 
 if __name__ == "__main__":
+    from training.config_utils import load_config
     parser=argparse.ArgumentParser(); parser.add_argument("--config",default="attacks/advinject/config.yaml"); args=parser.parse_args()
-    with open(args.config,encoding="utf-8") as handle: print(fit(yaml.safe_load(handle)))
+    print(fit(load_config(args.config)))

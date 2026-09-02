@@ -14,10 +14,17 @@ class AdvInjectContractTest(unittest.TestCase):
         config = AttackConfig.from_dict({"attack": {"target_items": None}})
         self.assertEqual(config.n_target_items, 5)
     def test_target_selection_validates_ids(self):
-        self.assertEqual(select_targets(self.meta,{"target_strategy":"specified","target_items":[4]}),[4])
-        with self.assertRaises(ValueError): select_targets(self.meta,{"target_strategy":"specified","target_items":[8]})
+        cfg = {"attack": {"target_items": {"strategy": "specified",
+                                           "ids": [4]}}}
+        self.assertEqual(select_targets(self.meta, cfg), [4])
+        bad = {"attack": {"target_items": {"strategy": "specified",
+                                           "ids": [8]}}}
+        with self.assertRaises(ValueError):
+            select_targets(self.meta, bad)
     def test_fake_data_contains_target(self):
-        fake=build_fake_tensor(self.meta,[4],{"num_fake_users":2,"base_items":2},42)
+        fake=build_fake_tensor(self.meta, [4],
+                               {"attack": {"num_fake_users": 2,
+                                           "target_items": {"ids": [4]}}}, 42)
         self.assertEqual(tuple(fake.shape),(2,6))
         self.assertTrue(torch.all(fake[:,4] == 1))
     def test_surrogate_loss_has_gradient(self):

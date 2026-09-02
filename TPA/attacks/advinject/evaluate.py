@@ -5,12 +5,12 @@ from pathlib import Path
 import torch
 from models.registry import get_model_cls
 from models.revisit_training import pair_loader
-from attacks.advinject.common import load_meta, pairs_to_csr, attack_metrics
+from attacks.advinject.common import canonical_config, load_meta, pairs_to_csr, attack_metrics
 
 def make_config(config):
     from training.framework import TrainingConfig
     flat={}
-    flat.update(config.get("model",{})); flat.update(config.get("training",{})); flat["device"]=config.get("training",{}).get("device",config.get("device","cpu"))
+    flat.update(config.get("model",{})); flat.update(config.get("training",{})); flat["device"]=config.get("training",{}).get("device","cpu")
     return TrainingConfig(overrides=flat)
 
 def score_model(model, user_ids, n_items):
@@ -88,8 +88,10 @@ def retrain_victim(meta,config):
     return model,history
 
 def evaluate(config, poisoned_meta=None, targets=None):
+    config=canonical_config(config)
     meta,_=load_meta(config) if poisoned_meta is None else (poisoned_meta,None)
-    targets=[int(x) for x in (targets if targets is not None else config.get("attack",{}).get("target_items",[]))]
+    targets=[int(x) for x in (targets if targets is not None
+                              else config.get("attack",{}).get("target_items",{}).get("ids",[]))]
     model,history=retrain_victim(meta,config); users=sorted({u for u,_ in meta.get("test_pairs",[]) if u<meta["num_users"]})
     scores=score_model(model,users,meta["num_items"]).detach().cpu().numpy() if users else []
     train_items=meta.get("user_items",[set() for _ in range(meta["num_users"])])
@@ -97,9 +99,9 @@ def evaluate(config, poisoned_meta=None, targets=None):
     return {"model":config.get("model",{}).get("name","wmf"),"metrics":metrics,"history":history}
 
 if __name__=="__main__":
-    import yaml
+    from training.config_utils import load_config
     parser=argparse.ArgumentParser(); parser.add_argument("--config",default="attacks/advinject/config.yaml"); parser.add_argument("--meta",required=True); args=parser.parse_args()
-    with open(args.config,encoding="utf-8") as handle: config=yaml.safe_load(handle)
+    config=load_config(args.config)
     import pickle
     with open(args.meta,"rb") as handle: meta=pickle.load(handle)
     print(evaluate(config,meta))

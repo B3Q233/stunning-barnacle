@@ -5,17 +5,14 @@ from pathlib import Path
 import numpy as np
 import torch
 from scipy import sparse
-from attacks.advinject.common import AttackConfig, initialize_fake_data, load_meta, pairs_to_csr, project_fake, sample_target_items, save_fake_artifacts, set_seed
+from attacks.advinject.common import AttackConfig, canonical_config, initialize_fake_data, load_meta, pairs_to_csr, project_fake, resolve_target_items, save_fake_artifacts, set_seed
 from attacks.advinject.train_surrogate import compute_adversarial_gradient
 from training.run_tag import resolve_run_tag, save_config_snapshot, write_latest_pointer
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 def resolve_targets(meta, config):
-    attack = config.get("attack", {})
-    explicit = attack.get("target_items")
-    count = int(attack.get("n_target_items", len(explicit or []) or 5))
-    return sample_target_items(meta, count, attack.get("target_item_popularity", attack.get("target_category", "head")), explicit, int(config.get("seed", 1)))
+    return resolve_target_items(meta, config, seed=int(config.get("seed", 1)))
 
 def attack_paths(config):
     dataset = config.get("dataset", "ml100k")
@@ -25,8 +22,10 @@ def attack_paths(config):
     return base / "data" / "poisoned" / dataset / model / tag, base / "outputs" / dataset / model / tag
 
 def generate(config):
+    config = canonical_config(config)
     seed = int(config.get("seed", 1))
-    set_seed(seed, bool(config.get("use_cuda", False)))
+    device = config.get("training", {}).get("device", "cpu")
+    set_seed(seed, str(device).startswith("cuda"))
     meta, _ = load_meta(config)
     targets = resolve_targets(meta, config)
     train_csr = pairs_to_csr(meta["train_pairs"], meta["num_users"], meta["num_items"])

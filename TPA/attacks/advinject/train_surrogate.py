@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from attacks.advinject.common import canonical_config
 
 @dataclass
 class SurrogateResult:
@@ -64,23 +65,24 @@ def functional_wmf(model,data,params,weight_alpha,l2):
 
 def compute_adversarial_gradient(train_csr, fake, n_items, targets, config):
     """训练 surrogate，并对 fake data 求外层目标梯度。"""
-    attack = config.get("attack", {})
+    config = canonical_config(config)
     surrogate_cfg = config.get("surrogate", {})
-    name = str(surrogate_cfg.get("name", surrogate_cfg.get("model_name", "item_ae"))).lower()
+    sur_tr = surrogate_cfg.get("training", {})
+    name = str(surrogate_cfg.get("name", "item_ae")).lower()
     device = torch.device(config.get("training", {}).get("device", "cpu"))
     clean = torch.tensor(train_csr.toarray(), dtype=torch.float32, device=device)
     fake_tensor = torch.tensor(fake, dtype=torch.float32, device=device, requires_grad=True)
     data = torch.cat([clean, fake_tensor], dim=0)
     n_users = clean.shape[0]
-    epochs = int(surrogate_cfg.get("epochs", 50))
-    unroll_steps = int(attack.get("unroll_steps", 5))
+    epochs = int(sur_tr.get("epochs", 50))
+    unroll_steps = int(sur_tr.get("unroll_steps", 5))
     diff_steps = max(1, min(epochs, unroll_steps or epochs))
     pre_steps = max(0, epochs - diff_steps)
-    lr = float(surrogate_cfg.get("lr", 1e-3))
-    l2 = float(surrogate_cfg.get("l2", 1e-6))
+    lr = float(sur_tr.get("lr", 1e-3))
+    l2 = float(sur_tr.get("weight_decay", 1e-6))
 
     if name in {"item_ae", "itemae", "sur-itemae"}:
-        model = ItemAESurrogate(data.shape[0], tuple(surrogate_cfg.get("hidden_dims", [256, 128])), float(surrogate_cfg.get("weight_alpha", 20.0))).to(device)
+        model = ItemAESurrogate(data.shape[0], tuple(sur_tr.get("hidden_dims", [256, 128])), float(sur_tr.get("weight_alpha", 20.0))).to(device)
         def ordinary_loss():
             return model.loss(data.T)
         def functional_loss(params):
@@ -88,9 +90,9 @@ def compute_adversarial_gradient(train_csr, fake, n_items, targets, config):
         def predictions(params):
             return functional_itemae_logits(model, data.T, params).T
     elif name in {"wmf", "weightedmf", "wmf_sgd", "sur-weightedmf-sgd", "sur-weightedmf-als"}:
-        dim = int(surrogate_cfg.get("dim", surrogate_cfg.get("hidden_dims", [128])[0]))
+        dim = int(sur_tr.get("dim", sur_tr.get("hidden_dims", [128])[0]))
         model = WeightedMFSurrogate(data.shape[0], n_items, dim).to(device)
-        weight_alpha = float(surrogate_cfg.get("weight_alpha", 20.0))
+        weight_alpha = float(sur_tr.get("weight_alpha", 20.0))
         def ordinary_loss():
             return model.loss(data, weight_alpha, l2)
         def functional_loss(params):

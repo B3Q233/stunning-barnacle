@@ -14,6 +14,14 @@ from scipy import sparse
 
 PROJECT_ROOT=Path(__file__).resolve().parents[2]
 
+
+def canonical_config(config):
+    """入口统一 canonicalize；业务代码只读 canonical 键。"""
+    from training.config_utils import canonicalize_config
+
+    return canonicalize_config(config)
+
+
 @dataclass
 class AttackConfig:
     dataset: str="gowalla"
@@ -38,26 +46,36 @@ class AttackConfig:
 
     @classmethod
     def from_dict(cls, config: dict[str,Any]):
+        config=canonical_config(config)
         attack=config.get("attack",{})
         surrogate=config.get("surrogate",{})
-        target_items = attack.get("target_items") or []
-        n_target_items = attack.get("n_target_items")
-        if n_target_items is None:
-            n_target_items = len(target_items) or 5
+        adv=attack.get("adv",{})
+        target_items = attack.get("target_items") or {}
+        ids = target_items.get("ids") or []
+        n_target_items = target_items.get("count", len(ids) or 5)
+        surrogate_training=surrogate.get("training",{})
+        device=config.get("training",{}).get("device","cpu")
+        explicit_num = attack.get("num_fake_users")
         return cls(
             dataset=config.get("dataset","gowalla"), seed=int(config.get("seed",1)),
-            use_cuda=bool(config.get("use_cuda",False)),
-            n_fakes=attack.get("n_fakes",attack.get("num_fake_users",0.01)),
+            use_cuda=str(device).startswith("cuda"),
+            n_fakes=float(explicit_num if explicit_num is not None
+                          else attack.get("ratio",0.01)),
             n_target_items=int(n_target_items),
-            target_item_popularity=attack.get("target_item_popularity",attack.get("target_category","head")),
-            adv_epochs=int(attack.get("adv_epochs",attack.get("steps",30))),
-            unroll_steps=int(attack.get("unroll_steps",5)), adv_lr=float(attack.get("adv_lr",attack.get("lr",1.0))),
-            adv_momentum=float(attack.get("adv_momentum",0.95)), proj_threshold=float(attack.get("proj_threshold",0.1)),
-            click_targets=bool(attack.get("click_targets",False)),
-            surrogate_name=surrogate.get("name",surrogate.get("model_name","item_ae")),
-            surrogate_epochs=int(surrogate.get("epochs",50)), surrogate_batch_size=int(surrogate.get("batch_size",2048)),
-            surrogate_lr=float(surrogate.get("lr",1e-3)), surrogate_l2=float(surrogate.get("l2",1e-6)),
-            weight_alpha=float(surrogate.get("weight_alpha",20.0)), output_dir=config.get("output_dir","outputs"))
+            target_item_popularity=target_items.get("zone","head"),
+            adv_epochs=int(adv.get("epochs",30)),
+            unroll_steps=int(surrogate_training.get("unroll_steps",5)),
+            adv_lr=float(adv.get("lr",1.0)),
+            adv_momentum=float(adv.get("momentum",0.95)),
+            proj_threshold=float(adv.get("proj_threshold",0.1)),
+            click_targets=bool(adv.get("click_targets",False)),
+            surrogate_name=surrogate.get("name","item_ae"),
+            surrogate_epochs=int(surrogate_training.get("epochs",50)),
+            surrogate_batch_size=int(surrogate_training.get("batch_size",2048)),
+            surrogate_lr=float(surrogate_training.get("lr",1e-3)),
+            surrogate_l2=float(surrogate_training.get("weight_decay",1e-6)),
+            weight_alpha=float(surrogate_training.get("weight_alpha",20.0)),
+            output_dir=config.get("output",{}).get("dir","outputs"))
 
 def set_seed(seed, cuda=False):
     random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
@@ -114,6 +132,16 @@ def sample_target_items(meta, n_samples, popularity="head", fixed=None, seed=1):
     targets=np.sort(targets.astype(np.int64))
     if len(targets)!=n_samples or np.any(targets<0) or np.any(targets>=meta["num_items"]): raise ValueError("invalid target items")
     return targets
+
+
+def resolve_target_items(meta, config, seed=1):
+    """从 canonical attack.target_items 解析目标物品（ids 优先，其次 zone）。"""
+    config = canonical_config(config)
+    ti = config.get("attack", {}).get("target_items", {})
+    ids = ti.get("ids")
+    count = int(ti.get("count", len(ids or []) or 5))
+    zone = ti.get("zone", "head")
+    return sample_target_items(meta, count, zone, ids, seed)
 
 def initialize_fake_data(train_csr,n_fakes,seed=1):
     n_fakes=int(n_fakes); rng=np.random.default_rng(seed); dense=train_csr.toarray(); clicks=dense.sum(1); qualified=np.flatnonzero(clicks<=100)
