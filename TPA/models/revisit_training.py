@@ -47,7 +47,7 @@ def train_bpr_epoch(model, loader, meta, num_items, optimizer, device, generator
 
 def prepare_experiment_dir(model_name: str, config: dict) -> Path:
     from training.run_tag import resolve_run_tag, save_config_snapshot
-    dataset=config.get("data",{}).get("dataset","unknown")
+    dataset=config.get("dataset") or config.get("data",{}).get("dataset","unknown")
     tag=resolve_run_tag(config)
     out=Path(__file__).resolve().parent/model_name/"outputs"/dataset/tag
     save_config_snapshot(config,out)

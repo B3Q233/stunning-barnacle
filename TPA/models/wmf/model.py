@@ -22,8 +22,8 @@ from models.wmf.config_keys import (
     KEY_FACTORS,
     KEY_INIT_METHOD,
     KEY_INIT_STD,
-    KEY_LAMBDA_REG,
     KEY_OPTIMIZER,
+    KEY_WEIGHT_DECAY,
 )
 from training.framework import TrainableModel, TrainingConfig
 
@@ -225,7 +225,7 @@ class WMFModel(TrainableModel):
         items_np = items.cpu().numpy()
         conf_np = conf.cpu().numpy()
         p_np = p.cpu().numpy()
-        lam = float(self.config.get(KEY_LAMBDA_REG, 0.01))
+        lam = float(self.config.get(KEY_WEIGHT_DECAY, 0.01))
 
         with torch.no_grad():
             X, Y = self._numpy_state()
@@ -250,7 +250,7 @@ class WMFModel(TrainableModel):
                 self.parameters(), lr=float(self.config.get("lr", 1e-3)))
         self._optimizer.zero_grad(set_to_none=True)
         scores = self.forward(users, items)
-        lam = float(self.config.get(KEY_LAMBDA_REG, 0.01))
+        lam = float(self.config.get(KEY_WEIGHT_DECAY, 0.01))
         reg = 0.5 * lam * (
             self.user_factors[users].pow(2).sum() +
             self.item_factors[items].pow(2).sum()) / max(1, len(users))
@@ -273,7 +273,7 @@ class WMFModel(TrainableModel):
         items_np = items.cpu().numpy()
         conf_np = conf.cpu().numpy()
         p_np = p.cpu().numpy()
-        lam = float(self.config.get(KEY_LAMBDA_REG, 0.01))
+        lam = float(self.config.get(KEY_WEIGHT_DECAY, 0.01))
 
         with torch.no_grad():
             X, Y = self._numpy_state()

@@ -43,7 +43,7 @@ def make_cfg(epochs=2):
         "alpha": 40.0,
         "epsilon": 1e-8,
         "confidence_scheme": "minimal",
-        "lambda_reg": 0.01,
+        "weight_decay": 0.01,
         "epochs": epochs,
         "eval_every": 1,
         "k": 5,

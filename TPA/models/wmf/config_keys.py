@@ -23,7 +23,7 @@ KEY_INIT_METHOD = "init_method"
 KEY_INIT_STD = "init_std"
 
 # training 模块
-KEY_LAMBDA_REG = "lambda_reg"
+KEY_WEIGHT_DECAY = "weight_decay"
 KEY_EPOCHS = "epochs"
 KEY_BATCH_SIZE = "batch_size"
 KEY_DEVICE = "device"

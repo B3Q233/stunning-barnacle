@@ -1,8 +1,7 @@
+dataset: ml100k
+k: 20
 data:
-  dataset: ml100k
   source_model: wmf
 run_tag: null  # CLI ????????????? run_tag ??
 model:
   topk: 100
-evaluation:
-  k: 20

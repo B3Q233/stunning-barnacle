@@ -97,7 +97,7 @@ def load_meta(config: dict, model_name: str) -> dict:
             path = path / "meta.pkl"
     else:
         data_cfg = config.get("data", {})
-        dataset = data_cfg.get("dataset", "ml100k")
+        dataset = config.get("dataset") or data_cfg.get("dataset", "ml100k")
         source_model = data_cfg.get("source_model", model_name)
         path = (Path(__file__).resolve().parent / source_model / "data" /
                 "processed" / dataset / "meta.pkl")

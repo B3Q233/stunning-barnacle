@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader as TorchDataLoader
 
-from models.wmf.config_keys import KEY_FACTORS, KEY_INIT_STD, KEY_LAMBDA_REG
+from models.wmf.config_keys import KEY_FACTORS, KEY_INIT_STD, KEY_WEIGHT_DECAY
 from models.wmf.dataset import WMFDataset, group_observations
 from models.wmf.model import WMFModel, _als_sweep, _wmf_loss
 from training.framework import TrainingConfig
@@ -17,7 +17,7 @@ PAIRS = [(0, 1), (0, 2), (1, 3), (1, 0), (2, 1), (2, 2)]
 def make_model(factors=4, lam=0.01, num_users=3, num_items=4):
     config = TrainingConfig(overrides={
         KEY_FACTORS: factors,
-        KEY_LAMBDA_REG: lam,
+        KEY_WEIGHT_DECAY: lam,
         KEY_INIT_STD: 0.01,
         "device": "cpu",
     })
@@ -113,8 +113,9 @@ class WMFModelTrainStepTest(unittest.TestCase):
         items = self.batch[1].numpy()
         conf = self.batch[2].numpy()
         p = self.batch[3].numpy()
-        return _wmf_loss(X, Y, users, items, conf, p,
-                         float(self.model.config.get(KEY_LAMBDA_REG, 0.01)))[0]
+        return _wmf_loss(
+            X, Y, users, items, conf, p,
+            float(self.model.config.get(KEY_WEIGHT_DECAY, 0.01)))[0]
 
     def test_train_step_loss_finite_and_decreases(self):
         before = self._initial_loss()

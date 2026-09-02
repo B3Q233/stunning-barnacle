@@ -43,7 +43,7 @@ class PublicRegistryTest(unittest.TestCase):
         cfg = load_model_config("wmf")
         self.assertEqual(cfg["model"]["factors"], 100)
         self.assertEqual(cfg["model"]["alpha"], 40)
-        self.assertEqual(cfg["data"]["dataset"], "ml100k")
+        self.assertEqual(cfg["dataset"], "ml100k")
 
     def test_load_model_config_overrides(self):
         cfg = load_model_config("wmf", overrides={"factors": 200})

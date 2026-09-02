@@ -1,5 +1,6 @@
+dataset: ml100k
+k: 20
 data:
-  dataset: ml100k
   source_model: wmf
 run_tag: null  # CLI ????????????? run_tag ??
 model:
@@ -11,5 +12,3 @@ training:
   batch_size: 256
   lr: 0.001
   device: cpu
-evaluation:
-  k: 20
