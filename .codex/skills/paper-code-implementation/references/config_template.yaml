@@ -8,7 +8,7 @@
 run_tag: null                                 # 实验标签（--tag 或此处指定；null=自动当前时间 2026-08-07-14:20）
 
 data:
-  raw_data_path: "data/raw/dataset_name"        # [unreported] 用户本地路径，需用户手动下载后填写
+  raw_data_path: "data/{implicit|explicit}/raw/dataset_name"   # [unreported] 先按隐式/显式类型归类，再填路径
   processed_data_path: "data/processed"          # [unreported] 由①数据处理脚本生成
   train_val_test_split: [0.8, 0.1, 0.1]           # [paper] 见论文 Table X
   negative_sampling_ratio: 4                      # [ai] 论文未给出，推断依据：同领域常见设置

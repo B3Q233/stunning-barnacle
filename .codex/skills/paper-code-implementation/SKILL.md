@@ -304,11 +304,14 @@ description: 基于固定的松耦合训练框架模板（TrainableModel / Datas
 
   1. **项目结构说明**：对照上面的目录树，逐文件夹一句话说明用途
   2. **环境准备**：虚拟环境创建与激活命令、依赖安装命令
-  3. **数据集准备**：数据集去哪里下载（官方链接）、下载后放在 `data/raw/` 下的具体哪个子路径、目录结构示例
+  3. **数据集准备**：数据集去哪里下载（官方链接）、下载后按反馈类型放入
+     `data/{implicit|explicit}/raw/{dataset}/` 下的具体哪个子路径、目录结构示例
+     （隐式交互 = user item 交互；显式评分 = user item rating）
   4. **复现完整流程**（按真实操作顺序，不是按代码实现顺序）：
      ```
-     ① 下载数据集 → 放入 data/raw/
-     ② 在 config.yaml 的 data 模块中配置 raw_data_path
+     ① 下载数据集 → 按类型放入 data/implicit/raw/ 或 data/explicit/raw/
+     ② 在 config.yaml 的 data 模块中配置 raw_data_path（并在
+        training/paths.py 的 DATASET_INTERACTION 登记数据集类型）
      ③ 运行预处理脚本，生成 data/processed/
      ④ 在 config.yaml 中配置 processed_data_path
      ⑤ 运行 python main.py --config config.yaml 开始训练

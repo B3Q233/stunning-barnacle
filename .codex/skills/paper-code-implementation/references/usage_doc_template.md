@@ -6,7 +6,7 @@
 |---|---|
 | `main.py` | 唯一运行入口 |
 | `config.yaml` | 唯一需要手动修改的配置文件 |
-| `data/raw/` | 存放原始数据集（需手动下载） |
+| `data/{implicit|explicit}/raw/` | 存放原始数据集（需手动下载；隐式交互与显式评分分目录） |
 | `data/processed/` | 数据预处理后的产出，由预处理脚本生成 |
 | `datasets/` | 数据集类与数据加载器 |
 | `models/` | 模型结构定义 |
@@ -33,10 +33,11 @@ pip install -r requirements.txt
 
 - 数据集名称：{}
 - 官方下载地址：{}
-- 下载后请将文件放入：`data/raw/{具体子路径}`
+- 下载后请将文件放入：`data/{implicit|explicit}/raw/{具体子路径}`
+  （先判断数据是隐式交互还是显式评分，再放入对应类型目录）
 - 目录结构示例：
   ```
-  data/raw/
+  data/{implicit|explicit}/raw/
   └── {dataset_name}/
       ├── train.csv
       └── test.csv
@@ -45,7 +46,7 @@ pip install -r requirements.txt
 ## 4. 复现完整流程（按操作顺序，非代码实现顺序）
 
 ```
-① 下载数据集 → 放入 data/raw/{具体路径}
+① 下载数据集 → 按类型放入 data/{implicit|explicit}/raw/{具体路径}
 ② 编辑 config.yaml 中 data.raw_data_path 为实际路径
 ③ 运行预处理：python -m scripts.preprocess --config config.yaml
    → 生成 data/processed/ 下的文件

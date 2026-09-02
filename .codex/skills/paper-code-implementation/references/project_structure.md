@@ -4,7 +4,7 @@
 
 ```bash
 cd <ROOT>
-mkdir -p data/raw data/processed
+mkdir -p data/implicit/raw data/explicit/raw data/processed
 mkdir -p datasets models evaluation training
 mkdir -p outputs/checkpoints
 mkdir -p docs
@@ -52,5 +52,5 @@ python -m venv .venv
    eval_log / config.yaml 快照），默认 tag = 当前时间（`%Y-%m-%d-%H:%M`，路径中 `:` 替换为
    `-`）；训练结束后复制最新 checkpoint 到稳定指针 `outputs/checkpoints/latest.pt`，并在
    `outputs/latest.json` 记录本次 run_tag。统一工具见 `assets/run_tag.py`。
-4. `data/raw/` 不要由代码自动下载填充（除非用户明确提供了可程序化下载的链接并同意），优先提示用户手动下载并核对版本后放入此目录；若数据集明确提供了官方下载脚本/API，可以使用，但要在 `docs/USAGE.md` 中写清楚来源链接。
+4. `data/{implicit|explicit}/raw/` 不要由代码自动下载填充（除非用户明确提供了可程序化下载的链接并同意），优先提示用户手动下载并核对版本后放入对应类型目录（隐式交互 / 显式评分）；若数据集明确提供了官方下载脚本/API，可以使用，但要在 `docs/USAGE.md` 中写清楚来源链接；项目若使用 `training/paths.py`，新数据集须在 `DATASET_INTERACTION` 登记。
 5. `.venv` 一定建在 `<ROOT>` 内部，不使用用户的全局 Python 环境，也不建在 `<ROOT>` 的上层目录或系统默认位置。
