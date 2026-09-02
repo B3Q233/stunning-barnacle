@@ -58,6 +58,12 @@ pip install -r requirements.txt
    - outputs/latest.json（本次 run_tag；checkpoint 稳定指针在 outputs/checkpoints/latest.pt）
 ```
 
+> 每 epoch 输出规范：每个 epoch 必须输出耗时（控制台
+> `[Epoch i/N结束 耗时X分Y秒]`，history 记 `epoch_seconds`）；`[eval]` 行与
+> history.json/eval_log.csv 输出该轮全部指标，指标名来自指标注册表 +
+> 配置 `evaluation.metrics`，禁止硬编码名单；history.json 统一为
+> `{history: [...], best: {...}}`。
+
 ## 5. 配置文件详解
 
 ### data 模块

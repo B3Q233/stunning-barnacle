@@ -38,6 +38,12 @@ evaluation / tests）；论文资料见 `papers/`；流程文档见
   同义键；历史别名仅由 `training/config_utils.py` 的兼容层接受，新文件
   不得使用。新复现模型/攻击如需新增配置项，必须同步更新该模板
   （canonical 键与别名映射），模板未覆盖的新键不允许合入。
+- 输出与产物规范：每个训练/生成 epoch 必须输出耗时（控制台
+  `[Epoch i/N结束 耗时X分Y秒]`，history 记 `epoch_seconds`），`[eval]` 行、
+  history.json、eval_log.csv 输出该轮全部评测指标且不硬编码指标名单；
+  新增指标须在 `evaluation/metrics_registry.py` 注册并由配置
+  `evaluation.metrics` 启用后自动同步；history.json 统一为
+  `{history: [...], best: {...}}`。新复现模型/攻击必须遵守。
 - 测试：stdlib unittest，测试文件放 `TPA/tests/test_*.py`；运行命令
   `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_* -v`；改动必须
   运行相关测试，交付前全量回归通过。

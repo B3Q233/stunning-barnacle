@@ -105,6 +105,10 @@ description: 基于固定的松耦合训练框架模板（TrainableModel / Datas
     便于后续导入；`latest.pt`（最终 epoch）不变。
   - `history.json` 结构：`{"best": {指标: {epoch, value, metrics(全量快照),
     checkpoint}}, "history": [...]}`。
+  - 每 epoch 输出规范：epoch 行必须输出耗时（history 记 `epoch_seconds`），
+    `[eval]`/history/eval_log.csv 输出该轮全部指标；指标名来自指标注册表 +
+    配置 `evaluation.metrics`，禁止硬编码名单。详见
+    `docs/superpowers/specs/2026-09-02-epoch-output-standard-design.md`。
   - `--skip-train` 加载顺序：`{首指标}-best-model.pt` → `best.pt`（旧）→
     `latest.pt`。
   - 攻击实验选优主指标：`target_ndcg@K`（被攻击目标物品的 NDCG，多目标取均值），
