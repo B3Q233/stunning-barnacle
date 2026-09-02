@@ -28,8 +28,6 @@ surrogate:
 classification:
   popular_ratio: 0.05            # 流行物品 = 训练集交互数前 5%
   medium_ratio: 0.40             # 普通物品 = 交互数 5%~40%；其余为冷门（Tail）
-  checkpoint: models\wmf\outputs\2026-08-15-20-58\checkpoints\ndcg@10-best-model.pt
-  # 仅聚合报告使用（classify 已不加载模型）
 
 attack:
   name: tpa  # 攻击名（模块目录 attacks/{name}/、输出路径、日志前缀均用此值）
@@ -47,10 +45,12 @@ attack:
     count: 1                    # 目标物品数量（假用户均分给各目标）
     ids: [251]          # strategy=specified 时填写（目标物品由你自行确定）
 
+checkpoint:
+  clean: models/wmf/outputs/2026-08-15-20-58/checkpoints/ndcg@10-best-model.pt
+
 warm_start:
   enabled: true                  # 用干净模型参数初始化中毒模型（原用户/物品嵌入迁移）
-  checkpoint: models/wmf/outputs/2026-08-15-20-58/checkpoints/ndcg@10-best-model.pt
-  # 受害模型为 wmf 时的干净 checkpoint（同时作为 fit 对比用的 clean 模型）
+  # checkpoint 可选；缺省回退 checkpoint.clean
 
 training:
   epochs: 30

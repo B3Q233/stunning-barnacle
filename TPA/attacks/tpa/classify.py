@@ -52,12 +52,9 @@ def rec_freq_path(config: Dict[str, Any], model_name: str, k: int) -> Path:
 
 
 def resolve_clean_checkpoint(config: Dict[str, Any]) -> Path:
-    """干净模型 checkpoint：classification.checkpoint > clean_checkpoint >
-    warm_start.checkpoint（供 paths/fit 阶段使用；classify 本身已不加载模型）。"""
-    cls_cfg = config.get("classification", {})
+    """干净模型 checkpoint：checkpoint.clean（缺省 warm_start.checkpoint）。"""
     candidates = [
-        cls_cfg.get("checkpoint"),
-        config.get("clean_checkpoint"),
+        (config.get("checkpoint") or {}).get("clean"),
         config.get("warm_start", {}).get("checkpoint"),
     ]
     for c in candidates:
@@ -69,7 +66,7 @@ def resolve_clean_checkpoint(config: Dict[str, Any]) -> Path:
                 return p
     raise FileNotFoundError(
         "未找到可用的干净模型 checkpoint。请在配置中设置 "
-        "classification.checkpoint / clean_checkpoint / warm_start.checkpoint"
+        "checkpoint.clean（或 warm_start.checkpoint）"
     )
 
 

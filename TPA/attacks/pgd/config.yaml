@@ -19,7 +19,6 @@ model:
 classification:
   popular_ratio: 0.05            # 流行物品 = 训练集交互数前 5%
   medium_ratio: 0.40             # 普通物品 = 交互数 5%~40%；其余为冷门（Tail）
-  checkpoint: models/lightgcn/outputs/checkpoints/latest.pt  # 仅聚合报告使用（classify 已不加载模型）
 
 attack:
   name: pgd
@@ -47,11 +46,12 @@ attack:
       w_target: 2.0              # 目标物品权重 w(j0)（论文实验 w=2）
       cross_target: true         # [ai] 一阶交叉项：filler 评分对目标物品嵌入的链式梯度
 
+checkpoint:
+  clean: models/lightgcn/outputs/2026-08-09-23-01/checkpoints/ndcg@10-best-model.pt
+
 warm_start:
   enabled: true                  # 用干净模型参数初始化中毒模型（原用户/物品嵌入迁移）
-  checkpoint: models/lightgcn/outputs/2026-08-09-23-01/checkpoints/ndcg@10-best-model.pt
-
-clean_checkpoint: models/lightgcn/outputs/2026-08-09-23-01/checkpoints/ndcg@10-best-model.pt  # 对比用干净模型（相对 TPA 根，缺省取 warm_start.checkpoint）
+  # checkpoint 可选；缺省回退 checkpoint.clean
 
 training:
   epochs: 30

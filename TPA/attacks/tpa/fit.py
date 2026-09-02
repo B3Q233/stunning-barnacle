@@ -346,7 +346,8 @@ def main(config: Dict[str, Any], skip_train: bool = False,
 
     warm_cfg = config.get("warm_start", {})
     warm_start = bool(warm_cfg.get("enabled", True))
-    warm_ckpt = warm_cfg.get("checkpoint")
+    warm_ckpt = (warm_cfg.get("checkpoint")
+                 or (config.get("checkpoint") or {}).get("clean"))
     if warm_ckpt:
         warm_ckpt = resolve_from_root(warm_ckpt, PROJECT_ROOT)
 
@@ -379,11 +380,12 @@ def main(config: Dict[str, Any], skip_train: bool = False,
             clean_user_items=clean_meta["user_items"],
         )
 
-    # 对比用的干净模型：独立于 warm_start 开关，取 clean_checkpoint（缺省用 warm_start.checkpoint）
-    clean_ckpt_cfg = config.get("clean_checkpoint") or warm_cfg.get("checkpoint")
+    # 对比用的干净模型：checkpoint.clean（缺省用 warm_start.checkpoint）
+    clean_ckpt_cfg = ((config.get("checkpoint") or {}).get("clean")
+                      or warm_cfg.get("checkpoint"))
     clean_ckpt = resolve_from_root(clean_ckpt_cfg, PROJECT_ROOT) if clean_ckpt_cfg else None
     if clean_ckpt is None:
-        print("[fit] [!] 未配置干净 checkpoint（clean_checkpoint / warm_start.checkpoint），跳过对比评估")
+        print("[fit] [!] 未配置干净 checkpoint（checkpoint.clean / warm_start.checkpoint），跳过对比评估")
         return {"dataset": dataset, "targets": targets, "history": history}
     if not clean_ckpt.exists():
         print(f"[fit] [!] 干净 checkpoint 不存在: {clean_ckpt}，跳过对比评估")

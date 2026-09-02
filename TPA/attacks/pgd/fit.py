@@ -113,8 +113,7 @@ def resolve_metrics_cfg(config: Dict[str, Any], model_name: str) -> list:
 
 
 def resolve_clean_checkpoint(config: Dict[str, Any]) -> Path:
-    """干净 checkpoint：classification.checkpoint > clean_checkpoint >
-    warm_start.checkpoint。"""
+    """干净 checkpoint：checkpoint.clean（缺省 warm_start.checkpoint）。"""
     from attacks.pgd.classify import resolve_clean_checkpoint as _resolve
     return _resolve(config)
 
@@ -338,7 +337,8 @@ def main(config: Dict[str, Any], skip_train: bool = False,
 
     warm_cfg = config.get("warm_start", {})
     warm_start = bool(warm_cfg.get("enabled", True))
-    warm_ckpt = warm_cfg.get("checkpoint")
+    warm_ckpt = (warm_cfg.get("checkpoint")
+                 or (config.get("checkpoint") or {}).get("clean"))
     if warm_ckpt:
         warm_ckpt = resolve_from_root(warm_ckpt, PROJECT_ROOT)
 
@@ -370,10 +370,11 @@ def main(config: Dict[str, Any], skip_train: bool = False,
             clean_user_items=clean_meta["user_items"],
         )
 
-    clean_ckpt_cfg = config.get("clean_checkpoint") or warm_cfg.get("checkpoint")
+    clean_ckpt_cfg = ((config.get("checkpoint") or {}).get("clean")
+                      or warm_cfg.get("checkpoint"))
     clean_ckpt = resolve_from_root(clean_ckpt_cfg, PROJECT_ROOT) if clean_ckpt_cfg else None
     if clean_ckpt is None:
-        print("[fit] [!] 未配置干净 checkpoint（clean_checkpoint / warm_start.checkpoint），跳过对比评估")
+        print("[fit] [!] 未配置干净 checkpoint（checkpoint.clean / warm_start.checkpoint），跳过对比评估")
         return {"dataset": dataset, "targets": targets, "history": history}
     if not clean_ckpt.exists():
         print(f"[fit] [!] 干净 checkpoint 不存在: {clean_ckpt}，跳过对比评估")

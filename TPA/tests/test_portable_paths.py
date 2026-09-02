@@ -150,6 +150,9 @@ class AttackConfigPathTest(unittest.TestCase):
         ws = cfg.get("warm_start") or {}
         if ws.get("checkpoint"):
             entries.append(("warm_start.checkpoint", ws["checkpoint"]))
+        ck = cfg.get("checkpoint") or {}
+        if ck.get("clean"):
+            entries.append(("checkpoint.clean", ck["clean"]))
         sur = cfg.get("surrogate") or {}
         if sur.get("checkpoint"):
             entries.append(("surrogate.checkpoint", sur["checkpoint"]))
