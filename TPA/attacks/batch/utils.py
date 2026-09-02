@@ -22,17 +22,14 @@ def deep_merge(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def resolution_k(cfg: Dict[str, Any]) -> int:
-    return int(cfg.get("classification", {}).get("k")
+    return int(cfg.get("k")
+               or cfg.get("classification", {}).get("k")
                or cfg.get("training", {}).get("k") or 20)
 
 
 def effective_dataset(cfg: Dict[str, Any]) -> str:
-    """有效数据集：合并基顶层 dataset 优先，其次批跑配置 experiment.dataset。
-
-    数据集可能通过 override/攻击默认层生效（P2/P4），统一从合并结果取，
-    避免 classify 缓存路径与批跑配置字段不一致。
-    """
-    return cfg.get("dataset") or cfg.get("experiment", {}).get("dataset")
+    """有效数据集（canonical 顶层 dataset；不读取 experiment.*）。"""
+    return cfg.get("dataset", "")
 
 
 def group_name(cfg: Dict[str, Any]) -> str:
@@ -41,9 +38,11 @@ def group_name(cfg: Dict[str, Any]) -> str:
 
 
 def flatten_experiment(cfg: Dict[str, Any]) -> Dict[str, Any]:
-    """把 experiment.* 展开到顶层，删除 batch 段（override 由生成器另行处理）。"""
+    """把 experiment.* 展开到顶层（canonical 后通常已无此段），删除 batch 段。"""
     out = dict(cfg)
-    out.update(out.pop("experiment"))
+    exp = out.pop("experiment", None)
+    if isinstance(exp, dict):
+        out.update(exp)
     out.pop("batch", None)
     return out
 

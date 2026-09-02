@@ -11,12 +11,13 @@ from attacks.batch.utils import deep_merge, flatten_experiment, group_name
 def _base_cfg():
     return {
         "attack": {"name": "bandwagon"},
-        "experiment": {"dataset": "ml100k", "seed": 42},
+        "dataset": "ml100k",
+        "seed": 42,
+        "k": 10,
         "model": {"name": "lightgcn", "overrides": {}},
-        "classification": {"k": 10, "popular_ratio": 0.2,
-                           "checkpoint": "models/lightgcn/checkpoints/best.pt"},
-        "warm_start": {"enabled": True,
-                       "checkpoint": "models/lightgcn/checkpoints/best.pt"},
+        "classification": {"popular_ratio": 0.2, "medium_ratio": 0.4},
+        "checkpoint": {"clean": "models/lightgcn/checkpoints/best.pt"},
+        "warm_start": {"enabled": True},
         "training": {"epochs": 5, "device": "cpu"},
         "batch": {"tiers": ["popular", "normal", "cold"], "per_tier": 3,
                   "strategy": "random", "seed": 42},
@@ -29,9 +30,9 @@ class ValidateBatchConfigTest(unittest.TestCase):
     def test_valid_passes(self):
         validate_batch_config(_base_cfg())
 
-    def test_missing_experiment_raises(self):
+    def test_missing_dataset_raises(self):
         cfg = _base_cfg()
-        del cfg["experiment"]
+        del cfg["dataset"]
         with self.assertRaises(ValueError):
             validate_batch_config(cfg)
 
@@ -61,7 +62,7 @@ class BatchConfigIOTest(unittest.TestCase):
             p = Path(tmp) / "batch.yaml"
             p.write_text(json.dumps(_base_cfg()), encoding="utf-8")
             cfg = load_batch_config(p)
-        self.assertEqual(cfg["experiment"]["dataset"], "ml100k")
+        self.assertEqual(cfg["dataset"], "ml100k")
 
 
 class UtilsTest(unittest.TestCase):

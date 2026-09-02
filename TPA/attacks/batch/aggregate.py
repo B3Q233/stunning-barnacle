@@ -200,7 +200,10 @@ def compute_clean_baseline(cfg: Dict[str, Any], k: int) -> Dict[str, float]:
         [[u, i] for u, i in meta["train_pairs"]]).T
     model = reg_mod.get_model_cls(model_name)(
         train_cfg, meta["num_users"], meta["num_items"], edge_index)
-    ckpt = resolve_from_root(cfg["classification"]["checkpoint"], PROJECT_ROOT)
+    clean_ckpt = (cfg.get("checkpoint") or {}).get("clean")
+    if not clean_ckpt:
+        raise ValueError("缺少 checkpoint.clean")
+    ckpt = resolve_from_root(clean_ckpt, PROJECT_ROOT)
     model.load_state_dict(torch.load(
         ckpt, map_location=model._device, weights_only=True)["model_state_dict"])
     scores, users, test_pos = ranking_scores(model, meta["test_pairs"])

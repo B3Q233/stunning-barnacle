@@ -41,7 +41,7 @@ def normalize_cache(cfg: Dict[str, Any], attack_cache: Dict[str, Any],
         "dataset": effective_dataset(cfg),
         "model": cfg["model"]["name"],
         "topk": resolution_k(cfg),
-        "checkpoint": cfg.get("classification", {}).get("checkpoint"),
+        "checkpoint": (cfg.get("checkpoint") or {}).get("clean"),
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
     }, cache_dir / "meta.json")
 

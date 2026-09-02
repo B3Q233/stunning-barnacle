@@ -3,9 +3,8 @@
 attack:
   name: random
 
-experiment:
-  dataset: ml100k
-  seed: 42
+dataset: ml100k
+seed: 42
 
 model:
   name: lightgcn                 # 受害模型：覆盖 random 默认（wmf）为 lightgcn
@@ -13,10 +12,15 @@ model:
 k: 20                            # 统一评估 K（最外层唯一入口；classification/training/evaluation 与指标自动绑定）
 
 classification:
-  checkpoint: models/lightgcn/outputs/clean-ml100k/checkpoints/latest.pt   # w_clean
+  popular_ratio: 0.05
+  medium_ratio: 0.40
+
+checkpoint:
+  clean: models/lightgcn/outputs/clean-ml100k/checkpoints/latest.pt   # w_clean
 
 warm_start:
-  checkpoint: models/lightgcn/outputs/clean-ml100k/checkpoints/latest.pt
+  enabled: true
+  # checkpoint 可选；缺省回退 checkpoint.clean
 
 batch:
   tiers: [popular, normal, cold]

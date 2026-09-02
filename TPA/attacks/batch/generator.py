@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Tuple
 
 from attacks.batch.registry import get as get_attack
 from attacks.batch.utils import deep_merge, flatten_experiment, group_name
-from training.config_utils import apply_k
+from training.config_utils import apply_k, canonicalize_config
 from training.run_tag import sanitize_run_tag
 
 
@@ -21,9 +21,8 @@ TIER_NAMES = ("popular", "normal", "cold")
 
 
 def validate_batch_config(cfg: Dict[str, Any]) -> None:
-    exp = cfg.get("experiment")
-    if not isinstance(exp, dict) or not exp.get("dataset"):
-        raise ValueError("缺少 experiment.dataset")
+    if not cfg.get("dataset"):
+        raise ValueError("缺少 dataset")
     batch = cfg.get("batch")
     if not isinstance(batch, dict):
         raise ValueError("缺少 batch 段")
@@ -47,7 +46,7 @@ def validate_batch_config(cfg: Dict[str, Any]) -> None:
 def load_batch_config(path: Path) -> Dict[str, Any]:
     import yaml
     with open(path, "r", encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
+        cfg = canonicalize_config(yaml.safe_load(f))
     validate_batch_config(cfg)
     return apply_k(cfg)
 
@@ -57,7 +56,7 @@ def load_attack_default(cfg: Dict[str, Any]) -> Dict[str, Any]:
     import yaml
     spec = get_attack(cfg["attack"]["name"])
     with open(PROJECT_ROOT / spec.config_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        return canonicalize_config(yaml.safe_load(f))
 
 
 def build_atomic_base(cfg: Dict[str, Any]) -> Dict[str, Any]:
