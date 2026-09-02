@@ -1,0 +1,206 @@
+# TPA 通用配置模板（参考版，不直接加载）
+#
+# 用途：合并 models/*/config.yaml、attacks/*/config.yaml、attacks/batch/*.yaml
+#       以及 .codex 复现模板的全部配置项，避免"同一用途多个名字"。
+# 用法：按目标模型/攻击复制本文件并删掉无关注释项；实现统一读取层时，
+#       以本文件中的 canonical 键为准，把历史别名映射到 canonical（映射表见文末）。
+# 来源标注沿用仓库约定：[paper] / [ai] / [unreported] / [官方代码]。
+
+# ================= 通用 / 实验 =================
+dataset: ml100k                      # canonical。别名: data.dataset / experiment.dataset / override.dataset
+interaction_type: implicit           # [可选 canonical] implicit | explicit；可从 dataset 注册表推导，不强制手填
+mode: all                            # classify|data|model|both|all（纯模型可忽略）
+seed: 42                             # canonical。别名: experiment.seed；batch.seed 只控制分层采样，不合并
+run_tag: null                        # canonical。优先级: CLI --tag > 此处 > 当前时间
+k: 10                                # canonical 评估 Top-K（自动展开 {k}）。别名: evaluation.k / training.k / classification.k（旧）
+
+# ================= data =================
+data:
+  dataset: ml100k                    # [模型 config 兼容] canonical 为顶层 dataset
+  source_model: wmf                  # 复用其它模型 processed 时声明（cml/itemae/itemcf/multvae/ncf 用）
+  raw_data_path: data/implicit/raw/ml100k      # canonical 原始数据目录（隐式/显式分目录）
+  processed_data_path: models/wmf/data/processed/ml100k   # canonical 处理后 meta 目录或文件
+  val_ratio: 0.05                    # 训练/验证划分比例（wmf 已配置；攻击 fit 侧目前硬编码 0.05，应统一读此键）
+
+# ================= model =================
+model:
+  name: lightgcn                     # canonical（攻击侧选择受害模型；别名 surrogate.model_name）
+  overrides: {}                      # 覆盖模型自身 config.yaml 的 model 段（攻击/batch 用）
+
+  # ---- 通用图/分解模型超参 ----
+  emb_dim: 64                        # [lightgcn/mf/cml/itemae/multvae/ncf]
+  n_layers: 3                        # [lightgcn]
+  init_method: normal                # [lightgcn/mf/wmf] normal|xavier_uniform|xavier_normal|kaiming_*|uniform
+  init_std: 0.01                     # [wmf] 初始化标准差
+  hidden_dim: 128                    # [cml/itemae/multvae/ncf] 隐层宽（单值）
+  hidden_dims: [256, 128]            # [advinject surrogate / 显式评分 AE 类] 多层隐层；与 hidden_dim 二选一
+  latent_dim: 64                     # [cml/multvae/ncf] 输出潜空间
+  factors: 100                       # [wmf] 分解因子数（等价于 MF 的 emb_dim，模型专用名）
+  alpha: 40                          # [wmf] 置信度缩放 α
+  epsilon: 1e-8                      # [wmf] log-scaling 常数
+  confidence_scheme: minimal         # [wmf] minimal|log-scaling
+  topk: 100                          # [itemcf] 近邻候选数，与评估 K 语义不同；建议改名为 candidate_k 防混淆
+  dropout: 0.1                       # [通用模板/可选] 模型内 dropout（无模型使用时可忽略）
+
+# ================= classification =================
+classification:
+  popular_ratio: 0.05                # canonical 流行切分（交互数前 5%）
+  medium_ratio: 0.40                 # canonical 普通切分（5%~40%）
+  # --- AdvInject 交互数百分位语义（与 ratio 属不同度量，各自独立 canonical）---
+  percentile_head: 95                # [advinject] 头部区间上界（旧 popular_percentile）
+  percentile_upper_torso: 75         # [advinject] 上躯干区间上界（旧 torso_percentile）
+  percentile_lower_torso: 50         # [advinject] 下躯干/尾部交界（旧 tail_percentile）
+  # batch_size: 1024                 # [.codex 攻击模板资产] 疑似残留/未使用字段，勿沿用
+  # 别名（advinject 旧字段，同义不同口径，需换算）：
+  #   popular_percentile: 95         # ≈ popular_ratio 0.05 的百分位表述
+  #   torso_percentile: 75           # ≈ medium_ratio 0.40 的上界表述
+  #   tail_percentile: 50            # 冷门区间下界表述
+  checkpoint: null                   # 干净模型权重（仅聚合报告/clean 基线用；旧别名 clean_checkpoint；canonical 见 checkpoint.clean）
+
+# ================= attack（攻击公共部分） =================
+attack:
+  name: random                       # canonical（目录名/产物路径前缀）
+  num_fake_users: 6                  # canonical 假用户绝对数（优先）
+  ratio: 0.03                        # 假用户比例（num_fake_users 缺省时按 ratio×用户数）；别名 attack.n_fakes（advinject）
+  filler_size: 20                    # 假用户 filler 物品数；别名 filler_num（官方 CLI）/ profile_size（显式评分档案语义）
+  base_size: 10                      # [tpa] 平庸基座物品数（高流行度池采样）
+  target_items:
+    strategy: specified              # specified|category|coldest|random
+    category: cold                   # popular|ordinary|cold（strategy=category 用）
+    count: 1                         # 目标物品数（假用户均分）
+    ids: [251]                       # strategy=specified 用
+    zone: head                       # [advinject] head|upper_torso|lower_torso|tail（旧 target_item_popularity）
+  # advinject 旧字段映射到本块（保留兼容，不新增顶层键）：
+  #   attack_type / n_target_items / target_item_popularity / click_targets  →  target_items.* 语义
+  #   adv_epochs / adv_lr / adv_momentum / proj_threshold / unroll_steps     →  见 attack.adv / surrogate.training.unroll_steps
+
+  # ---- 显式评分攻击预留块（Leg-UP 等；AGENTS.md §6.6）----
+  explicit_rating:
+    scale: 5                         # 评分上界
+    target_rating: 5                 # push 目标物品固定评分（可配 learn）
+    profile: {}                      # 档案级字段：filler 数量/取值模式/每用户离散化阈值等
+
+  # ---- PGD 攻击专属 ----
+  pgd:
+    iterations: 50                   # PGD 外层迭代
+    step_size: 0.2
+    lambda_rating: 1.0               # 评分 l∞ 约束 [−Λ,Λ]
+    lambda_u: 0.05                   # 用户侧正则（L2 语义，模型/替代侧专用，勿与 training.weight_decay 混用）
+    lambda_v: 0.05
+    als_iterations: 10
+    engine: auto                     # auto|als|neighbor
+    init: popularity                 # popularity|random
+    include_target: true
+    utility:
+      mu1: -1.0
+      mu2: 1.0
+      w_target: 2.0
+      cross_target: true
+
+  # ---- TPA 路径注入专属 ----
+  path:
+    strategy: shortest
+    max_bridge_items: 3
+    per_hop_tau: null
+    fallback: direct
+
+  # ---- 通用对抗/代理优化块（advinject/未来评分攻击共用 canonical）----
+  adv:
+    attack_type: adversarial         # adversarial|random
+    epochs: 30                       # 别名 attack.adv_epochs
+    lr: 1.0                          # 别名 attack.adv_lr
+    momentum: 0.95                   # 别名 attack.adv_momentum
+    proj_threshold: 0.1
+    click_targets: false
+
+# ================= surrogate（代理/替代模型） =================
+surrogate:
+  enabled: false                     # [tpa] 黑盒模式开关
+  name: itemae                       # canonical 替代模型名；别名 surrogate.model_name / model.name（复用时）
+  checkpoint: null                   # 替代模型权重
+  training:
+    epochs: 50                       # surrogate 每轮重训轮数（旧平铺键 surrogate.epochs）
+    lr: 0.001
+    weight_decay: 1e-6               # surrogate L2 唯一 canonical；旧别名 surrogate.l2 / surrogate.weight_decay（废弃）
+    batch_size: 2048
+    hidden_dims: [256, 128]          # AE 类 surrogate 隐层
+    weight_alpha: 20.0               # [ItemAE/WMF confidence]
+    unroll_steps: 1                  # 有限 unroll（0=直接优化）；旧别名 attack.unroll_steps / surrogate.unroll_steps（废弃）
+    split_seed_offset: 1             # 与受害模型不同划分种子（tpa）
+    eval_every: 5                    # surrogate 评估频率
+
+# ================= 权重 / checkpoint =================
+checkpoint:
+  clean: null                        # canonical 干净模型权重（旧别名 clean_checkpoint / classification.checkpoint）
+
+warm_start:
+  enabled: true
+  checkpoint: null                   # 可选 canonical：显式 warm-start 权重；缺省回退 checkpoint.clean
+
+# ================= training =================
+training:
+  optimizer: adam                    # [wmf: als|sgd；其余模型 adam|sgd 视实现]
+  epochs: 30
+  batch_size: 256                    # [wmf: 0=全量 ALS]
+  lr: 0.001
+  weight_decay: 0.0001               # canonical L2；别名 training.lambda_reg（wmf）
+  neg_ratio: 1                       # BPR 负采样比例
+  eval_every: 1                      # canonical 评估频率；别名 evaluation.eval_every（模型 config 旧写法）
+  save_every_n_epochs: 10            # checkpoint 保存间隔（wmf 默认 5）
+  shuffle: true
+  checkpoint_dir: models/lightgcn/outputs/checkpoints   # 模型训练权重目录（模型 config 用）
+  num_workers: 4
+  persistent_workers: true
+  device: cuda                       # canonical 设备: cpu|cuda|cuda:N；由 use_cuda(bool)/cuda_id(CLI) 兼容派生
+
+# ================= evaluation =================
+evaluation:
+  k: 10                              # 别名：统一使用顶层 k（此处仅兼容旧模型 config）
+  eval_every: 1                      # 旧别名 → training.eval_every
+  metrics:
+    - target_ndcg@{k}: upper         # 攻击主选优指标（纯模型用 recall@{k}/ndcg@{k}）
+    - target_hr@{k}: upper
+    - recall@{k}: upper
+    - ndcg@{k}: upper
+  checkpoint_mode: per_metric        # per_metric|single
+  report_model_utility: true         # 攻击侧：是否报告投毒代价
+  eval_negative_sampling: full_ranking   # [模板] full_ranking 等
+  filter_seen_items: true            # [模板] 评估是否过滤训练集已交互物品
+
+# ================= output =================
+output:
+  dir: attacks/random/outputs        # canonical 输出根；别名顶层 output_dir（advinject）
+
+# ================= batch（批量专用，原子配置生成时剔除） =================
+batch:
+  tiers: [popular, normal, cold]
+  per_tier: 10
+  strategy: random                   # random|first
+  seed: 114514                       # 仅分层采样种子，不等同顶层 seed
+
+# batch 配置的 experiment.* 段是顶层 dataset/seed 的别名（生成器展开后扁平化到原子配置顶层）：
+#   experiment.dataset → dataset
+#   experiment.seed    → seed
+# batch override.* 段 = 对攻击默认 config 的深层覆盖，不视为新配置项。
+
+# ================= 同义键映射表（兼容层实现时照此映射） =================
+# 用途                       canonical                         历史别名
+# 数据集名                   dataset                           data.dataset / experiment.dataset / override.dataset
+# 设备选择                   training.device                   use_cuda(bool) / cuda_id(CLI) / 顶层 device(batch 注入)
+# 评估频率（模型/攻击）       training.eval_every               evaluation.eval_every
+# 评估频率（surrogate）       surrogate.training.eval_every     无别名（自有键）
+# 评估 K                     k（顶层）                          evaluation.k / training.k / classification.k
+# 假用户数                   attack.num_fake_users / attack.ratio   attack.n_fakes（值>1→num_fake_users；0<值≤1→ratio）
+# filler 数                  attack.filler_size                filler_num（CLI/官方代码）/ profile_size（显式语义）
+# 目标分层区间               attack.target_items.zone          target_item_popularity（纯改名）
+# 流行度切分（排名比例）     classification.popular_ratio / medium_ratio   （无别名）
+# 流行度切分（百分位）       classification.percentile_head / percentile_upper_torso / percentile_lower_torso   popular_percentile / torso_percentile / tail_percentile（纯改名）
+# 干净模型权重               checkpoint.clean                  clean_checkpoint / classification.checkpoint
+# warm-start 专用权重         warm_start.checkpoint（可选）     缺省回退 checkpoint.clean
+# surrogate 架构名           surrogate.name                    surrogate.model_name
+# surrogate L2               surrogate.training.weight_decay    surrogate.l2 / surrogate.weight_decay（废弃）
+# surrogate 训练轮数         surrogate.training.epochs         surrogate.epochs
+# surrogate unroll           surrogate.training.unroll_steps   attack.unroll_steps / surrogate.unroll_steps（废弃）
+# L2 正则（训练侧）           training.weight_decay             training.lambda_reg（wmf）
+# 输出目录                   output.dir                        output_dir（顶层，advinject）
+# 训练/验证划分比例          data.val_ratio（可选，缺省 0.05）  攻击 fit.py 历史硬编码 0.05（改为读配置）
