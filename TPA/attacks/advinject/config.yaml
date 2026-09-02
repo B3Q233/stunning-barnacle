@@ -10,9 +10,9 @@ model:
   name: wmf                      # victim model；通过 models/registry.py 解析
 
 classification:
-  percentile_head: 95            # 交互数百分位语义（原 popular_percentile）
-  percentile_upper_torso: 75     # 原 torso_percentile
-  percentile_lower_torso: 50     # 原 tail_percentile
+  percentile_head: 95            # 头部区间上界（交互数百分位）
+  percentile_upper_torso: 75     # 上躯干区间上界
+  percentile_lower_torso: 50     # 下躯干/尾部交界
 
 surrogate:
   name: itemae                   # [upstream] Sur-ItemAE；可选 wmf_sgd / wmf_als
@@ -26,15 +26,15 @@ surrogate:
     unroll_steps: 5              # [upstream] 原 attack.unroll_steps
 
 attack:
-  ratio: 0.01                    # [upstream] 原 n_fakes（0<值≤1 为比例）
+  ratio: 0.01                    # [upstream] 假用户比例（0<值≤1 表示比例）
   target_items:
-    count: 5                     # 原 n_target_items
-    zone: head                   # 原 target_item_popularity
+    count: 5                     # 目标物品数
+    zone: head                   # head|upper_torso|lower_torso|tail
   adv:
     attack_type: adversarial     # [upstream] adversarial / random
-    epochs: 30                   # 原 adv_epochs
-    lr: 1.0                      # 原 adv_lr
-    momentum: 0.95               # 原 adv_momentum
+    epochs: 30                   # 对抗训练轮数
+    lr: 1.0                      # 对抗学习率
+    momentum: 0.95               # 对抗动量
     proj_threshold: 0.1
     click_targets: false
 
@@ -43,10 +43,9 @@ training:
   batch_size: 256                # victim [unreported in attack generator]
   lr: 0.001                      # victim [unreported in attack generator]
   weight_decay: 1e-5             # victim [unreported in attack generator]
-  device: cpu                    # 原 use_cuda=false
+  device: cpu                    # 设备（cpu|cuda|cuda:N）
 
 evaluation:
-  k: 50
   report_model_utility: true
 
 output:

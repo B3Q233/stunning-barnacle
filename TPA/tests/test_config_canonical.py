@@ -204,5 +204,59 @@ class SchemaTest(unittest.TestCase):
         self.assertEqual(out["training"]["device"], "cuda")
 
 
+class ActiveConfigsSchemaTest(unittest.TestCase):
+    """活跃配置加载后必须 canonical，且全部叶子路径 ⊆ 统一模板 schema。"""
+
+    FORBIDDEN_PATHS = (
+        "use_cuda", "output_dir", "training.lambda_reg",
+        "classification.popular_percentile",
+        "classification.torso_percentile",
+        "classification.tail_percentile", "attack.n_fakes",
+        "attack.n_target_items", "attack.target_item_popularity",
+        "attack.adv_epochs", "attack.adv_lr", "attack.adv_momentum",
+        "attack.proj_threshold", "attack.click_targets",
+        "clean_checkpoint", "classification.checkpoint",
+        "surrogate.model_name", "surrogate.l2", "surrogate.epochs",
+        "surrogate.lr", "surrogate.weight_decay", "surrogate.unroll_steps",
+        "evaluation.eval_every", "evaluation.k", "data.dataset",
+        "experiment.dataset",
+    )
+
+    def _flatten(self, node, prefix=""):
+        out = []
+        if not isinstance(node, dict):
+            out.append(prefix)
+            return out
+        if not node:
+            out.append(prefix)
+            return out
+        for key, value in node.items():
+            p = f"{prefix}.{key}" if prefix else str(key)
+            out.extend(self._flatten(value, p))
+        return out
+
+    def test_active_configs_are_canonical_within_schema(self):
+        import yaml
+        from pathlib import Path
+        from training.config_utils import canonicalize_config, schema_leaf_paths
+
+        root = Path(__file__).resolve().parents[1]
+        files = sorted(root.glob("models/*/config.yaml"))
+        files += sorted(root.glob("attacks/*/config.yaml"))
+        files += sorted(root.glob("attacks/batch/config*.yaml"))
+        leaves = schema_leaf_paths()
+        self.assertTrue(files, "未找到任何活跃配置文件")
+        for path in files:
+            with open(path, encoding="utf-8") as f:
+                cfg = canonicalize_config(yaml.safe_load(f) or {})
+            for leaf in self._flatten(cfg):
+                if leaf == "override" or leaf.startswith("override."):
+                    continue
+                self.assertIn(leaf, leaves,
+                              f"{path.name}: 未在统一模板中的键 {leaf}")
+                self.assertNotIn(leaf, self.FORBIDDEN_PATHS,
+                                 f"{path.name}: 出现旧别名键 {leaf}")
+
+
 if __name__ == "__main__":
     unittest.main()

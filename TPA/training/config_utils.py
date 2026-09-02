@@ -282,11 +282,16 @@ def _adv(out: dict) -> None:
         "click_targets": "click_targets",
         "attack_type": "attack_type",
     }
-    adv = attack.setdefault("adv", {})
+    adv = attack.get("adv")
+    if not isinstance(adv, dict):
+        adv = None
     for old, new in mapping.items():
         value = attack.pop(old, _MISSING)
         if value is _MISSING:
             continue
+        if adv is None:
+            adv = {}
+            attack["adv"] = adv
         if new in adv:
             _warn(f"[config] canonical 键 attack.adv.{new} 已存在，"
                   f"忽略旧键 attack.{old}")
