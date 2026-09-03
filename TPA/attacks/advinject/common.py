@@ -1,4 +1,19 @@
-"""AdvInject shared data, configuration, sparse and ranking utilities."""
+"""AdvInject 共享工具：配置解析、稀疏矩阵、目标/假用户采样、结果落盘。
+
+为什么这样做：把“配置读取/数据变换/指标计算”收敛到本模块，业务文件
+（generate/evaluate/fit）只调用这里的能力，避免各文件重复实现。
+功能：
+- canonical_config：统一入口，保证业务代码只读 canonical 配置键；
+- AttackConfig：把 canonical 配置映射为运行时参数快照；
+- 稀疏/采样/指标：pairs→CSR、按交互数百分位选目标、初始化假用户、攻击指标。
+参考公式：目标分层使用交互数百分位区间（head 95–100 / upper_torso 75–95 /
+  lower_torso 50–75 / tail 0–50，见 sample_target_items）；攻击指标 HR/NDCG
+  与平均排名见 attack_metrics（NDCG = 1/log2(rank+1)）。
+使用举例：
+  from attacks.advinject.common import canonical_config, load_meta
+  cfg = canonical_config(yaml.safe_load(open("config.yaml")))
+  meta, _ = load_meta(cfg)
+"""
 from __future__ import annotations
 import json
 import pickle
@@ -24,6 +39,12 @@ def canonical_config(config):
 
 @dataclass
 class AttackConfig:
+    """canonical 配置的运行时快照（内部字段，非新配置协议）。
+
+    为什么这样做：上游 generate 循环需要一次解析好的参数对象，避免每个 epoch
+    反复 get()。字段与 canonical 键的映射见 from_dict：n_fakes 保留混合语义
+    （>1 为绝对数量，0<值≤1 为真实用户比例，generate 阶段再按 meta 换算）。
+    """
     dataset: str="gowalla"
     seed: int=1
     use_cuda: bool=False
@@ -118,9 +139,17 @@ def pairs_to_csr(pairs,n_users,n_items):
 def item_counts(meta): return Counter(i for _,i in meta["train_pairs"])
 
 def sample_target_items(meta, n_samples, popularity="head", fixed=None, seed=1):
+    """按交互数百分位区间或显式 id 采样目标物品。
+
+    为什么这样做：AdvInject 上游把物品按交互数分为 head/upper_torso/
+    lower_torso/tail 四个区间，直接按 np.percentile(counts, low/high) 找候选；
+    固定 id 时跳过采样。功能：返回升序目标物品数组。使用举例：
+    sample_target_items(meta, 5, "head", seed=1)。
+    """
     if fixed is not None: targets=np.asarray(fixed,dtype=np.int64)
     else:
         counts=np.asarray([item_counts(meta).get(i,0) for i in range(meta["num_items"])])
+        # 交互数百分位区间 → (counts 低百分位, 高百分位)，如 head=(95,100)
         percentiles={"head":(95,100),"upper_torso":(75,95),"lower_torso":(50,75),"tail":(0,50)}
         if popularity not in percentiles: raise ValueError(f"unknown popularity: {popularity}")
         low,high=percentiles[popularity]; lo=np.percentile(counts,low); hi=np.percentile(counts,high)
@@ -144,12 +173,26 @@ def resolve_target_items(meta, config, seed=1):
     return sample_target_items(meta, count, zone, ids, seed)
 
 def initialize_fake_data(train_csr,n_fakes,seed=1):
+    """从训练矩阵中抽取“模板用户”作为假用户初始交互。
+
+    为什么这样做：用真实用户行为做冷启动，比纯随机更像正常档案（沿用上游
+    revisit_adv_rec 做法）。功能：返回 (n_fakes, n_items) 稀疏矩阵，每行是
+    被抽样真实用户的交互行；合格用户限定在交互数 ≤100（上游阈值）。
+    使用举例：initialize_fake_data(train_csr, 50, seed=1)。
+    """
     n_fakes=int(n_fakes); rng=np.random.default_rng(seed); dense=train_csr.toarray(); clicks=dense.sum(1); qualified=np.flatnonzero(clicks<=100)
     if len(qualified)<n_fakes: qualified=np.arange(dense.shape[0])
     sampled=rng.choice(qualified,size=n_fakes,replace=len(qualified)<n_fakes)
     return sparse.csr_matrix(dense[sampled],shape=(n_fakes,dense.shape[1]),dtype=np.float32)
 
 def project_fake(fake, threshold, targets, click_targets):
+    """把可微连续档案投影为 0/1 隐式交互。
+
+    为什么这样做：上游 surrogate 输出连续“点击强度”，注入训练集需要二值；
+    投影阈值 threshold 后，若 click_targets=True 再把目标物品强制置 1（保证
+    push 生效）。矩阵说明：(n_fakes, n_items) → 同形状 0/1 矩阵。
+    参考：upstream project_fake（revisit_adv_rec）。
+    """
     result=(fake>float(threshold)).to(fake.dtype)
     if click_targets: result[:,targets]=1.0
     return result

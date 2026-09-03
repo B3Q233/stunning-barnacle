@@ -1,5 +1,17 @@
 # AdvInject 代理模型投毒复现配置（canonical）
-# 数值来源：上游 revisit_adv_rec/generate_attack_args.py；未报告项标为 [unreported]
+#
+# 为什么这样做：复现 Tang et al., Revisiting Adversarially Learned Injection
+#   Attacks (RecSys 2020) 的“代理模型优化假用户”思路——攻击者不直接改真实
+#   模型，而是在自己训练的 surrogate（ItemAE/WMF）上做可微优化，再迁移到
+#   victim（黑盒攻击）。参考 A 级代码：revisit_adv_rec/generate_attack_args.py。
+# 功能：本文件是 advinject 模块唯一配置入口，控制目标选择（zone/count）、
+#   假用户预算（ratio）、surrogate 训练/有限 unroll、victim 训练与评测。
+# 参考公式：surrogate 重建/加权损失与外层多分类交叉熵见
+#   train_surrogate.py（functional_itemae / functional_wmf / mult_ce_loss）；
+#   论文与上游数值来源见 docs/DESIGN.md 与 IMPLEMENTATION_DOCS.md。
+# 使用举例：
+#   G:\Idea\.venv\Scripts\python.exe -m attacks.advinject.run --config attacks/advinject/config.yaml --mode data
+#   （classify / model / all 同理；run_tag 缺省自动按当前时间生成）
 dataset: ml100k
 mode: all
 seed: 1

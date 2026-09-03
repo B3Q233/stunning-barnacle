@@ -27,6 +27,13 @@ def _edge_index(pairs):
 
 
 def _train_pair_model(model, name, meta, cfg, epochs):
+    """在 (用户, 正样本) pair 上按 BPR/合页损失训练 victim（MF/NCF/CML）。
+
+    为什么这样做：这些模型共享 pair 负采样训练协议，收敛到一个函数便于复用；
+    每 epoch 输出统一走 epoch_log（含耗时）。损失分支：mf 用 bpr+reg，
+    ncf 用 bpr_loss，cml 用 margin_loss（各模型实现见 models/*/model.py）。
+    使用举例：_train_pair_model(model, "mf", meta, cfg, epochs=30)。
+    """
     from models.revisit_training import sample_negative_items
     from training.epoch_log import log_train_line
     from training.timing import section_enter, section_exit

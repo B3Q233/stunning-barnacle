@@ -7,6 +7,20 @@ import torch.nn as nn
 import torch.nn.functional as F
 from attacks.advinject.common import canonical_config
 
+# ---------------------------------------------------------------------------
+# 为什么这样做：AdvInject 需要“攻击者自训代理模型 → 在代理上对假用户矩阵求
+# 外层梯度 → 迁移到 victim”的黑盒攻击闭环（参照 revisit_adv_rec / AIA）。
+# 功能：定义 surrogate 网络（ItemAE/WMF）、重建损失，并用 functional unroll
+# （higher 风格参数重放）计算对假档案的梯度。
+# 参考公式：
+#   - ItemAE 加权 MSE 重建损失：L = Σ_i w_i·(x_i − x̂_i)²，w=weight_alpha
+#     当 x>0 否则 1（Tanh 编码/解码见 ItemAESurrogate）。
+#   - WMF 置信损失：L = Σ (1+(α−1)x)(x − P·Qᵀ)² + λ·mean(P²+Q²)。
+#   - 外层多分类 CE：L_out = mean(-Σ_t label·log_softmax(score)[t])。
+# 使用举例：compute_adversarial_gradient(train_csr, fake, n_items, targets,
+#   config) -> (gradient[n_fakes, n_items], record)。
+# ---------------------------------------------------------------------------
+
 @dataclass
 class SurrogateResult:
     loss: float
@@ -64,7 +78,22 @@ def functional_wmf(model,data,params,weight_alpha,l2):
     return (weights*(data-scores).pow(2)).sum(dim=1).mean()+l2*(P.pow(2).mean()+Q.pow(2).mean())
 
 def compute_adversarial_gradient(train_csr, fake, n_items, targets, config):
-    """训练 surrogate，并对 fake data 求外层目标梯度。"""
+    """训练 surrogate，并对 fake data 求外层目标梯度。
+
+    矩阵变换过程：
+      1) clean = train_csr.toarray()          (n_users, n_items)
+      2) fake 张量 requires_grad=True         (n_fakes, n_items)
+      3) data = cat([clean, fake], 0)         (n_users+n_fakes, n_items)
+      4) ItemAE：输入 data.T (n_items, rows)，q/p 层保持
+         (n_items, rows)，预测转置回 (rows, n_items)；
+         WMF：P(rows, dim) @ Q.T(dim, n_items) → (rows, n_items)。
+      5) 普通阶段训练 pre_steps 轮（data 不参与二阶梯度）；后 diff_steps 轮
+         用 functional 参数重放（create_graph=True）保留对 data 的二阶路径，
+         autograd.grad(outer_loss, fake) 得 (n_fakes, n_items) 梯度。
+    逻辑：外层损失只作用于真实用户 score[:n_users] 上目标物品的
+    log-softmax 概率；surrogate 随 unroll 更新，梯度体现“注入假档案后代理
+    模型响应”的迁移效应（参照 upstream unroll 实现）。
+    """
     config = canonical_config(config)
     surrogate_cfg = config.get("surrogate", {})
     sur_tr = surrogate_cfg.get("training", {})

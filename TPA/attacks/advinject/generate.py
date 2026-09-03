@@ -12,6 +12,14 @@ from training.run_tag import resolve_run_tag, save_config_snapshot, write_latest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
+# 为什么这样做：假用户档案不能一拍脑袋生成，需要在 surrogate 上做“对抗式
+# 梯度下降”压低外层目标（目标物品在真实用户上的 log-softmax 概率）。
+# 功能：选择目标 → 初始化假用户（模板用户行）→ 有限 unroll 梯度更新 →
+# 二值投影 → 落盘中毒 meta/档案。
+# 参考公式：updated = current − adv_lr·grad/‖grad‖₂（逐行归一化，形状均为
+#   (n_fakes, n_items)），随后 project_fake 按 threshold 二值化。
+# 使用举例：python -m attacks.advinject.run --config ... --mode data
+
 def resolve_targets(meta, config):
     return resolve_target_items(meta, config, seed=int(config.get("seed", 1)))
 
@@ -43,6 +51,8 @@ def generate(config):
 
         _t_epoch = section_enter(f"Epoch {epoch}/{attack.adv_epochs}")
         gradient, record = compute_adversarial_gradient(train_csr, current, meta["num_items"], targets, config)
+        # 矩阵形状：current/gradient/updated 均为 (n_fakes, n_items)；
+        # 逐行 l2 归一化避免步长被个别大梯度主导（同上游实现）。
         row_norm = np.linalg.norm(gradient, axis=1, keepdims=True).clip(min=1e-12)
         before = current.copy()
         updated = before - attack.adv_lr * gradient / row_norm
