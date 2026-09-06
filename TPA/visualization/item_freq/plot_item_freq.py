@@ -600,13 +600,11 @@ def plot_percentile_bucket_histogram(
     _apply_publication_style(ax)
     ax.set_xlabel("Interaction-count percentile bucket", fontsize=10.5,
                   color=PUBLICATION_INK, labelpad=5)
-    ax.set_ylabel(
-        "Number of distinct items (log10)" if log_y
-        else "Number of distinct items",
-        fontsize=10.5, color=PUBLICATION_INK, labelpad=5,
-    )
+    ax.set_ylabel("Number of distinct items", fontsize=10.5,
+                  color=PUBLICATION_INK, labelpad=5)
     ax.set_title(
-        f"{name} - Percentile bucket item counts ({split_label})",
+        f"{name} - Percentile bucket item counts"
+        + (f" ({split_label})" if split_label else ""),
         fontsize=11, color=PUBLICATION_INK, pad=8,
     )
     fig.tight_layout()
@@ -650,11 +648,8 @@ def plot_percentile_bucket_histogram_all(
                      color=PUBLICATION_INK, pad=8)
         ax.set_xlabel("Interaction-count percentile bucket", fontsize=9.5,
                       color=PUBLICATION_INK, labelpad=5)
-    axes[0].set_ylabel(
-        "Number of distinct items (log10)" if log_y
-        else "Number of distinct items",
-        fontsize=10.5, color=PUBLICATION_INK, labelpad=5,
-    )
+    axes[0].set_ylabel("Number of distinct items", fontsize=10.5,
+                       color=PUBLICATION_INK, labelpad=5)
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, dpi=dpi)
