@@ -96,28 +96,37 @@ def build_count_distribution(counts: Counter) -> Tuple[np.ndarray, np.ndarray]:
     return x, y
 
 
-def build_decile_item_counts(
+def build_percentile_bucket_item_counts(
     counts: Counter,
+    bucket_pct: int = 5,
 ) -> Tuple[List[str], np.ndarray, np.ndarray]:
-    """按交互数取值十分位把物品切成 10 档，返回每档去重物品数。
+    """按交互数取值百分位把物品切成 bucket_pct% 一档，返回每档去重物品数。
 
     为什么这样做：需要观察“不同交互强度区间的物品规模”分布；直接按交互数
-    取值（非物品排名）的 10%–100% 分位切分，能突出长尾（多数物品挤在低
-    分位区间）。功能：labels 为档名，boundaries 为 10 个分位边界（可并列），
+    取值（非物品排名）的 bucket_pct%–100% 分位切分，能突出长尾（多数物品
+    挤在低分位区间）。功能：labels 为档名，boundaries 为 100/bucket_pct 个
+    分位边界（可并列），
     item_counts 为每档物品数（允许空档）。
-    参考公式/口径：边界 = np.percentile(交互数, [10,20,…,100])；每件物品归入
+    参考公式/口径：边界 = np.percentile(交互数, [bucket_pct,2·bucket_pct,…,100])；
+    每件物品归入
     “首个 ≥ c 的边界”对应的档（左开右闭）。
-    使用举例：build_decile_item_counts(Counter({0: 3, 1: 3, 2: 7}))
+    使用举例：build_percentile_bucket_item_counts(Counter({0: 3, 1: 3, 2: 7}),
+      bucket_pct=5) -> 20 档。
     """
     if not counts:
         raise ValueError("counts is empty")
+    if not (0 < bucket_pct <= 100) or 100 % bucket_pct != 0:
+        raise ValueError("bucket_pct 必须能整除 100（如 5/10/20/25/50）")
     values = np.fromiter(counts.values(), dtype=np.float64)
-    boundaries = np.percentile(values, np.arange(10, 101, 10))
+    boundaries = np.percentile(
+        values, np.arange(bucket_pct, 101, bucket_pct))
     idx = np.searchsorted(boundaries, values, side="left")
-    np.clip(idx, 0, 9, out=idx)
-    item_counts = np.bincount(idx, minlength=10).astype(np.int64)
+    n_buckets = 100 // bucket_pct
+    np.clip(idx, 0, n_buckets - 1, out=idx)
+    item_counts = np.bincount(idx, minlength=n_buckets).astype(np.int64)
     labels = [f"{low}-{high}%" for low, high in
-              zip(range(0, 100, 10), range(10, 101, 10))]
+              zip(range(0, 100, bucket_pct),
+                  range(bucket_pct, 101, bucket_pct))]
     return labels, boundaries, item_counts
 
 
@@ -548,7 +557,7 @@ def plot_count_distribution_all(
     return fig
 
 
-def plot_decile_histogram(
+def plot_percentile_bucket_histogram(
     dataset: str,
     labels: Sequence[str],
     item_counts: np.ndarray,
@@ -561,7 +570,8 @@ def plot_decile_histogram(
 
     为什么这样做：把 count-of-counts 压缩成 10 个取值区间，便于横向比较
     “不同交互强度区间各覆盖多少物品”。功能：单数据集顶会风格柱状图。
-    使用举例：plot_decile_histogram("gowalla", labels, counts, out, "train")。
+    使用举例：plot_percentile_bucket_histogram("gowalla", labels, counts,
+      out, "train")。
     """
     import matplotlib
 
@@ -577,12 +587,12 @@ def plot_decile_histogram(
     ax.set_xticks(positions)
     ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=8.5)
     _apply_publication_style(ax)
-    ax.set_xlabel("Interaction-count decile", fontsize=10.5,
+    ax.set_xlabel("Interaction-count percentile bucket", fontsize=10.5,
                   color=PUBLICATION_INK, labelpad=5)
     ax.set_ylabel("Number of distinct items", fontsize=10.5,
                   color=PUBLICATION_INK, labelpad=5)
     ax.set_title(
-        f"{name} - Decile item counts ({split_label})",
+        f"{name} - Percentile bucket item counts ({split_label})",
         fontsize=11, color=PUBLICATION_INK, pad=8,
     )
     fig.tight_layout()
@@ -591,7 +601,7 @@ def plot_decile_histogram(
     return fig
 
 
-def plot_decile_histogram_all(
+def plot_percentile_bucket_histogram_all(
     panels: Sequence[Tuple[str, Sequence[str], np.ndarray]],
     out_path: Path,
     split_label: str,
@@ -620,7 +630,7 @@ def plot_decile_histogram_all(
         _apply_publication_style(ax)
         ax.set_title(f"({letter}) {name}", fontsize=11,
                      color=PUBLICATION_INK, pad=8)
-        ax.set_xlabel("Interaction-count decile", fontsize=9.5,
+        ax.set_xlabel("Interaction-count percentile bucket", fontsize=9.5,
                       color=PUBLICATION_INK, labelpad=5)
     axes[0].set_ylabel("Number of distinct items", fontsize=10.5,
                        color=PUBLICATION_INK, labelpad=5)
@@ -665,10 +675,16 @@ def main(argv: Sequence[str] | None = None) -> None:
              "（PNG+CSV，多数据集时另出组合图）",
     )
     parser.add_argument(
-        "--decile-dist",
+        "--pct-dist",
         action="store_true",
-        help="额外输出十分位直方图：交互数取值 10%–100% 分位切成 10 档，"
+        help="额外输出百分位直方图：交互数取值按 bucket_pct（默认 5%）分档，"
              "y=各档去重物品数（PNG+CSV，多数据集时另出组合图）",
+    )
+    parser.add_argument(
+        "--bucket-pct",
+        type=int,
+        default=5,
+        help="百分位分档步长（默认 5；必须整除 100，如 5/10/20/25/50）",
     )
     parser.add_argument(
         "--bar-width",
@@ -714,7 +730,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     panels: List[Tuple[str, np.ndarray, np.ndarray]] = []
     hist_panels: List[Tuple[str, np.ndarray, np.ndarray]] = []
     count_panels: List[Tuple[str, np.ndarray, np.ndarray]] = []
-    decile_panels: List[Tuple[str, Sequence[str], np.ndarray]] = []
+    pct_panels: List[Tuple[str, Sequence[str], np.ndarray]] = []
 
     for dataset in args.datasets:
         counts: Counter = Counter()
@@ -799,20 +815,22 @@ def main(argv: Sequence[str] | None = None) -> None:
             count_panels.append((dataset, dx, dy))
             print(f"[OK] {dataset}: count distribution -> {count_png}")
 
-        if args.decile_dist:
-            d_labels, d_boundaries, d_counts = build_decile_item_counts(counts)
-            decile_csv = args.out_dir / f"decile_dist_{dataset}.csv"
-            with open(decile_csv, "w", encoding="utf-8") as f:
+        if args.pct_dist:
+            d_labels, d_boundaries, d_counts = (
+                build_percentile_bucket_item_counts(
+                    counts, bucket_pct=args.bucket_pct))
+            pct_csv = args.out_dir / f"pct_dist_{dataset}.csv"
+            with open(pct_csv, "w", encoding="utf-8") as f:
                 f.write("bucket,boundary,item_count\n")
                 for lab, bnd, cnt in zip(
                         d_labels, d_boundaries.tolist(), d_counts.tolist()):
                     f.write(f"{lab},{bnd:.4f},{cnt}\n")
-            decile_png = args.out_dir / f"decile_dist_{dataset}.png"
-            fig = plot_decile_histogram(
-                dataset, d_labels, d_counts, decile_png, split_label)
+            pct_png = args.out_dir / f"pct_dist_{dataset}.png"
+            fig = plot_percentile_bucket_histogram(
+                dataset, d_labels, d_counts, pct_png, split_label)
             plt.close(fig)
-            decile_panels.append((dataset, d_labels, d_counts))
-            print(f"[OK] {dataset}: decile histogram -> {decile_png}")
+            pct_panels.append((dataset, d_labels, d_counts))
+            print(f"[OK] {dataset}: pct histogram -> {pct_png}")
 
     if args.style == "line" and len(panels) > 1:
         combined_path = args.out_dir / "item_freq_all_datasets.png"
@@ -850,14 +868,14 @@ def main(argv: Sequence[str] | None = None) -> None:
             f"-> {combined_count_path}"
         )
 
-    if len(decile_panels) > 1:
-        combined_decile_path = args.out_dir / "decile_dist_all_datasets.png"
-        fig = plot_decile_histogram_all(
-            decile_panels, combined_decile_path, split_label)
+    if len(pct_panels) > 1:
+        combined_pct_path = args.out_dir / "pct_dist_all_datasets.png"
+        fig = plot_percentile_bucket_histogram_all(
+            pct_panels, combined_pct_path, split_label)
         plt.close(fig)
         print(
-            f"[OK] combined decile histogram 1x{len(decile_panels)} "
-            f"-> {combined_decile_path}"
+            f"[OK] combined pct histogram 1x{len(pct_panels)} "
+            f"-> {combined_pct_path}"
         )
 
 

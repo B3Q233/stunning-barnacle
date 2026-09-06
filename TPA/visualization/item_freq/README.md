@@ -69,21 +69,23 @@ G:\Idea\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py -
 - `count_dist_{dataset}.csv`：表头 `interaction_count,item_count`
 - `count_dist_all_datasets.png`：多数据集 1xN 组合图（共享 y 轴）
 
-## 交互数十等分直方图（--decile-dist，可选）
+## 交互数百分位直方图（--pct-dist，可选）
 
-把物品按交互数取值的 10%/20%/…/100% 分位切成 10 档（0–10%…90–100%），
-每档直方图高度 = 落在该取值区间内的去重物品数（左开右闭，允许空档；
-只统计 c>0 的物品）。
+把物品按交互数取值的百分位切成 20 档（默认 `--bucket-pct 5`，即 0–5%…
+95–100%），每档直方图高度 = 落在该取值区间内的去重物品数（左开右闭，
+允许空档；只统计 c>0 的物品）。步长可配置为 5/10/20/25/50。
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --decile-dist
+G:\Idea\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --pct-dist
+# 改成 10% 一档：
+G:\Idea\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --pct-dist --bucket-pct 10
 ```
 
 产物（`outputs/`）：
 
-- `decile_dist_{dataset}.png`：单数据集十分位直方图
-- `decile_dist_{dataset}.csv`：表头 `bucket,boundary,item_count`
-- `decile_dist_all_datasets.png`：多数据集 1xN 组合图
+- `pct_dist_{dataset}.png`：单数据集百分位直方图
+- `pct_dist_{dataset}.csv`：表头 `bucket,boundary,item_count`
+- `pct_dist_all_datasets.png`：多数据集 1xN 组合图
 
 ## 用法
 
