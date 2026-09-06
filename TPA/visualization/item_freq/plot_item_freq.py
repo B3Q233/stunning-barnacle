@@ -96,6 +96,31 @@ def build_count_distribution(counts: Counter) -> Tuple[np.ndarray, np.ndarray]:
     return x, y
 
 
+def build_decile_item_counts(
+    counts: Counter,
+) -> Tuple[List[str], np.ndarray, np.ndarray]:
+    """按交互数取值十分位把物品切成 10 档，返回每档去重物品数。
+
+    为什么这样做：需要观察“不同交互强度区间的物品规模”分布；直接按交互数
+    取值（非物品排名）的 10%–100% 分位切分，能突出长尾（多数物品挤在低
+    分位区间）。功能：labels 为档名，boundaries 为 10 个分位边界（可并列），
+    item_counts 为每档物品数（允许空档）。
+    参考公式/口径：边界 = np.percentile(交互数, [10,20,…,100])；每件物品归入
+    “首个 ≥ c 的边界”对应的档（左开右闭）。
+    使用举例：build_decile_item_counts(Counter({0: 3, 1: 3, 2: 7}))
+    """
+    if not counts:
+        raise ValueError("counts is empty")
+    values = np.fromiter(counts.values(), dtype=np.float64)
+    boundaries = np.percentile(values, np.arange(10, 101, 10))
+    idx = np.searchsorted(boundaries, values, side="left")
+    np.clip(idx, 0, 9, out=idx)
+    item_counts = np.bincount(idx, minlength=10).astype(np.int64)
+    labels = [f"{low}-{high}%" for low, high in
+              zip(range(0, 100, 10), range(10, 101, 10))]
+    return labels, boundaries, item_counts
+
+
 def build_series(
     counts: Counter,
     sort_by_count: bool = False,

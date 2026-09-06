@@ -111,3 +111,33 @@ class CountDistributionTest(unittest.TestCase):
         build = self._build()
         with self.assertRaises(ValueError):
             build(Counter())
+
+
+class DecileHistogramTest(unittest.TestCase):
+    """交互数取值十分位分档：每档返回去重物品数。"""
+
+    def _build(self):
+        from visualization.item_freq.plot_item_freq import (
+            build_decile_item_counts,
+        )
+        return build_decile_item_counts
+
+    def test_uniform_counts_split_into_ten_buckets(self):
+        build = self._build()
+        labels, boundaries, item_counts = build(
+            Counter({i: i for i in range(1, 101)}))
+        self.assertEqual(len(labels), 10)
+        self.assertEqual(len(boundaries), 10)
+        self.assertEqual(item_counts.tolist(), [10] * 10)
+
+    def test_equal_counts_all_in_first_bucket(self):
+        build = self._build()
+        labels, boundaries, item_counts = build(
+            Counter({0: 5, 1: 5, 2: 5}))
+        self.assertEqual(boundaries.tolist(), [5.0] * 10)
+        self.assertEqual(item_counts.tolist(), [3, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+
+    def test_empty_raises(self):
+        build = self._build()
+        with self.assertRaises(ValueError):
+            build(Counter())
