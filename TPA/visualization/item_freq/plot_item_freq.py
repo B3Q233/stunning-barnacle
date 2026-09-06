@@ -570,6 +570,7 @@ def plot_percentile_bucket_histogram(
     item_counts: np.ndarray,
     out_path: Path,
     split_label: str,
+    log_y: bool = True,
     figsize: Tuple[float, float] = (6.4, 3.6),
     dpi: int = 300,
 ) -> "matplotlib.figure.Figure":
@@ -591,13 +592,19 @@ def plot_percentile_bucket_histogram(
     fig, ax = plt.subplots(figsize=figsize)
     ax.set_axisbelow(False)
     ax.bar(positions, item_counts, color=color, width=0.8, zorder=5)
+    if log_y:
+        ax.set_yscale("log")
+        ax.set_ylim(bottom=1)
     ax.set_xticks(positions)
     ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=8.5)
     _apply_publication_style(ax)
     ax.set_xlabel("Interaction-count percentile bucket", fontsize=10.5,
                   color=PUBLICATION_INK, labelpad=5)
-    ax.set_ylabel("Number of distinct items", fontsize=10.5,
-                  color=PUBLICATION_INK, labelpad=5)
+    ax.set_ylabel(
+        "Number of distinct items (log10)" if log_y
+        else "Number of distinct items",
+        fontsize=10.5, color=PUBLICATION_INK, labelpad=5,
+    )
     ax.set_title(
         f"{name} - Percentile bucket item counts ({split_label})",
         fontsize=11, color=PUBLICATION_INK, pad=8,
@@ -612,6 +619,7 @@ def plot_percentile_bucket_histogram_all(
     panels: Sequence[Tuple[str, Sequence[str], np.ndarray]],
     out_path: Path,
     split_label: str,
+    log_y: bool = True,
     dpi: int = 300,
 ) -> "matplotlib.figure.Figure":
     """多数据集 1xN 十分位直方图（共享 y 轴）。"""
@@ -632,6 +640,9 @@ def plot_percentile_bucket_histogram_all(
         positions = np.arange(len(labels))
         ax.set_axisbelow(False)
         ax.bar(positions, item_counts, color=color, width=0.8, zorder=5)
+        if log_y:
+            ax.set_yscale("log")
+            ax.set_ylim(bottom=1)
         ax.set_xticks(positions)
         ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=7.5)
         _apply_publication_style(ax)
@@ -639,8 +650,11 @@ def plot_percentile_bucket_histogram_all(
                      color=PUBLICATION_INK, pad=8)
         ax.set_xlabel("Interaction-count percentile bucket", fontsize=9.5,
                       color=PUBLICATION_INK, labelpad=5)
-    axes[0].set_ylabel("Number of distinct items", fontsize=10.5,
-                       color=PUBLICATION_INK, labelpad=5)
+    axes[0].set_ylabel(
+        "Number of distinct items (log10)" if log_y
+        else "Number of distinct items",
+        fontsize=10.5, color=PUBLICATION_INK, labelpad=5,
+    )
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, dpi=dpi)
