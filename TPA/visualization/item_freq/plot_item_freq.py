@@ -436,6 +436,93 @@ def plot_popularity_hist_all(
     return fig
 
 
+def plot_count_distribution(
+    dataset: str,
+    x: np.ndarray,
+    y: np.ndarray,
+    out_path: Path,
+    split_label: str,
+    xscale: str = "log",
+    yscale: str = "log",
+    figsize: Tuple[float, float] = (5.2, 3.4),
+    dpi: int = 300,
+) -> "matplotlib.figure.Figure":
+    """绘制交互数分布：x=交互数，y=拥有该交互数的物品数。
+
+    为什么这样做：直接观察“有多少物品只被交互 1/2/…次”的长尾形态；与
+    popularity histogram（分箱占比）互补。功能：单数据集顶会风格曲线。
+    使用举例：plot_count_distribution("gowalla", x, y, out, "train")。
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    color = DATASET_COLORS.get(dataset, "#0072B2")
+    name = DATASET_NAMES.get(dataset, dataset)
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.set_axisbelow(False)
+    _plot_y(ax, x, y, color, yscale)
+    _apply_scale(ax, xscale, yscale)
+    _apply_log_xticks(ax, x)
+    _apply_publication_style(ax)
+    ax.set_xlabel("Interaction count (c>0)", fontsize=10.5,
+                  color=PUBLICATION_INK, labelpad=5)
+    ax.set_ylabel("Number of items", fontsize=10.5,
+                  color=PUBLICATION_INK, labelpad=5)
+    ax.set_title(
+        f"{name} - Item count distribution ({split_label})",
+        fontsize=11,
+        color=PUBLICATION_INK,
+        pad=8,
+    )
+    ax.margins(x=0.02, y=0.08)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=dpi)
+    return fig
+
+
+def plot_count_distribution_all(
+    panels: Sequence[Tuple[str, np.ndarray, np.ndarray]],
+    out_path: Path,
+    split_label: str,
+    xscale: str = "log",
+    yscale: str = "log",
+    dpi: int = 300,
+) -> "matplotlib.figure.Figure":
+    """多数据集 1xN 组合交互数分布图（共享 y 轴）。"""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(1, len(panels), figsize=(12.5, 3.8),
+                             sharey=True)
+    if len(panels) == 1:
+        axes = [axes]
+    letters = ("a", "b", "c", "d", "e", "f")
+    for ax, (dataset, x, y), letter in zip(axes, panels, letters):
+        name = DATASET_NAMES.get(dataset, dataset)
+        color = DATASET_COLORS.get(dataset, "#0072B2")
+        ax.set_axisbelow(False)
+        _plot_y(ax, x, y, color, yscale)
+        _apply_scale(ax, xscale, yscale)
+        _apply_log_xticks(ax, x)
+        _apply_publication_style(ax)
+        ax.set_title(f"({letter}) {name}", fontsize=11,
+                     color=PUBLICATION_INK, pad=8)
+        ax.set_xlabel("Interaction count (c>0)", fontsize=10.5,
+                      color=PUBLICATION_INK, labelpad=5)
+        ax.margins(x=0.02, y=0.08)
+    axes[0].set_ylabel("Number of items", fontsize=10.5,
+                       color=PUBLICATION_INK, labelpad=5)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=dpi)
+    return fig
+
+
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -463,6 +550,12 @@ def main(argv: Sequence[str] | None = None) -> None:
         default="line",
         help="line=顶会风格纯曲线（默认）；hist=直方图（固定线性坐标，"
              "柱宽由 --bar-width 控制）",
+    )
+    parser.add_argument(
+        "--count-dist",
+        action="store_true",
+        help="额外输出交互数分布：x=交互数(1..max)，y=拥有该交互数的物品数"
+             "（PNG+CSV，多数据集时另出组合图）",
     )
     parser.add_argument(
         "--bar-width",
@@ -507,6 +600,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     split_label = "+".join(args.splits)
     panels: List[Tuple[str, np.ndarray, np.ndarray]] = []
     hist_panels: List[Tuple[str, np.ndarray, np.ndarray]] = []
+    count_panels: List[Tuple[str, np.ndarray, np.ndarray]] = []
 
     for dataset in args.datasets:
         counts: Counter = Counter()
@@ -571,6 +665,26 @@ def main(argv: Sequence[str] | None = None) -> None:
         hist_panels.append((dataset, edges, ratios))
         print(f"[OK] {dataset}: popularity histogram -> {hist_png_path}")
 
+        if args.count_dist:
+            dx, dy = build_count_distribution(counts)
+            count_csv = args.out_dir / f"count_dist_{dataset}.csv"
+            np.savetxt(
+                count_csv,
+                np.column_stack([dx, dy]),
+                fmt="%d",
+                delimiter=",",
+                header="interaction_count,item_count",
+                comments="",
+            )
+            count_png = args.out_dir / f"count_dist_{dataset}.png"
+            fig = plot_count_distribution(
+                dataset, dx, dy, count_png, split_label,
+                xscale=args.xscale, yscale=args.yscale,
+            )
+            plt.close(fig)
+            count_panels.append((dataset, dx, dy))
+            print(f"[OK] {dataset}: count distribution -> {count_png}")
+
     if args.style == "line" and len(panels) > 1:
         combined_path = args.out_dir / "item_freq_all_datasets.png"
         fig = plot_all_datasets(
@@ -593,6 +707,18 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(
             f"[OK] combined popularity histogram 1x{len(hist_panels)} "
             f"-> {combined_hist_path}"
+        )
+
+    if len(count_panels) > 1:
+        combined_count_path = args.out_dir / "count_dist_all_datasets.png"
+        fig = plot_count_distribution_all(
+            count_panels, combined_count_path, split_label,
+            xscale=args.xscale, yscale=args.yscale,
+        )
+        plt.close(fig)
+        print(
+            f"[OK] combined count distribution 1x{len(count_panels)} "
+            f"-> {combined_count_path}"
         )
 
 
