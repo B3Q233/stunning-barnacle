@@ -100,28 +100,35 @@ def build_percentile_bucket_item_counts(
     counts: Counter,
     bucket_pct: int = 5,
 ) -> Tuple[List[str], np.ndarray, np.ndarray]:
-    """按交互数取值百分位把物品切成 bucket_pct% 一档，返回每档去重物品数。
+    """按“去重交互数取值 K”的百分位把物品切成 bucket_pct% 一档。
 
-    为什么这样做：需要观察“不同交互强度区间的物品规模”分布；直接按交互数
-    取值（非物品排名）的 bucket_pct%–100% 分位切分，能突出长尾（多数物品
-    挤在低分位区间）。功能：labels 为档名，boundaries 为 100/bucket_pct 个
-    分位边界（可并列），
-    item_counts 为每档物品数（允许空档）。
-    参考公式/口径：边界 = np.percentile(交互数, [bucket_pct,2·bucket_pct,…,100])；
-    每件物品归入
-    “首个 ≥ c 的边界”对应的档（左开右闭）。
+    为什么这样做：交互数 c 存在大量并列（如几十万物品 c=1），若直接对原始
+    计数做 np.percentile 会得到重复边界并产生空档；改为先取出所有不同交互数
+    取值 {c_1<…<c_K}（K=去重后取值个数），再把这 K 个取值按 5% 一档切成
+    n=100/bucket_pct 段，每档覆盖约 K/n 个不同的交互数取值。
+    功能：labels 为档名（占 K 的百分比区间），boundaries 为每档“末端交互数
+    取值”（可并列），item_counts 为该档内所有物品的数量（按各自 c 落在哪一档
+    取值区间计，区间按 c_k 排序且不重叠）。
+    参考口径：设 n=100/bucket_pct，K=不同交互数个数；
+      每档取值个数 = floor(K/n)（余数给前几档）；
+      档 k 覆盖 {c_{s_k}, …, c_{e_k-1}}，s_0=0, e_k=s_k+size_k。
     使用举例：build_percentile_bucket_item_counts(Counter({0: 3, 1: 3, 2: 7}),
-      bucket_pct=5) -> 20 档。
+      bucket_pct=5) -> 20 档（只有含 3 和 7 的档非空）。
     """
     if not counts:
         raise ValueError("counts is empty")
     if not (0 < bucket_pct <= 100) or 100 % bucket_pct != 0:
         raise ValueError("bucket_pct 必须能整除 100（如 5/10/20/25/50）")
     values = np.fromiter(counts.values(), dtype=np.float64)
-    boundaries = np.percentile(
-        values, np.arange(bucket_pct, 101, bucket_pct))
-    idx = np.searchsorted(boundaries, values, side="left")
     n_buckets = 100 // bucket_pct
+    uniq = np.unique(values)
+    k = uniq.size
+    base, rem = divmod(k, n_buckets)
+    sizes = np.full(n_buckets, base, dtype=np.int64)
+    sizes[:rem] += 1
+    cum = np.cumsum(sizes)
+    boundaries = uniq[cum - 1]
+    idx = np.searchsorted(boundaries, values, side="left")
     np.clip(idx, 0, n_buckets - 1, out=idx)
     item_counts = np.bincount(idx, minlength=n_buckets).astype(np.int64)
     labels = [f"{low}-{high}%" for low, high in
