@@ -74,6 +74,28 @@ def count_interactions(lines: Iterable[str]) -> Counter:
     return counts
 
 
+def build_count_distribution(counts: Counter) -> Tuple[np.ndarray, np.ndarray]:
+    """构造交互数分布：x=交互数(1..max, 仅 c>0)，y=拥有该交互数的物品数。
+
+    为什么这样做：需要直接观察“多少个物品只被交互 1 次、2 次……”的
+    count-of-counts 分布；缺失的交互数补 0 以保持 x 轴连续。
+    功能：输入 Counter{物品id: 交互数}，返回 (x, y) 两个等长向量。
+    使用举例：build_count_distribution(Counter({0: 3, 1: 3, 2: 7}))
+    -> x=[1..7], y=[0,0,2,0,0,0,1]。
+    """
+    if not counts:
+        raise ValueError("counts is empty")
+    max_count = max(counts.values())
+    freq = Counter(counts.values())
+    x = np.arange(1, max_count + 1, dtype=np.int64)
+    y = np.fromiter(
+        (freq.get(c, 0) for c in range(1, max_count + 1)),
+        dtype=np.int64,
+        count=max_count,
+    )
+    return x, y
+
+
 def build_series(
     counts: Counter,
     sort_by_count: bool = False,

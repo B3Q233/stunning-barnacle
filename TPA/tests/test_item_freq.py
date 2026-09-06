@@ -84,3 +84,30 @@ class CountInteractionsTest(unittest.TestCase):
         self.assertAlmostEqual(tail, 60.0)
         self.assertAlmostEqual(medium, 35.0)
         self.assertAlmostEqual(hot, 5.0)
+
+
+class CountDistributionTest(unittest.TestCase):
+    """交互数分布：x=交互数，y=拥有该交互数的物品数。"""
+
+    def _build(self):
+        from visualization.item_freq.plot_item_freq import build_count_distribution
+        return build_count_distribution
+
+    def test_build_count_distribution_basic(self):
+        build = self._build()
+        # counts: 物品0/1 各交互 3 次，物品2 交互 7 次
+        x, y = build(Counter({0: 3, 1: 3, 2: 7}))
+        self.assertEqual(x.tolist(), [1, 2, 3, 4, 5, 6, 7])
+        self.assertEqual(y.tolist(), [0, 0, 2, 0, 0, 0, 1])
+
+    def test_build_count_distribution_fills_missing_counts(self):
+        build = self._build()
+        # counts: 唯一物品5 交互 4 次
+        x, y = build(Counter({5: 4}))
+        self.assertEqual(x.tolist(), [1, 2, 3, 4])
+        self.assertEqual(y.tolist(), [0, 0, 0, 1])
+
+    def test_build_count_distribution_empty_raises(self):
+        build = self._build()
+        with self.assertRaises(ValueError):
+            build(Counter())
