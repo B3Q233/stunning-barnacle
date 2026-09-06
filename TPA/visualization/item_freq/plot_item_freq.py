@@ -548,6 +548,88 @@ def plot_count_distribution_all(
     return fig
 
 
+def plot_decile_histogram(
+    dataset: str,
+    labels: Sequence[str],
+    item_counts: np.ndarray,
+    out_path: Path,
+    split_label: str,
+    figsize: Tuple[float, float] = (6.4, 3.6),
+    dpi: int = 300,
+) -> "matplotlib.figure.Figure":
+    """绘制十分位直方图：x=10% 交互数取值区间，y=该档去重物品数。
+
+    为什么这样做：把 count-of-counts 压缩成 10 个取值区间，便于横向比较
+    “不同交互强度区间各覆盖多少物品”。功能：单数据集顶会风格柱状图。
+    使用举例：plot_decile_histogram("gowalla", labels, counts, out, "train")。
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    color = DATASET_COLORS.get(dataset, "#0072B2")
+    name = DATASET_NAMES.get(dataset, dataset)
+    positions = np.arange(len(labels))
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.set_axisbelow(False)
+    ax.bar(positions, item_counts, color=color, width=0.8, zorder=5)
+    ax.set_xticks(positions)
+    ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=8.5)
+    _apply_publication_style(ax)
+    ax.set_xlabel("Interaction-count decile", fontsize=10.5,
+                  color=PUBLICATION_INK, labelpad=5)
+    ax.set_ylabel("Number of distinct items", fontsize=10.5,
+                  color=PUBLICATION_INK, labelpad=5)
+    ax.set_title(
+        f"{name} - Decile item counts ({split_label})",
+        fontsize=11, color=PUBLICATION_INK, pad=8,
+    )
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=dpi)
+    return fig
+
+
+def plot_decile_histogram_all(
+    panels: Sequence[Tuple[str, Sequence[str], np.ndarray]],
+    out_path: Path,
+    split_label: str,
+    dpi: int = 300,
+) -> "matplotlib.figure.Figure":
+    """多数据集 1xN 十分位直方图（共享 y 轴）。"""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(1, len(panels), figsize=(16.0, 3.8),
+                             sharey=True)
+    if len(panels) == 1:
+        axes = [axes]
+    letters = ("a", "b", "c", "d", "e", "f")
+    for ax, (dataset, labels, item_counts), letter in zip(
+            axes, panels, letters):
+        name = DATASET_NAMES.get(dataset, dataset)
+        color = DATASET_COLORS.get(dataset, "#0072B2")
+        positions = np.arange(len(labels))
+        ax.set_axisbelow(False)
+        ax.bar(positions, item_counts, color=color, width=0.8, zorder=5)
+        ax.set_xticks(positions)
+        ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=7.5)
+        _apply_publication_style(ax)
+        ax.set_title(f"({letter}) {name}", fontsize=11,
+                     color=PUBLICATION_INK, pad=8)
+        ax.set_xlabel("Interaction-count decile", fontsize=9.5,
+                      color=PUBLICATION_INK, labelpad=5)
+    axes[0].set_ylabel("Number of distinct items", fontsize=10.5,
+                       color=PUBLICATION_INK, labelpad=5)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=dpi)
+    return fig
+
+
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -581,6 +663,12 @@ def main(argv: Sequence[str] | None = None) -> None:
         action="store_true",
         help="额外输出交互数分布：x=交互数(1..max)，y=拥有该交互数的物品数"
              "（PNG+CSV，多数据集时另出组合图）",
+    )
+    parser.add_argument(
+        "--decile-dist",
+        action="store_true",
+        help="额外输出十分位直方图：交互数取值 10%–100% 分位切成 10 档，"
+             "y=各档去重物品数（PNG+CSV，多数据集时另出组合图）",
     )
     parser.add_argument(
         "--bar-width",
@@ -626,6 +714,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     panels: List[Tuple[str, np.ndarray, np.ndarray]] = []
     hist_panels: List[Tuple[str, np.ndarray, np.ndarray]] = []
     count_panels: List[Tuple[str, np.ndarray, np.ndarray]] = []
+    decile_panels: List[Tuple[str, Sequence[str], np.ndarray]] = []
 
     for dataset in args.datasets:
         counts: Counter = Counter()
@@ -710,6 +799,21 @@ def main(argv: Sequence[str] | None = None) -> None:
             count_panels.append((dataset, dx, dy))
             print(f"[OK] {dataset}: count distribution -> {count_png}")
 
+        if args.decile_dist:
+            d_labels, d_boundaries, d_counts = build_decile_item_counts(counts)
+            decile_csv = args.out_dir / f"decile_dist_{dataset}.csv"
+            with open(decile_csv, "w", encoding="utf-8") as f:
+                f.write("bucket,boundary,item_count\n")
+                for lab, bnd, cnt in zip(
+                        d_labels, d_boundaries.tolist(), d_counts.tolist()):
+                    f.write(f"{lab},{bnd:.4f},{cnt}\n")
+            decile_png = args.out_dir / f"decile_dist_{dataset}.png"
+            fig = plot_decile_histogram(
+                dataset, d_labels, d_counts, decile_png, split_label)
+            plt.close(fig)
+            decile_panels.append((dataset, d_labels, d_counts))
+            print(f"[OK] {dataset}: decile histogram -> {decile_png}")
+
     if args.style == "line" and len(panels) > 1:
         combined_path = args.out_dir / "item_freq_all_datasets.png"
         fig = plot_all_datasets(
@@ -744,6 +848,16 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(
             f"[OK] combined count distribution 1x{len(count_panels)} "
             f"-> {combined_count_path}"
+        )
+
+    if len(decile_panels) > 1:
+        combined_decile_path = args.out_dir / "decile_dist_all_datasets.png"
+        fig = plot_decile_histogram_all(
+            decile_panels, combined_decile_path, split_label)
+        plt.close(fig)
+        print(
+            f"[OK] combined decile histogram 1x{len(decile_panels)} "
+            f"-> {combined_decile_path}"
         )
 
 
