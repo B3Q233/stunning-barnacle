@@ -53,6 +53,22 @@ Top 5% 为 Hot、5%~40% 为 Medium-hot、40%~100% 为 Tail；每个交互数箱�
 注意：这三个数据集经过 LightGCN 预处理，已过滤极低频物品，峰值通常落在
 [9–16] 箱。
 
+## 交互数分布图（--count-dist，可选）
+
+额外输出“交互数-物品数”分布：x 轴 = 物品交互数（1..max，仅 c>0），y 轴 =
+拥有该交互数的物品数量，直接观察 count-of-counts 长尾。
+
+```powershell
+# 在默认 line/hist 输出基础上追加分布图与 CSV
+G:\Idea\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --count-dist
+```
+
+产物（`outputs/`）：
+
+- `count_dist_{dataset}.png`：单数据集分布曲线（默认双对数）
+- `count_dist_{dataset}.csv`：表头 `interaction_count,item_count`
+- `count_dist_all_datasets.png`：多数据集 1xN 组合图（共享 y 轴）
+
 ## 用法
 
 ```powershell
