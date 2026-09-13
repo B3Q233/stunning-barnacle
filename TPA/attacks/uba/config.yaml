@@ -1,0 +1,108 @@
+# UBA（Uplift-guided Budget Allocation）攻击配置
+# 论文：Uplift Modeling for Target User Attacks on Recommender Systems（WWW '24）
+# 官方代码：https://github.com/Wcsa23187/UBA
+# 统一配置模板：TPA/docs/config-template.unified.yaml（本文件所有键均为 canonical）
+#
+# 攻击语义：先用 uplift 估计"给目标用户 u 分配 t_u 个假用户后，目标物品进入 u 的
+# Top-K 的概率"Y[u, t_u]，再用分组背包 DP 在总预算 N 下求最优分配 T*；最后按
+# attack.uba.profile.filler_source 指定的画像规则实例化假档案 D_f 并注入训练集。
+
+dataset: ml100k                  # 受害数据集（ml100k / gowalla / yelp2018 / amazon-book）
+mode: all                        # classify | estimate | data | model | both | all
+seed: 42                         # 全局随机种子（目标用户采样 / 画像 filler / DP 并列取小）
+k: 10                            # 统一评估 K（最外层唯一入口；指标 {k} 自动展开）
+run_tag: null                    # 实验标签（--tag 或此处指定；null=自动当前时间）
+
+# 被攻击模型（注册表见 attacks/uba/registry.py → models/registry.py）
+model:
+  name: lightgcn                 # 受害模型：lightgcn / mf / wmf / ncf / itemae ...
+  overrides: {}                  # 可选：覆盖模型超参（emb_dim / n_layers / init_method ...）
+
+# 第 1 步：按训练集交互数划分物品三档（流行/普通/冷门）
+classification:
+  popular_ratio: 0.05            # 流行物品 = 交互数前 5%
+  medium_ratio: 0.40             # 普通物品 = 5%~40%；其余为冷门（Tail）
+
+attack:
+  name: uba                      # 攻击名（目录 attacks/{name}/、产物路径、日志前缀）
+  # 总预算 N：论文 Table 1 默认 100（50 个目标用户 × 平均 2 个假用户）
+  num_fake_users: 100            # [paper] 假用户总数 N（优先于 ratio）
+  ratio: null                    # [ai] num_fake_users 为 null 时按 ratio × 真实用户数
+  filler_size: 36                # [官方代码] --filler_num 默认 36（论文未给出该值）
+  target_items:
+    strategy: specified          # specified | category | coldest | random
+    category: cold               # strategy=category 时生效
+    count: 1                     # UBA 只支持单目标物品（>1 会直接报错）
+    ids: [251]                   # strategy=specified 的目标物品 id
+
+  # ── UBA 专属配置块（唯一新增 canonical 子树）──
+  uba:
+    # 处理效应估计：Y[u, t] = 给目标用户 u 分配 t 个假用户时目标物品进入 Top-K 的概率
+    treatment:
+      method: path               # path=三跳路径代理（快，纯数据）| surrogate=代理模型模拟（慢，需模型）
+      max_per_user: 6            # [paper] 单用户预算上限 H（Appendix B.2；官方候选档位为 t=0..5）
+      repeats: 10                # [paper] surrogate 模式的模拟重复次数 E（Section 4.1）
+      hit_k: 20                  # [官方代码] 命中判据 rank ≤ hit_k（DPA.py 用 20，即 Top-20）
+      alpha: 1.0                 # [paper] 路径代理缩放 α（Appendix B.1，调参 {0.5, 1.0}）
+      beta: 1.0                  # [paper] 路径代理指数 β（Appendix B.1，调参 {0.3, 1.0}）
+    # 预算分配策略：复现论文的对比行
+    allocation:
+      strategy: uba              # uba=DP 最优（+UBA）| uniform_target=目标用户均分（+Target）| random_all=随机模板（baseline）
+    # 目标用户选择（论文 §5）
+    target_users:
+      strategy: cooccurrence     # cooccurrence=共现类别代理（默认）| specified=显式 ids | random
+      count: 50                  # [paper] 目标用户数（Section 5 默认 50）
+      category_size: 20          # [ai] 类别代理大小：目标物品的共现邻域物品数
+      max_category_interactions: 10  # [paper] 类别交互数 < 10（轻交互用户更易被撬动）
+      ids: []                    # strategy=specified 时的目标用户 id 列表
+      accessible_ratio: 1.0      # [ai] random_all 的模板用户池比例（论文 Appendix B.1 考察 20%）
+    # 假档案画像规则（后端攻击者的等价物）
+    profile:
+      filler_source: template_user  # template_user=模板用户自身交互 | popular=流行池 | random=全量随机
+
+# 干净模型权重（warm-start 与对比评估都用它）
+checkpoint:
+  clean: models/lightgcn/outputs/clean-ml100k/checkpoints/latest.pt
+
+warm_start:
+  enabled: true                  # 用干净模型参数初始化中毒模型（原用户/物品嵌入迁移）
+  # checkpoint 可选；缺省回退 checkpoint.clean
+
+# 代理模型 S_φ（仅 treatment.method=surrogate 使用）
+surrogate:
+  enabled: false                 # surrogate 支路需要 true + 已训练 checkpoint
+  name: mf                       # [paper] 代理取最简 MF（官方 --surrogate 默认 WMF，同为最简分解模型）
+  checkpoint: null               # 可选：热启动权重；null=每次模拟实验从随机初始化重训
+  training:
+    epochs: 30                   # [ai] 每次模拟实验的代理重训轮数（论文未给，沿用仓库 MF 默认量级）
+    lr: 0.001                    # [ai] 代理学习率
+    weight_decay: 0.0001         # [ai] 代理 L2
+    batch_size: 256              # [ai] 代理 batch
+    hidden_dims: [256, 128]      # [unreported] AE 类代理隐层（MF/LightGCN 忽略）
+    unroll_steps: 1              # [官方代码] 有限 unroll（本实现按"每轮重训"实现，仅记录配置）
+    split_seed_offset: 1         # [ai] 代理与受害模型不同的训练/验证划分种子
+    eval_every: 5                # [ai] 代理评估频率（模拟实验内不写 history，仅日志用）
+
+training:
+  optimizer: adam
+  epochs: 30
+  batch_size: 256
+  lr: 0.001
+  weight_decay: 0.0001
+  neg_ratio: 1
+  eval_every: 1                  # 每轮全量评估并写 history（可视化需要完整曲线）
+  device: cuda
+  num_workers: 0
+  persistent_workers: false
+
+evaluation:
+  report_model_utility: true     # 是否对比 clean/poisoned 的模型效用（投毒代价检查）
+  metrics:                       # 方向标注：upper=越高越好 / lower=越低越好；@K 是评估 K 的唯一权威
+  - target_ndcg@{k}: upper       # 攻击主选优指标：目标物品 NDCG
+  - target_hr@{k}: upper         # 攻击辅助选优指标：目标物品 HR
+  - recall@{k}: upper            # 模型效用（投毒代价参考）
+  - ndcg@{k}: upper
+  checkpoint_mode: per_metric    # per_metric=每指标各存一份最优（默认）| single=仅第一指标
+
+output:
+  dir: attacks/uba/outputs

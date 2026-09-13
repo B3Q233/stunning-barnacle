@@ -108,6 +108,30 @@ attack:
     proj_threshold: 0.1
     click_targets: false
 
+  # ---- UBA（uplift 预算分配）专属 ----
+  # 论文：Uplift Modeling for Target User Attacks on Recommender Systems（WWW '24）
+  # 语义：Y[u,t] = 给目标用户 u 分配 t 个假用户后目标物品进入其 Top-K 的概率；
+  #       Algorithm 1 在总预算 N 下求最优分配 T*；再实例化成假档案 D_f。
+  uba:
+    treatment:
+      method: path                   # path=三跳路径代理（A'³，纯数据）| surrogate=代理模型模拟实验
+      max_per_user: 6                # [paper] 单用户预算上限 H（Appendix B.2）
+      repeats: 10                    # [paper] surrogate 支路的模拟重复次数 E（Section 4.1）
+      hit_k: 20                      # [官方代码] 命中判据 rank ≤ hit_k（DPA.py 用 20）
+      alpha: 1.0                     # [paper] 路径代理缩放 α（Appendix B.1，调参 {0.5,1.0}）
+      beta: 1.0                      # [paper] 路径代理指数 β（Appendix B.1，调参 {0.3,1.0}）
+    allocation:
+      strategy: uba                  # uba=DP 最优（+UBA）| uniform_target=目标用户均分（+Target）| random_all=随机模板（baseline）
+    target_users:
+      strategy: cooccurrence         # cooccurrence=共现类别代理 | specified=显式 ids | random
+      count: 50                      # [paper] 目标用户数（Section 5）
+      category_size: 20              # [ai] 类别代理大小（目标物品的共现邻域物品数）
+      max_category_interactions: 10  # [paper] 类别交互数 < 10 才入选
+      ids: []                        # strategy=specified 时的目标用户 id 列表
+      accessible_ratio: 1.0          # [ai] random_all 的模板用户池比例（论文考察 0.2）
+    profile:
+      filler_source: template_user   # template_user=模板用户自身交互 | popular=流行池 | random=全量随机
+
 # ================= surrogate（代理/替代模型） =================
 surrogate:
   enabled: false                     # [tpa] 黑盒模式开关
@@ -199,3 +223,8 @@ batch:
 # L2 正则（训练侧）           training.weight_decay             training.lambda_reg（wmf）
 # 输出目录                   output.dir                        output_dir（顶层，advinject）
 # 训练/验证划分比例          data.val_ratio（可选，缺省 0.05）  攻击 fit.py 历史硬编码 0.05（改为读配置）
+# UBA 处理效应方法           attack.uba.treatment.method       无别名（UBA 专属）
+# UBA 单用户预算上限         attack.uba.treatment.max_per_user 无别名（UBA 专属，= 论文 H）
+# UBA 分配策略               attack.uba.allocation.strategy    无别名（= 论文 +UBA/+Target/baseline）
+# UBA 目标用户选择           attack.uba.target_users.strategy  无别名（= 论文 §5 选人规则）
+# UBA 画像 filler 来源       attack.uba.profile.filler_source  无别名（后端攻击者的等价物）
