@@ -8,7 +8,7 @@ class RegistryTest(unittest.TestCase):
 
     def test_builtin_attacks_registered(self):
         names = registry.registered_names()
-        for name in ("bandwagon", "random", "pgd", "tpa"):
+        for name in ("bandwagon", "random", "pgd", "tpa", "uba"):
             self.assertIn(name, names)
 
     def test_get_returns_spec(self):

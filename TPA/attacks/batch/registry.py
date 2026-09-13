@@ -38,7 +38,10 @@ def registered_names() -> List[str]:
 
 
 def _register_builtin() -> None:
-    for name in ("bandwagon", "random", "pgd", "tpa"):
+    # uba 的 path 支路（attack.uba.treatment.method=path）是纯数据层，可以直接批量跑；
+    # surrogate 支路需要预先跑 `attacks/uba/run.py --mode estimate` 生成处理效应缓存，
+    # 否则 generate 会在缺失缓存时惰性重算（很慢）。详见 attacks/uba/docs/DESIGN.md。
+    for name in ("bandwagon", "random", "pgd", "tpa", "uba"):
         register(
             name,
             f"attacks/{name}/config.yaml",

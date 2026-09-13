@@ -16,6 +16,7 @@ ATTACK_DIRS = [
     PROJECT_ROOT / "attacks" / "pgd",
     PROJECT_ROOT / "attacks" / "bandwagon",
     PROJECT_ROOT / "attacks" / "random",
+    PROJECT_ROOT / "attacks" / "uba",
 ]
 
 

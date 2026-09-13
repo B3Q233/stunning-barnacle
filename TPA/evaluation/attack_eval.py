@@ -31,11 +31,13 @@ REPORT_NAMES = {
     "random": "attack",
     "pgd": "pgd",
     "bandwagon": "bandwagon",
+    "uba": "uba",
     "attack_imp_direct_poison": "attack",
 }
 REPORT_TITLES = {
     "pgd": "PGD（投影梯度上升投毒）攻击对比报告",
     "bandwagon": "Bandwagon（从众）攻击对比报告",
+    "uba": "UBA（Uplift 预算分配）攻击对比报告",
 }
 
 
