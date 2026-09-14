@@ -18,7 +18,8 @@ TPA/attacks/uba/
 ├── run.py                 编排入口（--config/--mode/--tag）
 ├── data/                  实验数据（rec_freq / estimate / poisoned，均不入库）
 ├── outputs/               实验输出（checkpoints / history / 报告，均不入库）
-└── docs/                  DESIGN.md（设计）/ USAGE.md（本文档）
+└── docs/                  DESIGN.md（设计）/ USAGE.md（本文档）/
+                            MODULE_MAP.md（函数清单、数据流与输入输出）
 ```
 
 ## 2. 环境准备
