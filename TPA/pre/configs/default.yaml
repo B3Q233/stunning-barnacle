@@ -1,0 +1,101 @@
+# TPA/pre 配置（唯一入口）
+# 用途：Preliminary Representation Recovery Experiment —— 目标物品真实交互被逐级删除后，
+#       现有投毒攻击能否把它的表示重新推回原始表示。
+# 规范：键名参照 TPA/docs/config-template.unified.yaml；pre 专属键集中在 pre.* 块下。
+# 来源标注沿用仓库约定：[paper]/[ai]/[unreported]/[官方代码]。
+
+experiment:
+  name: prelim_recovery      # [ai] 实验名，用于 outputs/<tag> 目录与 manifest
+
+dataset: ml100k              # canonical：受害数据集（ml100k / yelp2018 / gowalla / amazon-book）
+k: 10                        # canonical：评估 Top-K（target HR@K / NDCG@K）
+run_tag: null                # canonical：CLI --tag > 此处 > 当前时间
+
+pre:
+  # ── Phase 1：目标物品选择（一次确定，全实验复用）──
+  targets:
+    num_items: 5             # [ai] 目标物品数 K；K×模型数×攻击数×比例数 = 最终规模
+    # [ai] 目标选择策略：
+    #   top_exposure   = 按"原始模型上的原生 HR@K"取前 K（受欢迎的本义：最容易被
+    #                    推荐给未交互用户）。需要先训练/复用一份参考模型（见下）。
+    #   top_popularity = 按训练集交互数取前 K（纯数据可得，无需模型）。
+    #   实测 ml100k+LightGCN 上两者 Spearman≈0.997，但那是数据/骨干相关事实，不作普遍假设。
+    strategy: top_exposure
+    exposure_source_model: lightgcn   # [ai] top_exposure 的参考模型（目标集全实验共用）
+    min_interactions: 20     # [ai] 入选门槛：交互数低于此值无法支撑 90% 删除
+    seed: 42                 # [ai] 选择种子（top_popularity 本身确定性，记录用）
+
+  # ── 删除比例（对目标物品自身真实交互的删除比例，不是整个数据集）──
+  deletion_ratios: [0.1, 0.2, 0.3, 0.5, 0.8, 0.9]
+  # [ai] 删除方案：nested = 每个物品抽一次随机排列，比例 r 删前缀，
+  #      于是 D(0.1) ⊆ D(0.2) ⊆ … ⊆ D(0.9)，比例轴单调可解释。
+  deletion_scheme: nested
+
+  # ── 实验矩阵 ──
+  models: [lightgcn, mf]     # [ai] 受害模型；模型解析统一转发 models/registry.py
+  # [ai] 攻击集合：按用户要求**排除 tpa**（TPA 的 paths 阶段把 meta 路径写死成干净数据，
+  #      无法指向退化数据；保留它会引入"路径基于干净图、投毒基于退化图"的口径不一致）
+  attacks: [random, bandwagon, pgd, advinject, uba]
+
+  # ── 统一 embedding 空间与距离 ──
+  embedding:
+    align: procrustes        # [ai] raw=直接用（同初始化同帧）| procrustes=正交对齐到原始模型
+    min_support: 5           # [ai] 拟合 Procrustes 时只用交互数 >= 此值的物品行（弱行是噪声）
+    # [ai] 主口径：L2（绝对距离）。余弦忽略模长，而退化主要是行范数缩小、
+    #      攻击会把范数拉回来，两者结论可能相反（实测 L2 正恢复 91/600 vs 余弦 26/600），
+    #      所以两个都算，但主口径用 L2。
+    distance: l2             # l2 | cosine
+
+  # ── 缓存与复用 ──
+  cache:
+    reuse: true              # [ai] 已有产物直接复用（退化数据、模型权重、嵌入、攻击产物）
+    overwrite: false         # [ai] true 时忽略缓存重算
+
+  # ── 训练口径（全实验统一，条件之间只差数据）──
+  training:
+    seeds: [42]              # [ai] 同初始化前提：先 torch.manual_seed 再构造模型
+    epochs: 30
+    batch_size: 256
+    lr: 0.001
+    weight_decay: 0.0001
+    neg_ratio: 1
+    device: cuda
+    num_workers: 0
+
+  # ── 攻击预算（所有攻击、所有比例使用同一预算，便于横向对比）──
+  attack:
+    num_fake_users: 18       # [ai] = 3% × 608 用户，与仓库默认 ratio 0.03 对齐
+    filler_size: 20          # [ai] 每个假用户的 filler 物品数
+
+model:
+  name: lightgcn             # canonical：默认受害模型（pre.models 会覆盖）
+  overrides: {}              # canonical：模型超参覆盖
+
+attack:
+  name: random               # canonical：默认攻击（pre.attacks 会覆盖）
+  num_fake_users: 18
+  filler_size: 20
+  target_items:
+    strategy: specified      # canonical：pre 一律指定目标物品 id
+    category: cold
+    count: 1
+    ids: []
+
+training:
+  optimizer: adam
+  epochs: 30
+  batch_size: 256
+  lr: 0.001
+  weight_decay: 0.0001
+  neg_ratio: 1
+  device: cuda
+  num_workers: 0
+
+evaluation:
+  metrics:
+    - target_ndcg@{k}: upper
+    - target_hr@{k}: upper
+  checkpoint_mode: per_metric
+
+output:
+  dir: pre/outputs           # canonical：产物根目录（相对 TPA/；outputs/ 已被 .gitignore 覆盖）

@@ -202,6 +202,37 @@ batch:
 #   experiment.seed    → seed
 # batch override.* 段 = 对攻击默认 config 的深层覆盖，不视为新配置项。
 
+# ================= pre（前置实验编排层，代码在 TPA/pre） =================
+# 用途：表示恢复前置实验——目标物品的真实交互被逐级删除后，现有投毒攻击能否把它的
+#       表示重新推回原始表示。本块只被 TPA/pre 读取，不参与模型/攻击默认配置的合并。
+# 入口：TPA/pre/configs/default.yaml（pre 自己的唯一配置入口）
+# 使用举例：
+#   python pre/run.py --mode all --tag smoke --limit-items 1 --ratios 0.5 \
+#       --attacks random --models lightgcn --epochs 5
+# 键位含义：
+#   experiment.name     实验名（outputs/<tag> 与 manifest 用）
+#   pre.targets.*       目标选择：num_items / strategy=top_popularity / min_interactions / seed
+#   pre.deletion_ratios 删除比例（对**目标物品自身**真实交互），默认 [0.1,0.2,0.3,0.5,0.8,0.9]
+#   pre.models          受害模型列表（解析转发 models/registry.py）
+#   pre.attacks         攻击列表（解析转发 attacks/<name>/generate.py；pre 不实现算法）
+#   pre.embedding.*     统一空间映射：align=raw|procrustes / min_support / distance=cosine|l2
+#   pre.cache.*         产物复用开关：reuse / overwrite
+#   pre.training.*      训练口径：seeds/epochs/batch_size/lr/weight_decay/neg_ratio/device
+#   pre.attack.*        攻击预算：num_fake_users / filler_size（全攻击共用同一预算）
+# 注意事项（接口事实）：LightGCN 的邻接矩阵 A_hat 不在 state_dict 里，条件模型必须用
+#       当时的 meta 重建；advinject 产出的 user_items 是 list，与模型 Dataset 要求的
+#       dict 契约不一致，由 pre 归一化桥接（不改攻击、不改模型代码）。
+pre:
+  targets: {num_items: 20, strategy: top_popularity, min_interactions: 20, seed: 42}
+  deletion_ratios: [0.1, 0.2, 0.3, 0.5, 0.8, 0.9]
+  models: [lightgcn, mf]
+  attacks: [random, bandwagon, pgd, tpa, advinject, uba]
+  embedding: {align: procrustes, min_support: 5, distance: cosine}
+  cache: {reuse: true, overwrite: false}
+  training: {seeds: [42], epochs: 30, batch_size: 256, lr: 0.001,
+             weight_decay: 0.0001, neg_ratio: 1, device: cuda, num_workers: 0}
+  attack: {num_fake_users: 18, filler_size: 20}
+
 # ================= 同义键映射表（兼容层实现时照此映射） =================
 # 用途                       canonical                         历史别名
 # 数据集名                   dataset                           data.dataset / experiment.dataset / override.dataset
