@@ -46,6 +46,7 @@ from attacks.uba.uplift import (  # noqa: E402
     interaction_sets,
     select_target_users,
 )
+from training.config_utils import DEFAULT_K  # noqa: E402
 from training.run_tag import (  # noqa: E402
     resolve_run_tag,
     save_config_snapshot,
@@ -304,7 +305,7 @@ def popular_pool(config: Dict[str, Any], model_name: str,
     """
     from attacks.uba.classify import load_cache
 
-    cache = load_cache(config, model_name, int(config.get("k", 20)))
+    cache = load_cache(config, model_name, int(config.get("k", DEFAULT_K)))
     if cache is not None:
         return [int(i) for i in cache["categories"]["popular"]]
     popularity = compute_item_popularity(meta["train_pairs"])
@@ -436,7 +437,7 @@ def resolve_target_item(config: Dict[str, Any], meta: Dict[str, Any],
     rng = rng or random.Random(int(config.get("seed", 42)))
     num_items = int(meta["num_items"])
     popularity = compute_item_popularity(meta["train_pairs"])
-    rec_cache = load_cache(config, model_name, int(config.get("k", 20)))
+    rec_cache = load_cache(config, model_name, int(config.get("k", DEFAULT_K)))
     categories = rec_cache["categories"] if rec_cache else None
     targets = select_target_items(
         popularity, num_items, ti_cfg.get("strategy", "specified"),
@@ -458,7 +459,7 @@ def main(config: Dict[str, Any], raw_meta: Path | None = None,
     attack_cfg = config["attack"]
     model_name = config.get("model", {}).get("name", "lightgcn")
     seed = int(config.get("seed", 42))
-    k = int(config.get("k", 20))
+    k = int(config.get("k", DEFAULT_K))
     rng = random.Random(seed)
     tag = resolve_run_tag(config)
 

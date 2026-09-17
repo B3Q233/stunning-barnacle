@@ -18,5 +18,7 @@ if __name__ == "__main__":
     parser.add_argument("--resume", action="store_true", help="断点续训")
     parser.add_argument("--tag", type=str, default=None,
                         help="实验标签 run_tag（缺省=当前时间）")
+    parser.add_argument("--config", type=str, default=None,
+                        help="config.yaml 路径（缺省=模型目录下 config.yaml，供冒烟/实验隔离用）")
     args = parser.parse_args()
-    main(tag=args.tag, resume=args.resume)
+    main(tag=args.tag, resume=args.resume, config_path=args.config)

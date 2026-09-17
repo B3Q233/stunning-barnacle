@@ -49,6 +49,7 @@ from attacks.bandwagon.evaluate import (
     ranking_scores,
     save_report,
 )
+from training.config_utils import DEFAULT_K, resolve_k
 from training.run_tag import (
     read_latest_tag,
     resolve_run_tag,
@@ -90,7 +91,8 @@ def build_training_config(config: Dict[str, Any], dataset: str,
         "weight_decay": tr_defaults.get("weight_decay", 0.0001),
         "neg_ratio": tr_defaults.get("neg_ratio", 1),
         "device": tr_defaults.get("device", "cuda"),
-        "k": ev_defaults.get("k", 20),
+        # K 优先级（spec 2026-09-17 §4.3）：攻击配置顶层 k > 模型配置已解析的 k > DEFAULT_K
+        "k": resolve_k(config, default=ev_defaults.get("k", DEFAULT_K)),
         "eval_every": tr_defaults.get("eval_every", 5),
     }
 
@@ -106,16 +108,23 @@ def build_training_config(config: Dict[str, Any], dataset: str,
 
 
 def resolve_metrics_cfg(config: Dict[str, Any], model_name: str) -> list:
-    """攻击配置 evaluation.metrics 优先；缺省取模型自身 config 的 metrics。"""
-    ev = config.get("evaluation", {})
-    metrics = ev.get("metrics")
+    """攻击配置 evaluation.metrics 优先；缺省取模型自身 resolved metrics。
+
+    两者都没有时按**已解析的 K** 派生 recall@K/ndcg@K 并打印告警——禁止再写死
+    recall@20/ndcg@20（spec 2026-09-17 I3）。
+    """
+    model_cfg = load_model_config(
+        model_name,
+        overrides=config.get("model", {}).get("overrides"),
+    )
+    metrics = config.get("evaluation", {}).get("metrics")
     if metrics is None:
-        model_cfg = load_model_config(
-            model_name,
-            overrides=config.get("model", {}).get("overrides"),
-        )
-        metrics = model_cfg.get("evaluation", {}).get(
-            "metrics", ["recall@20", "ndcg@20"])
+        metrics = model_cfg.get("evaluation", {}).get("metrics")
+    if metrics is None:
+        k = resolve_k(config, default=resolve_k(model_cfg, default=DEFAULT_K))
+        metrics = [f"recall@{k}", f"ndcg@{k}"]
+        print(f"[fit] [!] {model_name} 未声明 evaluation.metrics，"
+              f"按 resolved K={k} 派生 {metrics}")
     return metrics
 
 
@@ -193,7 +202,7 @@ def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
     num_items = poisoned_meta["num_items"]
     user_items = poisoned_meta["user_items"]
     neg_ratio = cfg.get("neg_ratio", 1)
-    k = cfg.get("k", 20)
+    k = cfg.get("k", DEFAULT_K)
     eval_every = cfg.get("eval_every", 5)
     tracker = BestTracker(metrics_cfg, checkpoint_mode)
 
@@ -337,7 +346,7 @@ def main(config: Dict[str, Any], skip_train: bool = False,
     num_fake = stats["num_fake_users"]
 
     cfg = build_training_config(config, dataset, model_name)
-    k = cfg.get("k", 20)
+    k = cfg.get("k", DEFAULT_K)
     metrics_cfg = resolve_metrics_cfg(config, model_name)
     checkpoint_mode = config.get("evaluation", {}).get("checkpoint_mode", "per_metric")
 

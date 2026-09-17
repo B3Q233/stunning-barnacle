@@ -102,16 +102,20 @@ data/implicit/raw/gowalla/
 ### evaluation 模块
 | 参数 | 含义 | 默认值 | 来源 |
 |------|------|--------|------|
-| k | Top-K | 20 | [paper] |
+| k | 评估 Top-K（canonical 顶层唯一权威；legacy `evaluation.k` 仅兼容读取） | 10 | [paper] |
 | eval_every | 全量评估间隔(epoch) | 1 | [ai] |
-| metrics | 评估指标 | [recall@20, ndcg@20] | [paper] |
+| metrics | 评估指标 | [recall@{k}, ndcg@{k}] | [paper] |
+
+K 只由顶层 `k` 决定：改为 10 后，评测指标名、`history.json`/`eval_log.csv` 列名、
+best checkpoint 文件名（`recall@10-best-model.pt` / `ndcg@10-best-model.pt`）同步变化。
+缺顶层 `dataset` 会直接报错（不再回退 gowalla）；缺顶层 `k` 会告警并按 20 继续。
 
 ## 6. 结果解读
 
 训练完成后，在 `models/lightgcn/outputs/` 下查看：
 
-- `history.json` — 每 epoch 的 loss/val_loss + 评估指标（recall@20/ndcg@20）
-- `eval_log.csv` — 每 eval_every epoch 的 recall@20/ndcg@20（表格格式，可直接粘贴到论文）
+- `history.json` — 每 epoch 的 loss/val_loss + 评估指标（recall@K/ndcg@K，K 由顶层 `k` 决定）
+- `eval_log.csv` — 每 eval_every epoch 的 recall@K/ndcg@K（表格格式，可直接粘贴到论文）
 - `training_curve.png` — 训练/验证 loss 曲线
 - `comparison_table.md` — 复现值 vs 论文值对比表，偏差 ±2% 内为对齐
 

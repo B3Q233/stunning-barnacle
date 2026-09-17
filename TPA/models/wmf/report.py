@@ -36,8 +36,23 @@ PAPER_RANK_VALUES = [
 ]
 
 
-def plot_training_curve(history, curve_path):
-    """两联图：左=Eq.(3) 全量损失曲线；右=排序指标曲线。"""
+def _metric_names_from_history(history):
+    """从 history 的实际键推导曲线指标（不写死 @K，spec 2026-09-17 I2/I4）。
+
+    为什么不用固定元组：指标名由配置 resolved 决定。写死 recall@20/ndcg@20
+    时，k=10 的 run 会画出两条空曲线（本次 K 事故的同类表现）。
+    """
+    skip = {"epoch", "train_loss", "val_loss", "epoch_seconds"}
+    names = []
+    for entry in history:
+        for key in entry:
+            if key not in skip and key not in names:
+                names.append(key)
+    return names
+
+
+def plot_training_curve(history, curve_path, metric_names=None):
+    """两联图：左=Eq.(3) 全量损失曲线；右=排序指标曲线（指标名来自 history）。"""
     epochs = [e["epoch"] for e in history]
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4.2))
 
@@ -51,7 +66,7 @@ def plot_training_curve(history, curve_path):
     ax1.legend()
     ax1.grid(alpha=0.3)
 
-    for m in ("rank", "recall@20", "ndcg@20"):
+    for m in (metric_names or _metric_names_from_history(history)):
         ax2.plot(epochs, [e.get(m, float("nan")) for e in history],
                  marker="o", ms=3, label=m)
     ax2.set_xlabel("epoch")
@@ -94,23 +109,16 @@ def plot_rank_cdf(ranks, cdf_path):
 
 def _load_latest_model():
     """从稳定指针 latest.pt 加载模型与数据，供 Rank CDF 复算。"""
-    import yaml
     from models.wmf.dataset import WMFDataLoader
     from models.wmf.model import WMFModel
+    from training.config_utils import build_training_config_from_yaml
+
     output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               "outputs")
     config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                "config.yaml")
-    with open(config_path, "r", encoding="utf-8") as f:
-        raw = yaml.safe_load(f)
-    flat = {}
-    for section in ["data", "model", "training", "evaluation"]:
-        if section in raw:
-            flat.update(raw[section])
-    if "run_tag" in raw:
-        flat["run_tag"] = raw["run_tag"]
-    from training.framework import TrainingConfig
-    config = TrainingConfig(overrides=flat)
+    # 统一装配：顶层 canonical dataset/k 必须带下来（否则 K 静默变 20）
+    config = build_training_config_from_yaml(config_path)
     loader = WMFDataLoader(config)
     model = WMFModel(config, loader.num_users, loader.num_items)
     ckpt = torch.load(os.path.join(output_dir, "checkpoints", "latest.pt"),

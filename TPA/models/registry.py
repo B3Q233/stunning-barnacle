@@ -88,19 +88,27 @@ def get_dataset_cls(name: str):
 
 def load_model_config(name: str,
                       overrides: Dict[str, Any] | None = None) -> Dict[str, Any]:
-    """加载模型自身 config.yaml（默认超参），再用 overrides 覆盖 model 段。"""
+    """加载模型自身 config.yaml（默认超参），再用 overrides 覆盖 model 段。
+
+    返回前统一做 canonicalize + apply_k（spec 2026-09-17 I1/I2）：
+    调用方（attacks/*/fit.py、attacks/uba/estimate.py、pre）读到的
+    `evaluation.k` 与 `evaluation.metrics` 必须已是最终 K；
+    否则它们会各自 `get("k", 20)` 回退，重新造出"第二权威"。
+    """
     entry = get_model_entry(name)
     cfg_path = PROJECT_ROOT / entry["config_path"]
     if not cfg_path.exists():
         raise FileNotFoundError(f"模型配置不存在: {cfg_path}")
 
     import yaml
+    from training.config_utils import apply_k, canonicalize_config
+
     with open(cfg_path, "r", encoding="utf-8") as f:
-        cfg: Dict[str, Any] = yaml.safe_load(f)
+        cfg: Dict[str, Any] = canonicalize_config(yaml.safe_load(f))
 
     if overrides:
         if "model" in cfg and isinstance(cfg["model"], dict):
             cfg["model"].update(overrides)
         else:
             cfg.update(overrides)
-    return cfg
+    return apply_k(cfg)

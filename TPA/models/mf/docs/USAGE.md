@@ -52,7 +52,8 @@ python TPA/models/mf/main.py
 | training.weight_decay | 0.0001 | L2 正则系数 |
 | training.num_workers | 4 | DataLoader 子进程数（0=主进程串行） |
 | training.persistent_workers | true | 跨 epoch 复用 worker（需 num_workers>0） |
-| evaluation.k | 20 | 评估 Top-K |
+| k | 20 | 评估 Top-K（canonical 顶层唯一权威；legacy `evaluation.k` 仅兼容读取） |
+| evaluation.metrics | [recall@{k}, ndcg@{k}] | 指标名中的 `@K` 由顶层 `k` 单次展开 |
 
 ## 6. 常见问题
 

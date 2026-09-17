@@ -8,6 +8,7 @@ import os
 import csv
 import pickle
 import json
+from pathlib import Path
 from typing import Dict, Optional
 
 # 确保项目根目录（TPA）在 sys.path 中（支持从任意目录直接运行本脚本）
@@ -18,9 +19,7 @@ if _PROJECT_ROOT not in sys.path:
 import torch
 import numpy as np
 
-from training.framework import (
-    TrainingConfig, Callback
-)
+from training.framework import Callback
 from training.run_tag import resolve_run_tag, save_config_snapshot, write_latest_pointer
 from training.metrics import (
     BestTracker,
@@ -28,7 +27,7 @@ from training.metrics import (
     match_metric_values,
     safe_checkpoint_name,
 )
-from training.config_utils import apply_k
+from training.config_utils import DEFAULT_K, build_training_config_from_yaml
 from training.timing import section_enter, section_exit
 from models.lightgcn.dataset import LightGCNDataLoader, KEY_NUM_USERS, KEY_NUM_ITEMS, KEY_DATASET
 from models.lightgcn.model import LightGCN
@@ -55,7 +54,7 @@ class FullRankingCallback(Callback):
         self.tag_checkpoint_dir = os.path.join(tag_dir, "checkpoints")
         self.tag_eval_log = os.path.join(tag_dir, "eval_log.csv")
         self.eval_every = config.get("eval_every", 10)
-        self.eval_k = config.get("k", 20)
+        self.eval_k = config.get("k", DEFAULT_K)
         self.tracker = BestTracker(
             config.get("metrics"),
             config.get("checkpoint_mode", "per_metric"),
@@ -161,27 +160,15 @@ def load_checkpoint(model, path):
     return ckpt['epoch']
 
 
-def main(tag: str | None = None, resume: bool = False):
+def main(tag: str | None = None, resume: bool = False,
+         config_path: str | None = None):
 
-    # 加载配置（展平嵌套 YAML）
-    config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
-    if not os.path.exists(config_path):
-        print(f"[train] config not found: {config_path}, using defaults")
-        config = TrainingConfig()
-        config['dataset'] = 'gowalla'
-    else:
-        import yaml
-        with open(config_path, 'r', encoding='utf-8') as f:
-            raw = yaml.safe_load(f)
-        # 展平 {data:{dataset:gowalla}, model:{emb_dim:64}, training:{lr:0.001}} → {dataset:gowalla, emb_dim:64, lr:0.001, ...}
-        flat = {}
-        for section in ['data', 'model', 'training', 'evaluation']:
-            if section in raw:
-                flat.update(raw[section])
-        if "run_tag" in raw:
-            flat["run_tag"] = raw["run_tag"]
-        flat = apply_k(flat)
-        config = TrainingConfig(overrides=flat)
+    # 配置装配唯一走 config_utils.build_training_config_from_yaml：
+    # 顶层 canonical `dataset` / `k` 必须带下来（否则 K 会静默变 20、数据集变 gowalla）。
+    # 配置缺失时由 load_config 直接抛 FileNotFoundError，不再回退默认配置。
+    config_path = config_path or os.path.join(
+        os.path.dirname(__file__), "config.yaml")
+    config = build_training_config_from_yaml(config_path)
 
     run_tag = resolve_run_tag(config, cli_tag=tag)
     tag_dir = os.path.join(OUTPUT_DIR, run_tag)
@@ -283,7 +270,6 @@ def main(tag: str | None = None, resume: bool = False):
     shutil.copyfile(tag_latest_ckpt, LATEST_CKPT)
     shutil.copyfile(tag_history_path, HISTORY_PATH)
     shutil.copyfile(tag_eval_log_path, EVAL_LOG_PATH)
-    from pathlib import Path
     write_latest_pointer(Path(OUTPUT_DIR), run_tag)
     save_config_snapshot(config.as_dict(), Path(tag_dir))
 

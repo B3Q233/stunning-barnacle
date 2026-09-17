@@ -84,8 +84,8 @@ models\wmf\outputs\rank_cdf.png   # 论文 Fig.2 对应物：观看节目秩累�
 | training | `save_every_n_epochs` | 5 | checkpoint 保存间隔 |
 | training | `num_workers` | 0 | DataLoader 子进程数；单批全量矩阵 worker 无收益 |
 | training | `persistent_workers` | false | 跨 epoch 复用 worker（需 num_workers>0） |
-| evaluation | `metrics` | rank / recall@20 / ndcg@20 | 指标名中的 @K 是评估 K 的唯一权威 |
-| evaluation | `k` | 20 | 仅当指标无 @K 时回退 |
+| evaluation | `metrics` | rank / recall@{k} / ndcg@{k} | `{k}` 由**顶层 `k`** 单次展开 |
+| k | 顶层 `k`（canonical） | 10 | K 的唯一权威；legacy `evaluation.k` 仅兼容读取 |
 | evaluation | `eval_every` | 1 | 全量排序评估间隔（epoch） |
 | evaluation | `checkpoint_mode` | per_metric | `per_metric`（每指标一份最优）/ `single` |
 

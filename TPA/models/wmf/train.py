@@ -18,7 +18,6 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 import torch
-import yaml
 
 from evaluation.attack_eval import build_attack_eval_metrics, ranking_scores
 from evaluation.metrics import compute_metrics, expected_percentile_rank
@@ -53,7 +52,7 @@ from training.run_tag import (
     save_config_snapshot,
     write_latest_pointer,
 )
-from training.config_utils import apply_k
+from training.config_utils import build_training_config_from_yaml
 from training.timing import section_enter, section_exit
 
 
@@ -277,18 +276,12 @@ def main(tag: Optional[str] = None, resume: bool = False,
          epochs_override: Optional[int] = None):
     config_path = config_path or os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "config.yaml")
-    with open(config_path, "r", encoding="utf-8") as f:
-        raw = yaml.safe_load(f)
-    flat = {}
-    for section in ["data", "model", "training", "evaluation"]:
-        if section in raw:
-            flat.update(raw[section])
-    if "run_tag" in raw:
-        flat["run_tag"] = raw["run_tag"]
-    if epochs_override is not None:
-        flat[KEY_EPOCHS] = epochs_override
-    flat = apply_k(flat)
-    config = TrainingConfig(overrides=flat)
+    # 配置装配唯一走 config_utils：顶层 canonical dataset/k 必须带下来
+    # （曾经各模型 main() 内联展平四个分片，顶层键被丢弃 → K 静默变 20）。
+    config = build_training_config_from_yaml(
+        config_path,
+        extra_overrides=({KEY_EPOCHS: epochs_override}
+                         if epochs_override is not None else None))
 
     run_tag = resolve_run_tag(config, cli_tag=tag)
     tag_dir = os.path.join(OUTPUT_DIR, run_tag)
