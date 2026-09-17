@@ -755,3 +755,16 @@ P1/P2 分开的理由：先消灭会改变实验定义的 bug，再处理工程�
 | `mean_row_cos_raw` 0.74–0.79 对比 `aligned` 0.988 | `outputs/run-k5v2/results/embedding_distances.csv` | §3.2、§4.5(#12) |
 | placebo 对照（d_ctrl 约 0.19，目标 z 至少 +5.25） | 设计期用 run-k5v2 产物复算 | §3.3 |
 | 力集中度排序 bandwagon > UBA > random | `tmp/uba_ablation/force_compare.json` | §0.1、§3.6 |
+
+**证据文件的可见性（重要）**：上表出处分三类，服务器端 clone 后**只有第一类存在**。
+
+| 出处类别 | 例子 | clone 后是否可得 | 复核方式 |
+|---|---|---|---|
+| 随代码入库 | `models/lightgcn/data/processed/*/meta.pkl` | 是 | 直接读 |
+| 本地实验产物 | `outputs/run-k5v2/…` | 否（`outputs/` 被 .gitignore 覆盖） | 重跑对应 tag，或从本地手动拷贝 |
+| 本地中间产物 | `tmp/pre-timing/…`、`tmp/uba_ablation/…` | 否（`tmp/` 被 .gitignore 覆盖，且禁止 `git add -f`） | 从本地手动拷贝，或按 §4 修复后重测 |
+ 
+这些数字的**结论已全部写入正文**（§1.1 规模表、§2.2 成本表、§3.2 对齐实测、§3.3 placebo
+表、§4.2 重合度），因此不依赖原始文件即可执行本设计；原始文件仅用于事后逐项复核。
+P1/P2 完成后，§2.2 与 §4.2 的证据将由新流水线重新产出并按 §5.9 的白名单入库
+（对应计划 Task 24 的 `schedule/verify.py` 产出 batch 级 `coverage.*`，以及 Task 31 的白名单回传）。
