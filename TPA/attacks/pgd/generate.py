@@ -32,7 +32,7 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]  # G:\Idea\TPA
+PROJECT_ROOT = Path(__file__).resolve().parents[2]  # TPA
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 DEFAULT_RAW_META = PROJECT_ROOT / "models" / "lightgcn" / "data" / "processed" / "{dataset}" / "meta.pkl"

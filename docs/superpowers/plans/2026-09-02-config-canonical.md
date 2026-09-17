@@ -17,7 +17,7 @@
 - percentile/zone：纯改名不换算（percentile_head/upper_torso/lower_torso；target_items.zone）。
 - `data.val_ratio` 可选、缺省 0.05、不机械添加；不改默认行为。
 - surrogate 训练超参唯一 canonical：`surrogate.training.*`（含 weight_decay/unroll_steps）。
-- 全量测试命令（PowerShell）：`python -m unittest discover -s tests -p "test_*.py" -v`（在 `G:\Idea\TPA`）。
+- 全量测试命令（PowerShell）：`python -m unittest discover -s tests -p "test_*.py" -v`（在 `TPA`）。
 - 提交信息 Conventional Commits 中文；只 add 明确路径；每 Phase 提交一次。
 
 ---

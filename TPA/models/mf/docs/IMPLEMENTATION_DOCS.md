@@ -6,7 +6,7 @@
 
 ## ① 数据处理
 
-- 输入：`G:\Idea\TPA\data\raw\{dataset}\train.txt / test.txt`
+- 输入：`TPA\data\raw\{dataset}\train.txt / test.txt`
   - ml100k 为单对行格式 `user item`；gowalla/yelp2018/amazon-book 为 NGCF
     多物品行格式 `user item1 item2 ...`，解析逻辑兼容两者（遍历 `parts[1:]`）。
 - 输出：`models/mf/data/processed/{dataset}/meta.pkl`

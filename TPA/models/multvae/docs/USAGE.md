@@ -15,8 +15,8 @@ model_cls(config, num_users, num_items, edge_index=None)
 ## 运行
 
 ```powershell
-cd G:\Idea\TPA
-G:\Idea\.venv\Scripts\python.exe models/multvae/main.py --config models/multvae/config.yaml
+cd TPA
+<repo>\.venv\Scripts\python.exe models/multvae/main.py --config models/multvae/config.yaml
 ```
 
 默认数据来自 `models/wmf/data/processed/ml100k/meta.pkl`，产物写入 `models/multvae/outputs/{dataset}/{run_tag}/`。

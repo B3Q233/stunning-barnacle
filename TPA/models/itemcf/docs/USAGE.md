@@ -17,8 +17,8 @@ models/wmf/data/processed/ml100k/meta.pkl
 ## 运行
 
 ```powershell
-cd G:\Idea\TPA
-G:\Idea\.venv\Scripts\python.exe models/itemcf/main.py --config models/itemcf/config.yaml
+cd TPA
+<repo>\.venv\Scripts\python.exe models/itemcf/main.py --config models/itemcf/config.yaml
 ```
 
 实验结果保存到 `models/itemcf/outputs/{dataset}/{run_tag}/`，包括配置快照、指标、训练历史和最后模型状态。

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]  # G:\Idea\TPA
+PROJECT_ROOT = Path(__file__).resolve().parents[2]  # TPA
 
 
 def deep_merge(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:

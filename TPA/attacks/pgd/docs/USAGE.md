@@ -31,7 +31,7 @@ tag，单独跑 model 阶段（不带 --tag）时会自动读取该 tag 衔接�
 使用项目虚拟环境（已安装 torch 等依赖）：
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe --version
+<repo>\.venv\Scripts\python.exe --version
 ```
 
 ## 3. 数据准备
@@ -49,7 +49,7 @@ checkpoint。当前项目已有：
 ### 第 1 步：交互数分类（可选但推荐）
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\pgd\run.py --mode classify
+<repo>\.venv\Scripts\python.exe TPA\attacks\pgd\run.py --mode classify
 ```
 
 产出 `data/rec_freq/{dataset}/lightgcn_top20.json`（目标选择与 filler 池来源）。
@@ -57,7 +57,7 @@ G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\pgd\run.py --mode classify
 ### 第 2 步：PGD 生成中毒数据
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\pgd\run.py --mode data
+<repo>\.venv\Scripts\python.exe TPA\attacks\pgd\run.py --mode data
 ```
 
 产出 `data/poisoned/{dataset}/lightgcn/{tag}/{meta.pkl, profiles.json, stats.json, config.yaml}`。
@@ -65,13 +65,13 @@ G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\pgd\run.py --mode data
 ### 第 3 步：投毒训练 + 对比评估
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\pgd\run.py --mode model
+<repo>\.venv\Scripts\python.exe TPA\attacks\pgd\run.py --mode model
 ```
 
 或一条命令全流程：
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\pgd\run.py --mode all
+<repo>\.venv\Scripts\python.exe TPA\attacks\pgd\run.py --mode all
 ```
 
 产出 `outputs/{dataset}/lightgcn/{tag}/pgd_comparison.md`（含目标物品 Clean/Poisoned

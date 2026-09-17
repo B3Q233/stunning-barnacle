@@ -19,8 +19,8 @@ model_cls(config, num_users, num_items, edge_index=None)
 默认读取 `models/wmf/data/processed/ml100k/meta.pkl`，也可以通过 `data.processed_data_path` 指定数据位置。
 
 ```powershell
-cd G:\Idea\TPA
-G:\Idea\.venv\Scripts\python.exe models/itemae/main.py --config models/itemae/config.yaml
+cd TPA
+<repo>\.venv\Scripts\python.exe models/itemae/main.py --config models/itemae/config.yaml
 ```
 
 产物保存到 `models/itemae/outputs/{dataset}/{run_tag}/`。

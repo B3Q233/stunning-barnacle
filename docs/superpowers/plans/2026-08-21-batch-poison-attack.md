@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- 测试只用 stdlib unittest，放 `TPA/tests/test_*.py`；运行命令（在 `G:\Idea\TPA` 下）：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_* -v`。
+- 测试只用 stdlib unittest，放 `TPA/tests/test_*.py`；运行命令（在 `TPA` 下）：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_* -v`。
 - 仓库文档与提交信息使用中文；提交格式 Conventional Commits `type(scope): 中文描述`。
 - 只用 `git add` 加明确路径，禁止 `git add -A` / `git add -f`。
 - **不修改**任何 `attacks/{bandwagon,pgd,random,tpa}/*` 与 `models/*` 代码；仅新增 `attacks/batch/`、`TPA/tests/` 与 `.gitignore` 一行。
@@ -24,7 +24,7 @@
 
 **Files:**
 - Create: `TPA/attacks/batch/__init__.py`、`TPA/attacks/batch/utils.py`、`TPA/attacks/batch/registry.py`、`TPA/attacks/batch/generator.py`
-- Modify: `G:\Idea\.gitignore`（追加一行）
+- Modify: `.gitignore`（追加一行）
 - Test: `TPA/tests/test_batch_config.py`、`TPA/tests/test_batch_registry.py`
 
 **Interfaces:**
@@ -164,7 +164,7 @@ class RegistryTest(unittest.TestCase):
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run（在 `G:\Idea\TPA`）：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_config tests.test_batch_registry -v`
+Run（在 `TPA`）：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_batch_config tests.test_batch_registry -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'attacks.batch.utils'`。
 
 - [ ] **Step 3: 最小实现**
@@ -181,7 +181,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]  # G:\Idea\TPA
+PROJECT_ROOT = Path(__file__).resolve().parents[2]  # TPA
 
 
 def deep_merge(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
@@ -339,11 +339,11 @@ def load_batch_config(path: Path) -> Dict[str, Any]:
     return cfg
 ```
 
-`G:\Idea\.gitignore` 末尾追加：`attacks/batch/cache/`。
+`.gitignore` 末尾追加：`attacks/batch/cache/`。
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_config tests.test_batch_registry -v`
+Run：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_batch_config tests.test_batch_registry -v`
 Expected: `OK`（9 + 4 个用例）。
 
 - [ ] **Step 5: 提交**
@@ -499,7 +499,7 @@ class GenerateAndWriteTest(unittest.TestCase):
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_merge tests.test_batch_generator -v`
+Run：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_batch_merge tests.test_batch_generator -v`
 Expected: FAIL with `ImportError: cannot import name 'sample_targets'`。
 
 - [ ] **Step 3: 最小实现（追加到 generator.py）**
@@ -589,7 +589,7 @@ def write_configs(entries, configs_dir) -> List[Path]:
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_merge tests.test_batch_generator -v`
+Run：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_batch_merge tests.test_batch_generator -v`
 Expected: `OK`（3 + 7 个用例）。
 
 - [ ] **Step 5: 提交**
@@ -670,7 +670,7 @@ class NormalizeCacheTest(unittest.TestCase):
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_cache -v`
+Run：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_batch_cache -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'attacks.batch.runner'`。
 
 - [ ] **Step 3: 最小实现（runner.py 本任务部分）**
@@ -734,7 +734,7 @@ def ensure_classify_cache(cfg: Dict[str, Any],
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_cache -v`
+Run：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_batch_cache -v`
 Expected: `OK`（3 个用例）。
 
 - [ ] **Step 5: 提交**
@@ -838,7 +838,7 @@ class RunnerTest(unittest.TestCase):
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_runner -v`
+Run：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_batch_runner -v`
 Expected: FAIL——`runner.run_batch` 不存在（AttributeError）。
 
 - [ ] **Step 3: 最小实现（追加到 runner.py）**
@@ -923,7 +923,7 @@ def run_batch(cfg, batch_tag, out_root, cache,
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_runner -v`
+Run：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_batch_runner -v`
 Expected: `OK`（3 个用例）。
 
 - [ ] **Step 5: 提交**
@@ -1019,7 +1019,7 @@ class AggregateTest(unittest.TestCase):
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_aggregate -v`
+Run：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_batch_aggregate -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'attacks.batch.aggregate'`。
 
 - [ ] **Step 3: 最小实现（aggregate.py）**
@@ -1148,7 +1148,7 @@ def write_summary_md(batch_tag, summary, clean_baseline, k, path) -> None:
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_aggregate -v`
+Run：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_batch_aggregate -v`
 Expected: `OK`（2 个用例）。
 
 - [ ] **Step 5: 提交**
@@ -1317,8 +1317,8 @@ override: {}
 
 - [ ] **Step 4: 验证配置可加载且合并正确**
 
-Run（在 `G:\Idea\TPA`）：
-`G:\Idea\.venv\Scripts\python.exe -c "from pathlib import Path; from attacks.batch.generator import load_batch_config, build_atomic_base; c=load_batch_config(Path('attacks/batch/config.yaml')); b=build_atomic_base(c); print(c['experiment']['dataset'], b['training']['epochs'], b['attack']['ratio'])"`
+Run（在 `TPA`）：
+`<repo>\.venv\Scripts\python.exe -c "from pathlib import Path; from attacks.batch.generator import load_batch_config, build_atomic_base; c=load_batch_config(Path('attacks/batch/config.yaml')); b=build_atomic_base(c); print(c['experiment']['dataset'], b['training']['epochs'], b['attack']['ratio'])"`
 Expected: `ml100k 5 0.03`（epochs 来自 Batch P3，ratio 继承攻击默认 P4）。
 
 - [ ] **Step 5: 写 USAGE.md / DESIGN.md 并提交**
@@ -1338,7 +1338,7 @@ git commit -m "feat(attacks): Batch CLI、clean 基线与使用文档"
 
 - [ ] **Step 1: 训练 ml100k clean lightgcn checkpoint（w_clean）**
 
-Run（在 `G:\Idea`，内联脚本）：训练 50 epoch（batch=256，emb_dim=64，device=cuda），保存
+Run（在 `<repo>`，内联脚本）：训练 50 epoch（batch=256，emb_dim=64，device=cuda），保存
 `models/lightgcn/outputs/clean-ml100k/checkpoints/latest.pt`（含 `model_state_dict`）。
 Expected：loss 下降，无 NaN，文件生成。
 
@@ -1346,8 +1346,8 @@ Expected：loss 下降，无 NaN，文件生成。
 
 复制 `attacks/batch/config.yaml` 到 `tmp/batch_smoke.yaml`，改
 `training.epochs: 1`、`training.device: cpu`、`batch.per_tier: 1`、
-`batch.tiers: [cold]`，Run（在 `G:\Idea\TPA`）：
-`G:\Idea\.venv\Scripts\python.exe attacks/batch/run.py --config ../tmp/batch_smoke.yaml --mode all`
+`batch.tiers: [cold]`，Run（在 `TPA`）：
+`<repo>\.venv\Scripts\python.exe attacks/batch/run.py --config ../tmp/batch_smoke.yaml --mode all`
 Expected：classify 一次 → 1 个原子实验 data+model 跑通；
 `attacks/batch/output/{batch_tag}/` 下 `configs/.../cold/item{id}.yaml` 1 个、
 `runs/.../cold/item{id}/` 1 个、results.csv 1 行、summary.md 含 cold 与
@@ -1361,12 +1361,12 @@ configs/ 与 runs/ 各 6 项，results.csv 6 行，summary.md 三层 mean±std�
 
 - [ ] **Step 4: 全量回归**
 
-Run（在 `G:\Idea\TPA`）：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_* -v`
+Run（在 `TPA`）：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_* -v`
 Expected：全部通过（既有 105 个 + 新增 batch 测试）。
 
 - [ ] **Step 5: 自查并汇报**
 
-Run（在 `G:\Idea`）：`git status --short` 与 `git log --oneline -10`。
+Run（在 `<repo>`）：`git status --short` 与 `git log --oneline -10`。
 Expected：仅 batch 模块与测试提交；产物（output/、cache/、data/poisoned/、*.pt）未入库。
 把 results.csv 与 summary.md 关键数字（各层 target_hr@10 / target_ndcg@10 mean±std、
 clean 基线）汇报给用户。

@@ -22,7 +22,7 @@
 ### Task 1: 创建 Skill 主入口
 
 **Files:**
-- Create: `G:\Idea\.codex\skills\research-code-reproduction\SKILL.md`
+- Create: `.codex\skills\research-code-reproduction\SKILL.md`
 
 **Interfaces:**
 - Consumes: 用户提供的本地仓库路径、GitHub URL 或压缩包路径。
@@ -109,8 +109,8 @@
 - Consumes: 完整 Skill 目录。
 - Produces: 校验通过结果和一个本地仓库的静态分析检查记录。
 
-- [ ] 运行 `quick_validate.py G:\Idea\.codex\skills\research-code-reproduction`。
+- [ ] 运行 `quick_validate.py .codex\skills\research-code-reproduction`。
 - [ ] 检查 Markdown 内部引用的文件均存在。
-- [ ] 对 `G:\Idea\TPA` 仅执行目录、文本和配置读取类检查。
+- [ ] 对 `TPA` 仅执行目录、文本和配置读取类检查。
 - [ ] 记录未执行训练、下载、安装和写入操作。
 - [ ] 运行 `git diff --check` 与 `git status --short`。

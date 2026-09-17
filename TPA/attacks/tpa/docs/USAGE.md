@@ -17,7 +17,7 @@ TPA 默认是白盒（`surrogate.enabled: false`，用受害模型嵌入构造�
 ```powershell
 # 1) config.yaml 中设置 surrogate.enabled: true
 # 2) 训练代理模型（不同划分种子，保存到 surrogate.checkpoint）
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\tpa\train_surrogate.py --config G:\Idea\TPA\attacks\tpa\config.yaml
+<repo>\.venv\Scripts\python.exe TPA\attacks\tpa\train_surrogate.py --config TPA\attacks\tpa\config.yaml
 ```
 
 之后 classify / paths 会自动使用代理模型嵌入，受害模型只出现在评估里。
@@ -28,7 +28,7 @@ G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\tpa\train_surrogate.py --co
 ### 第 1 步：交互数分类（classify）
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\tpa\run.py --mode classify
+<repo>\.venv\Scripts\python.exe TPA\attacks\tpa\run.py --mode classify
 ```
 
 产出 `attacks/tpa/data/rec_freq/{dataset}/{model}_top{k}.json`
@@ -38,7 +38,7 @@ surrogate 共用同一份交互数分类，仅缓存文件名后缀按代理模�
 ### 第 2 步：路径画像构造（paths，TPA 核心）
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\tpa\run.py --mode paths
+<repo>\.venv\Scripts\python.exe TPA\attacks\tpa\run.py --mode paths
 ```
 
 产出 `attacks/tpa/data/paths/{dataset}/profiles.json`：
@@ -53,7 +53,7 @@ G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\tpa\run.py --mode paths
 ### 第 3 步：注入中毒数据（data）
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\tpa\run.py --mode data
+<repo>\.venv\Scripts\python.exe TPA\attacks\tpa\run.py --mode data
 ```
 
 产出 `attacks/tpa/data/poisoned/{dataset}/meta.pkl + profiles.json + stats.json`。
@@ -61,13 +61,13 @@ G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\tpa\run.py --mode data
 ### 第 4 步：投毒训练 + 对比评估（model）
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\tpa\run.py --mode model
+<repo>\.venv\Scripts\python.exe TPA\attacks\tpa\run.py --mode model
 ```
 
 一条命令跑全流程：
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\tpa\run.py --mode all
+<repo>\.venv\Scripts\python.exe TPA\attacks\tpa\run.py --mode all
 ```
 
 产出 `attacks/tpa/outputs/{dataset}/`：checkpoints / history.json /

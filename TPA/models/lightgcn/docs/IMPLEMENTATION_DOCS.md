@@ -1,8 +1,8 @@
 # LightGCN 实现文档
 
 > 复现论文: LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation (SIGIR 2020)
-> 理解文档: g:/Idea/papers/lightgcn/2002.02126v4_understanding.md
-> 项目路径: g:/Idea/TPA
+> 理解文档: <papers>/lightgcn/2002.02126v4_understanding.md
+> 项目路径: TPA
 
 ---
 

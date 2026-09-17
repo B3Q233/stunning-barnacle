@@ -17,7 +17,7 @@ models/mf/
 
 ## 2. 环境准备
 
-使用仓库根虚拟环境（如 Windows 下 `G:\Idea\.venv`，Linux 下 `.venv/bin/python`）。
+使用仓库根虚拟环境（如 Windows 下 `<repo>\.venv`，Linux 下 `.venv/bin/python`）。
 
 ## 3. 数据准备
 

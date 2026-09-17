@@ -33,7 +33,7 @@
 **Files:**
 - Create: `TPA/training/metrics.py`
 - Create: `TPA/tests/test_training_metrics.py`
-- Test: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_training_metrics -v`
+- Test: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_training_metrics -v`
 
 **Interfaces:**
 - `parse_metrics(metrics_cfg) -> Dict[str, str]`（指标名 → upper/lower）

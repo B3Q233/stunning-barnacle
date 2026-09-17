@@ -15,8 +15,8 @@ model_cls(config, num_users, num_items, edge_index=None)
 ## 运行
 
 ```powershell
-cd G:\Idea\TPA
-G:\Idea\.venv\Scripts\python.exe models/ncf/main.py --config models/ncf/config.yaml
+cd TPA
+<repo>\.venv\Scripts\python.exe models/ncf/main.py --config models/ncf/config.yaml
 ```
 
 默认数据来自 `models/wmf/data/processed/ml100k/meta.pkl`，实验产物写入 `models/ncf/outputs/{dataset}/{run_tag}/`。

@@ -27,8 +27,8 @@ TPA/attacks/uba/
 使用仓库根虚拟环境（**不要**用系统 Python）：
 
 ```powershell
-cd G:\Idea
-G:\Idea\.venv\Scripts\python.exe -c "import torch; print(torch.cuda.is_available())"
+cd <repo>
+<repo>\.venv\Scripts\python.exe -c "import torch; print(torch.cuda.is_available())"
 ```
 
 依赖已在 `requirements.txt`（torch / numpy / scipy / pyyaml），本模块不新增依赖。
@@ -49,24 +49,24 @@ UBA 复用仓库既有预处理产物，不需要额外下载：
 ## 4. 复现流程（按真实操作顺序）
 
 ```powershell
-cd G:\Idea\TPA
+cd TPA
 
 # ① 物品分层（目标选择与 filler 池用）
-G:\Idea\.venv\Scripts\python.exe attacks/uba/run.py --mode classify --tag uba-ml100k
+<repo>\.venv\Scripts\python.exe attacks/uba/run.py --mode classify --tag uba-ml100k
 
 # ② 处理效应 Y
 #   - method=path（默认）：可跳过本步，data 阶段会自动补算并缓存
 #   - method=surrogate：必须先跑本步（很慢，训练 (H+1)×E 次代理模型）
-G:\Idea\.venv\Scripts\python.exe attacks/uba/run.py --mode estimate --tag uba-ml100k
+<repo>\.venv\Scripts\python.exe attacks/uba/run.py --mode estimate --tag uba-ml100k
 
 # ③ 预算分配 + 中毒数据
-G:\Idea\.venv\Scripts\python.exe attacks/uba/run.py --mode data --tag uba-ml100k
+<repo>\.venv\Scripts\python.exe attacks/uba/run.py --mode data --tag uba-ml100k
 
 # ④ 中毒训练 + 对比评估
-G:\Idea\.venv\Scripts\python.exe attacks/uba/run.py --mode model --tag uba-ml100k
+<repo>\.venv\Scripts\python.exe attacks/uba/run.py --mode model --tag uba-ml100k
 
 # 一条命令跑完整闭环（classify + estimate + data + model）
-G:\Idea\.venv\Scripts\python.exe attacks/uba/run.py --mode all --tag uba-ml100k
+<repo>\.venv\Scripts\python.exe attacks/uba/run.py --mode all --tag uba-ml100k
 ```
 
 注意：若步骤 ②③④ 分开跑，`--tag` 必须一致（不传 tag 时 `latest.json` 指针会把

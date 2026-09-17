@@ -18,7 +18,7 @@
 filler 采样使用：
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\attack_imp_direct_poison\run.py --mode classify
+<repo>\.venv\Scripts\python.exe TPA\attacks\attack_imp_direct_poison\run.py --mode classify
 ```
 
 产出：
@@ -33,7 +33,7 @@ attacks/attack_imp_direct_poison/data/rec_freq/{dataset}/{model}_top{k}.json
 ### 只生成中毒数据（不建模型）
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\attack_imp_direct_poison\run.py --mode data
+<repo>\.venv\Scripts\python.exe TPA\attacks\attack_imp_direct_poison\run.py --mode data
 ```
 
 产出：
@@ -48,13 +48,13 @@ attacks/attack_imp_direct_poison/data/poisoned/{dataset}/
 ### 拟合中毒模型 + 对比评估
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\attack_imp_direct_poison\run.py --mode model
+<repo>\.venv\Scripts\python.exe TPA\attacks\attack_imp_direct_poison\run.py --mode model
 ```
 
 或一条命令跑全流程：
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\attack_imp_direct_poison\run.py --mode all
+<repo>\.venv\Scripts\python.exe TPA\attacks\attack_imp_direct_poison\run.py --mode all
 ```
 
 产出（`attacks/attack_imp_direct_poison/outputs/{output.dir}/{dataset}/`）：
@@ -69,7 +69,7 @@ G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\attack_imp_direct_poison\ru
 ### 复用已有 checkpoint 快速出报告
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\attack_imp_direct_poison\fit.py --config <配置> --skip-train
+<repo>\.venv\Scripts\python.exe TPA\attacks\attack_imp_direct_poison\fit.py --config <配置> --skip-train
 ```
 
 ## 3. 配置文件详解（`attacks/attack_imp_direct_poison/config.yaml`）

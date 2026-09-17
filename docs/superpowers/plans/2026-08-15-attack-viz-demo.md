@@ -30,19 +30,19 @@
 
 - [ ] **Step 1: 检查删除状态**
 
-Run: `git -C G:\Idea status --short -- TPA/visualization`
+Run: `git -C <repo> status --short -- TPA/visualization`
 Expected: 全部文件为 ` D`（工作区已删、未暂存）。
 
 - [ ] **Step 2: 提交删除**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization
-git -C G:\Idea commit -m "chore(visualization): 移除旧版可视化实现（工作区已删除，重新开发）"
+git -C <repo> add -- TPA/visualization
+git -C <repo> commit -m "chore(visualization): 移除旧版可视化实现（工作区已删除，重新开发）"
 ```
 
 - [ ] **Step 3: 验证**
 
-Run: `git -C G:\Idea status --short -- TPA/visualization`
+Run: `git -C <repo> status --short -- TPA/visualization`
 Expected: 无输出（已提交，工作区干净）。
 
 ---
@@ -225,8 +225,8 @@ Expected: PASS，6 个用例。
 - [ ] **Step 5: 提交**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization/js/parser.js TPA/visualization/tests/parser.test.js
-git -C G:\Idea commit -m "feat(visualization): history 解析与标准 JSON 提取（含 Node 单测）"
+git -C <repo> add -- TPA/visualization/js/parser.js TPA/visualization/tests/parser.test.js
+git -C <repo> commit -m "feat(visualization): history 解析与标准 JSON 提取（含 Node 单测）"
 ```
 
 ---
@@ -405,8 +405,8 @@ Expected: PASS，3 个用例。
 - [ ] **Step 5: 提交**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization/js/transforms.js TPA/visualization/tests/transforms.test.js
-git -C G:\Idea commit -m "feat(visualization): 折线/直方 series 构建与指标显隐（含 Node 单测）"
+git -C <repo> add -- TPA/visualization/js/transforms.js TPA/visualization/tests/transforms.test.js
+git -C <repo> commit -m "feat(visualization): 折线/直方 series 构建与指标显隐（含 Node 单测）"
 ```
 
 ---
@@ -671,8 +671,8 @@ main { padding: 16px 24px; }
 - [ ] **Step 5: 提交**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization/index.html TPA/visualization/styles.css TPA/visualization/js/main.js TPA/visualization/lib/echarts.min.js
-git -C G:\Idea commit -m "feat(visualization): 单页折线+直方图渲染与指标显隐（ECharts）"
+git -C <repo> add -- TPA/visualization/index.html TPA/visualization/styles.css TPA/visualization/js/main.js TPA/visualization/lib/echarts.min.js
+git -C <repo> commit -m "feat(visualization): 单页折线+直方图渲染与指标显隐（ECharts）"
 ```
 
 ---
@@ -728,15 +728,15 @@ node --test TPA/visualization/tests/
 Run:
 ```bash
 node --test TPA/visualization/tests/
-cd TPA && G:\Idea\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+cd TPA && <repo>\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
 ```
 Expected: JS 全绿；Python 全量通过（含 `test_history_completeness` 等 45 项）。
 
 - [ ] **Step 3: 提交**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization/README.md
-git -C G:\Idea commit -m "docs(visualization): 使用文档与手动验证清单"
+git -C <repo> add -- TPA/visualization/README.md
+git -C <repo> commit -m "docs(visualization): 使用文档与手动验证清单"
 ```
 
 ---
@@ -838,8 +838,8 @@ Expected: PASS，10 个用例。
 - [ ] **Step 5: 提交**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization/js/parser.js TPA/visualization/tests/parser.test.js
-git -C G:\Idea commit -m "feat(visualization): 实验目录路径解析与自动命名（含 Node 单测）"
+git -C <repo> add -- TPA/visualization/js/parser.js TPA/visualization/tests/parser.test.js
+git -C <repo> commit -m "feat(visualization): 实验目录路径解析与自动命名（含 Node 单测）"
 ```
 
 ---
@@ -978,8 +978,8 @@ Expected: PASS，5 个用例。
 - [ ] **Step 5: 提交**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization/js/transforms.js TPA/visualization/tests/transforms.test.js
-git -C G:\Idea commit -m "feat(visualization): 多实验折线/直方 series 与逐点着色（含 Node 单测）"
+git -C <repo> add -- TPA/visualization/js/transforms.js TPA/visualization/tests/transforms.test.js
+git -C <repo> commit -m "feat(visualization): 多实验折线/直方 series 与逐点着色（含 Node 单测）"
 ```
 
 ---
@@ -1391,8 +1391,8 @@ Expected: 语法 OK；JS 全绿。
 - [ ] **Step 5: 提交**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization/index.html TPA/visualization/styles.css TPA/visualization/js/main.js
-git -C G:\Idea commit -m "feat(visualization): 多实验选项卡、卡牌指标显隐与颜色自定义"
+git -C <repo> add -- TPA/visualization/index.html TPA/visualization/styles.css TPA/visualization/js/main.js
+git -C <repo> commit -m "feat(visualization): 多实验选项卡、卡牌指标显隐与颜色自定义"
 ```
 
 ---
@@ -1412,15 +1412,15 @@ git -C G:\Idea commit -m "feat(visualization): 多实验选项卡、卡牌指标
 Run:
 ```bash
 node --test TPA/visualization/tests/
-cd TPA && G:\Idea\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+cd TPA && <repo>\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
 ```
 Expected: JS 全绿；Python 全量通过。
 
 - [ ] **Step 3: 提交**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization/README.md
-git -C G:\Idea commit -m "docs(visualization): 迭代 2 使用文档与验证清单更新"
+git -C <repo> add -- TPA/visualization/README.md
+git -C <repo> commit -m "docs(visualization): 迭代 2 使用文档与验证清单更新"
 ```
 
 ---
@@ -1467,8 +1467,8 @@ Expected: PASS，6 个用例。
 - [ ] **Step 5: 提交**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization/js/transforms.js TPA/visualization/tests/transforms.test.js
-git -C G:\Idea commit -m "feat(visualization): 系列色板替换为 Nature 顶刊 10 色（含 Node 单测）"
+git -C <repo> add -- TPA/visualization/js/transforms.js TPA/visualization/tests/transforms.test.js
+git -C <repo> commit -m "feat(visualization): 系列色板替换为 Nature 顶刊 10 色（含 Node 单测）"
 ```
 
 ---
@@ -2010,8 +2010,8 @@ Expected: 语法 OK；JS 全绿。
 - [ ] **Step 5: 提交**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization/index.html TPA/visualization/styles.css TPA/visualization/js/main.js
-git -C G:\Idea commit -m "feat(visualization): 实验卡内导入、Modal 组件、顶刊配色与图表布局修复"
+git -C <repo> add -- TPA/visualization/index.html TPA/visualization/styles.css TPA/visualization/js/main.js
+git -C <repo> commit -m "feat(visualization): 实验卡内导入、Modal 组件、顶刊配色与图表布局修复"
 ```
 
 ---
@@ -2032,15 +2032,15 @@ git -C G:\Idea commit -m "feat(visualization): 实验卡内导入、Modal 组件
 Run:
 ```bash
 node --test TPA/visualization/tests/
-cd TPA && G:\Idea\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+cd TPA && <repo>\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
 ```
 Expected: JS 全绿；Python 全量通过。
 
 - [ ] **Step 3: 提交**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization/README.md
-git -C G:\Idea commit -m "docs(visualization): 迭代 3 使用文档与验证清单更新"
+git -C <repo> add -- TPA/visualization/README.md
+git -C <repo> commit -m "docs(visualization): 迭代 3 使用文档与验证清单更新"
 ```
 
 ---
@@ -2100,8 +2100,8 @@ Expected: PASS，6 个用例。
 - [ ] **Step 5: 提交**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization/js/transforms.js TPA/visualization/tests/transforms.test.js
-git -C G:\Idea commit -m "feat(visualization): 折线/直方选项分组 lineOptions 与 barOptions（含 Node 单测）"
+git -C <repo> add -- TPA/visualization/js/transforms.js TPA/visualization/tests/transforms.test.js
+git -C <repo> commit -m "feat(visualization): 折线/直方选项分组 lineOptions 与 barOptions（含 Node 单测）"
 ```
 
 ---
@@ -2213,8 +2213,8 @@ Expected: 语法 OK；JS 全绿。
 - [ ] **Step 5: 提交**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization/index.html TPA/visualization/styles.css TPA/visualization/js/main.js
-git -C G:\Idea commit -m "feat(visualization): 左侧实验列表、history/comparison 分组与图表实例生命周期修复"
+git -C <repo> add -- TPA/visualization/index.html TPA/visualization/styles.css TPA/visualization/js/main.js
+git -C <repo> commit -m "feat(visualization): 左侧实验列表、history/comparison 分组与图表实例生命周期修复"
 ```
 
 ---
@@ -2234,15 +2234,15 @@ git -C G:\Idea commit -m "feat(visualization): 左侧实验列表、history/comp
 Run:
 ```bash
 node --test TPA/visualization/tests/
-cd TPA && G:\Idea\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+cd TPA && <repo>\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
 ```
 Expected: JS 全绿；Python 全量通过。
 
 - [ ] **Step 3: 提交**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization/README.md
-git -C G:\Idea commit -m "docs(visualization): 迭代 4 使用文档与验证清单更新"
+git -C <repo> add -- TPA/visualization/README.md
+git -C <repo> commit -m "docs(visualization): 迭代 4 使用文档与验证清单更新"
 ```
 
 ---
@@ -2404,6 +2404,6 @@ Expected: 语法 OK；JS 全绿。
 - [ ] **Step 4: 提交**
 
 ```bash
-git -C G:\Idea add -- TPA/visualization/styles.css TPA/visualization/js/main.js
-git -C G:\Idea commit -m "feat(visualization): 现代 UI 主题（设计令牌+靛蓝主色+状态徽章）"
+git -C <repo> add -- TPA/visualization/styles.css TPA/visualization/js/main.js
+git -C <repo> commit -m "feat(visualization): 现代 UI 主题（设计令牌+靛蓝主色+状态徽章）"
 ```

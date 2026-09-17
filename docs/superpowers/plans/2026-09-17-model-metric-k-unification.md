@@ -17,8 +17,8 @@
 - `{k}` 只在统一装配入口展开一次；业务代码不得再出现裸 `20` 作为 K 来源。
 - 无 `evaluation.metrics` 的旧模型允许按 resolved K 派生 `recall@K / ndcg@K` 并告警。
 - 注释中文，来源标注沿用 `[paper]/[ai]/[unreported]/[官方代码]`。
-- 测试命令（工作目录 `G:\Idea\TPA`）：`G:\Idea\.venv\Scripts\python.exe -m unittest <模块> -v`；
-  全量：`G:\Idea\.venv\Scripts\python.exe -m unittest discover -s tests -t . -v`。
+- 测试命令（工作目录 `TPA`）：`<repo>\.venv\Scripts\python.exe -m unittest <模块> -v`；
+  全量：`<repo>\.venv\Scripts\python.exe -m unittest discover -s tests -t . -v`。
 - 提交信息 Conventional Commits 中文；只 `git add` 明确路径，禁止 `git add -f` / `git add -A`。
 
 ## 文件结构（新增 / 修改）
@@ -68,7 +68,7 @@ def test_flatten_keeps_top_level_k(self):
 
 - [ ] **Step 2: 运行确认失败**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
 Expected: FAIL / ERROR —— `ImportError: cannot import name 'flatten_model_config'`
 
 - [ ] **Step 3: 加 `DEFAULT_K` 并让 `resolve_k` 引用它**
@@ -166,9 +166,9 @@ def build_training_config_from_yaml(
 
 - [ ] **Step 5: 运行确认通过**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
 Expected: L1 全 PASS（L2–L4 仍 FAIL，属后续任务）
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_config_utils -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_config_utils -v`
 Expected: PASS（`apply_k` 语义未变）
 
 ---
@@ -187,7 +187,7 @@ Expected: PASS（`apply_k` 语义未变）
 
 - [ ] **Step 2: 运行确认失败**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
 Expected: FAIL —— lightgcn 入口 `k=20`、`dataset is None`
 
 - [ ] **Step 3: lightgcn 入口替换内联展平**
@@ -228,9 +228,9 @@ from training.config_utils import DEFAULT_K, build_training_config_from_yaml
 
 - [ ] **Step 6: 运行确认通过**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
 Expected: L1/L2 相关用例 PASS
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_history_completeness -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_history_completeness -v`
 Expected: PASS
 
 ---
@@ -255,7 +255,7 @@ def test_load_model_config_expands_k(self):
 
 - [ ] **Step 2: 运行确认失败**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
 Expected: FAIL —— `KeyError: 'k'`
 
 - [ ] **Step 3: 实现**
@@ -279,7 +279,7 @@ Expected: FAIL —— `KeyError: 'k'`
 
 - [ ] **Step 4: 运行确认通过**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification tests.test_model_registry -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification tests.test_model_registry -v`
 Expected: PASS
 
 - [ ] **Step 5: 提交（P1–P3 作为一个逻辑变更）**
@@ -306,7 +306,7 @@ git commit -m "fix(config): 模型入口统一装配 K，顶层 dataset/k 不再
 
 - [ ] **Step 2: 运行确认失败**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
 Expected: FAIL —— 兜底指标为 `recall@20`（与 `k:5` 不一致）
 
 - [ ] **Step 3: `build_training_config` 的 K 来源唯一化**
@@ -352,7 +352,7 @@ def resolve_metrics_cfg(config: Dict[str, Any], model_name: str) -> list:
 
 - [ ] **Step 6: 运行确认通过**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification tests.test_attack_eval tests.test_uba_generate -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification tests.test_attack_eval tests.test_uba_generate -v`
 Expected: PASS
 
 ---
@@ -415,7 +415,7 @@ def plot_training_curve(history, curve_path, metric_names=None):
 
 - [ ] **Step 5: 运行确认通过**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
 Expected: PASS
 
 ---
@@ -481,7 +481,7 @@ def test_contract_catches_hardcoded_metric_k(self):
 - [ ] **Step 1: 建测试文件（先 RED）**
 - [ ] **Step 2: 逐条确认失败原因正确**（不是语法错误）
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
 Expected（修复前）：用户点名的 6 条必须失败且原因明确：
 
 ```
@@ -495,7 +495,7 @@ test_metrics_fallback_uses_resolved_k         FAIL   兜底得到 recall@20
 
 - [ ] **Step 3: GREEN 后运行**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_metric_k_unification -v`
 Expected: 17 条全 PASS
 
 ---
@@ -539,12 +539,12 @@ smoke 模型若留在稳定指针，会污染攻击流程使用的 `checkpoint.c
 - [ ] **Step 1: 备份稳定指针**
 
 ```powershell
-$smokeBackup = "G:\Idea\tmp\smoke-k10-backup"
+$smokeBackup = "tmp\smoke-k10-backup"
 New-Item -ItemType Directory -Force -Path $smokeBackup | Out-Null
-Copy-Item G:\Idea\TPA\models\lightgcn\outputs\checkpoints\latest.pt $smokeBackup -Force -ErrorAction SilentlyContinue
-Copy-Item G:\Idea\TPA\models\lightgcn\outputs\history.json $smokeBackup -Force -ErrorAction SilentlyContinue
-Copy-Item G:\Idea\TPA\models\lightgcn\outputs\eval_log.csv $smokeBackup -Force -ErrorAction SilentlyContinue
-Copy-Item G:\Idea\TPA\models\lightgcn\outputs\latest.json $smokeBackup -Force -ErrorAction SilentlyContinue
+Copy-Item TPA\models\lightgcn\outputs\checkpoints\latest.pt $smokeBackup -Force -ErrorAction SilentlyContinue
+Copy-Item TPA\models\lightgcn\outputs\history.json $smokeBackup -Force -ErrorAction SilentlyContinue
+Copy-Item TPA\models\lightgcn\outputs\eval_log.csv $smokeBackup -Force -ErrorAction SilentlyContinue
+Copy-Item TPA\models\lightgcn\outputs\latest.json $smokeBackup -Force -ErrorAction SilentlyContinue
 ```
 
 - [ ] **Step 2: 写 smoke 配置**（`tmp/smoke-lightgcn-ml100k.yaml`，不改入库配置）
@@ -580,15 +580,15 @@ training:
 
 - [ ] **Step 3: 运行 smoke**
 
-Run（工作目录 `G:\Idea\TPA`）：
-`G:\Idea\.venv\Scripts\python.exe models\lightgcn\main.py --config ..\tmp\smoke-lightgcn-ml100k.yaml --tag smoke-k10-20260917`
+Run（工作目录 `TPA`）：
+`<repo>\.venv\Scripts\python.exe models\lightgcn\main.py --config ..\tmp\smoke-lightgcn-ml100k.yaml --tag smoke-k10-20260917`
 
 - [ ] **Step 4: 核对验收判据**
 
 ```powershell
-Get-Content -TotalCount 1 G:\Idea\TPA\models\lightgcn\outputs\smoke-k10-20260917\eval_log.csv
-Get-ChildItem G:\Idea\TPA\models\lightgcn\outputs\smoke-k10-20260917\checkpoints
-Select-String -Path G:\Idea\TPA\models\lightgcn\outputs\smoke-k10-20260917\config.yaml -Pattern "^dataset:|^k:|recall@"
+Get-Content -TotalCount 1 TPA\models\lightgcn\outputs\smoke-k10-20260917\eval_log.csv
+Get-ChildItem TPA\models\lightgcn\outputs\smoke-k10-20260917\checkpoints
+Select-String -Path TPA\models\lightgcn\outputs\smoke-k10-20260917\config.yaml -Pattern "^dataset:|^k:|recall@"
 ```
 
 Expected：
@@ -600,10 +600,10 @@ Expected：
 - [ ] **Step 5: 还原稳定指针**
 
 ```powershell
-Copy-Item "$smokeBackup\latest.pt" G:\Idea\TPA\models\lightgcn\outputs\checkpoints -Force
-Copy-Item "$smokeBackup\history.json" G:\Idea\TPA\models\lightgcn\outputs -Force
-Copy-Item "$smokeBackup\eval_log.csv" G:\Idea\TPA\models\lightgcn\outputs -Force
-Copy-Item "$smokeBackup\latest.json" G:\Idea\TPA\models\lightgcn\outputs -Force
+Copy-Item "$smokeBackup\latest.pt" TPA\models\lightgcn\outputs\checkpoints -Force
+Copy-Item "$smokeBackup\history.json" TPA\models\lightgcn\outputs -Force
+Copy-Item "$smokeBackup\eval_log.csv" TPA\models\lightgcn\outputs -Force
+Copy-Item "$smokeBackup\latest.json" TPA\models\lightgcn\outputs -Force
 ```
 
 ---
@@ -612,13 +612,13 @@ Copy-Item "$smokeBackup\latest.json" G:\Idea\TPA\models\lightgcn\outputs -Force
 
 - [ ] **Step 1: 主测试全量**
 
-Run（工作目录 `G:\Idea\TPA`）：
-`G:\Idea\.venv\Scripts\python.exe -m unittest discover -s tests -t . -v`
+Run（工作目录 `TPA`）：
+`<repo>\.venv\Scripts\python.exe -m unittest discover -s tests -t . -v`
 Expected: 全绿（记录改动前后的用例数）
 
 - [ ] **Step 2: pre 层测试**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest discover -s pre/tests -t . -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest discover -s pre/tests -t . -v`
 Expected: 全绿
 
 - [ ] **Step 3: 索引卫生自查**

@@ -60,7 +60,7 @@ Top 5% 为 Hot、5%~40% 为 Medium-hot、40%~100% 为 Tail；每个交互数箱�
 
 ```powershell
 # 在默认 line/hist 输出基础上追加分布图与 CSV
-G:\Idea\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --count-dist
+<repo>\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --count-dist
 ```
 
 产物（`outputs/`）：
@@ -76,9 +76,9 @@ G:\Idea\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py -
 允许空档；只统计 c>0 的物品）。步长可配置为 5/10/20/25/50。
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --pct-dist
+<repo>\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --pct-dist
 # 改成 10% 一档：
-G:\Idea\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --pct-dist --bucket-pct 10
+<repo>\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --pct-dist --bucket-pct 10
 ```
 
 产物（`outputs/`）：
@@ -91,19 +91,19 @@ G:\Idea\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py -
 
 ```powershell
 # 三个数据集（默认 train.txt）
-G:\Idea\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py
+<repo>\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py
 
 # 只画某个数据集（默认 --sort count：按交互数降序重映射）
-G:\Idea\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --datasets gowalla
+<repo>\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --datasets gowalla
 
 # 按原始物品 id+1 为 x 轴
-G:\Idea\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --sort id
+<repo>\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --sort id
 
 # 双线性坐标（不使用对数轴）
-G:\Idea\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --xscale linear --yscale linear
+<repo>\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --xscale linear --yscale linear
 
 # 合并 train + test 统计
-G:\Idea\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --splits train test
+<repo>\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py --splits train test
 ```
 
 ## 输出
@@ -126,5 +126,5 @@ G:\Idea\.venv\Scripts\python.exe TPA\visualization\item_freq\plot_item_freq.py -
 
 ```powershell
 cd TPA
-G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_item_freq -v
+<repo>\.venv\Scripts\python.exe -m unittest tests.test_item_freq -v
 ```

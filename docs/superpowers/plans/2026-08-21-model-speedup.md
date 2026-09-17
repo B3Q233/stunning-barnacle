@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- 测试只允许 stdlib unittest，文件放 `TPA/tests/test_*.py`；运行命令（在 `G:\Idea\TPA` 下）：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_* -v`。
+- 测试只允许 stdlib unittest，文件放 `TPA/tests/test_*.py`；运行命令（在 `TPA` 下）：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_* -v`。
 - 仓库文档与提交信息使用中文；提交格式 Conventional Commits `type(scope): 中文描述`。
 - 只用 `git add` 加明确路径，禁止 `git add -A` / `git add -f`。
 - `compute_metrics` / `_topk_by_batch` / `rank_values` / `expected_percentile_rank` 的默认签名与行为不变（攻击链路与 WMF 依赖）。
@@ -87,7 +87,7 @@ class ComputeMetricsFastPathTest(unittest.TestCase):
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run（在 `G:\Idea\TPA`）：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_evaluation_fast -v`
+Run（在 `TPA`）：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_evaluation_fast -v`
 Expected: FAIL with `ImportError: cannot import name 'build_train_mask_indices'`。
 
 - [ ] **Step 3: 最小实现**
@@ -160,7 +160,7 @@ def compute_metrics(scores: torch.Tensor, train_user_items: Dict[int, set],
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run（在 `G:\Idea\TPA`）：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_evaluation_fast -v`
+Run（在 `TPA`）：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_evaluation_fast -v`
 Expected: `OK`（3 个用例全过）。
 
 - [ ] **Step 5: 提交**
@@ -270,7 +270,7 @@ class ForwardFinalEmbTest(unittest.TestCase):
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run（在 `G:\Idea\TPA`）：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_lightgcn_cache -v`
+Run（在 `TPA`）：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_lightgcn_cache -v`
 Expected: FAIL——`test_cached_step_matches_reference` 中 `ref.forward` 与旧实现一致，但新实现 `train_step` 尚未改（loss/grad 仍相等则说明测试未覆盖新行为，需确认失败原因）；`test_forward_final_emb_reuse` 因 `forward` 不接受 `final_emb` 报 `TypeError`。
 
 > 说明：`test_forward_final_emb_reuse` 是"新接口缺失"型失败（TypeError），`test_cached_step_matches_reference` 在改完后验证数值等价。两者共同构成 Task 2 的红-绿约束。
@@ -315,7 +315,7 @@ Expected: FAIL——`test_cached_step_matches_reference` 中 `ref.forward` 与�
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run（在 `G:\Idea\TPA`）：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_lightgcn_cache -v`
+Run（在 `TPA`）：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_lightgcn_cache -v`
 Expected: `OK`。
 
 - [ ] **Step 5: 提交**
@@ -387,7 +387,7 @@ class DataLoaderWorkerConfigTest(unittest.TestCase):
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run（在 `G:\Idea\TPA`）：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_dataloader_workers -v`
+Run（在 `TPA`）：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_dataloader_workers -v`
 Expected: FAIL——`lightgcn` / `mf` 的 loader 仍是 `num_workers=0`，`test_lightgcn_reads_config` 断言 `num_workers == 2` 失败。
 
 - [ ] **Step 3: 最小实现**
@@ -427,7 +427,7 @@ wmf：
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run（在 `G:\Idea\TPA`）：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_dataloader_workers -v`
+Run（在 `TPA`）：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_dataloader_workers -v`
 Expected: `OK`。
 
 - [ ] **Step 5: 提交**
@@ -542,7 +542,7 @@ class MFCallbackFastPathTest(unittest.TestCase):
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run（在 `G:\Idea\TPA`）：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_full_ranking_callback -v`
+Run（在 `TPA`）：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_full_ranking_callback -v`
 Expected: FAIL——`seen` 为空，`assertIn("mask_indices", seen)` 不通过（回调尚未传新参数）。
 
 - [ ] **Step 3: 最小实现**
@@ -579,7 +579,7 @@ from evaluation.metrics import build_train_mask_indices, compute_metrics
 
 - [ ] **Step 4: 运行测试确认通过**
 
-Run（在 `G:\Idea\TPA`）：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_full_ranking_callback -v`
+Run（在 `TPA`）：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_full_ranking_callback -v`
 Expected: `OK`。
 
 - [ ] **Step 5: 提交**
@@ -614,7 +614,7 @@ git commit -m "feat(eval): lightgcn/mf 评估回调接入掩码预计算与分�
 
 - [ ] **Step 3: 验证文档与实现一致**
 
-Run（在 `G:\Idea\TPA`）：`rg -n "num_workers|persistent_workers" models/lightgcn/docs models/mf/docs models/wmf/docs`
+Run（在 `TPA`）：`rg -n "num_workers|persistent_workers" models/lightgcn/docs models/mf/docs models/wmf/docs`
 Expected: 三个 USAGE.md 均含两键；IMPLEMENTATION_DOCS.md 含 CSR 说明。
 
 - [ ] **Step 4: 提交**
@@ -632,15 +632,15 @@ git commit -m "docs(models): 同步 num_workers/persistent_workers 配置与 CSR
 
 - [ ] **Step 1: 全量单测**
 
-Run（在 `G:\Idea\TPA`）：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_* -v`
+Run（在 `TPA`）：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_* -v`
 Expected: 全部通过（新增 4 个测试文件 + 既有 wmf/attack 测试）。
 
 - [ ] **Step 2: 基准复测（不提交任何产物）**
 
-在 `G:\Idea` 运行内联脚本：构建 gowalla LightGCN（batch=256），计时 5 个 `train_step` 并外推每 epoch 耗时；再用 ml100k 跑 1 epoch 冒烟训练（num_workers=0），确认 loss 正常下降、无异常。
+在 `<repo>` 运行内联脚本：构建 gowalla LightGCN（batch=256），计时 5 个 `train_step` 并外推每 epoch 耗时；再用 ml100k 跑 1 epoch 冒烟训练（num_workers=0），确认 loss 正常下降、无异常。
 Expected: 每 epoch 训练耗时 ~2 分钟量级（原 10.9 分钟）；冒烟训练正常。
 
 - [ ] **Step 3: 收尾检查**
 
-Run（在 `G:\Idea`）：`git status --short` 与 `git log --oneline -8`。
+Run（在 `<repo>`）：`git status --short` 与 `git log --oneline -8`。
 Expected: 仅本计划相关文件待提交（若有未提交改动则补齐提交）；提交记录包含 spec/plan/实现。

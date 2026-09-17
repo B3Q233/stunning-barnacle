@@ -41,8 +41,8 @@
 ### Task 1: 交付门 `scripts/verify_outputs.py`
 
 **Files:**
-- Create: `G:\Idea\.codex\skills\knowledge-point-visualization\scripts\verify_outputs.py`
-- Test: `G:\Idea\.codex\skills\knowledge-point-visualization\tests\test_verify_outputs.py`
+- Create: `.codex\skills\knowledge-point-visualization\scripts\verify_outputs.py`
+- Test: `.codex\skills\knowledge-point-visualization\tests\test_verify_outputs.py`
 
 **Interfaces:**
 - Consumes: 论文 Markdown 路径、输出目录路径（命令行参数）。
@@ -212,7 +212,7 @@ def test_browser_check_missing_browser(tmp_path):
 
 - [ ] **Step 2: 运行测试确认失败**
 
-Run: `python -m pytest tests/test_verify_outputs.py -q`（在 `G:\Idea\.codex\skills\knowledge-point-visualization` 下）
+Run: `python -m pytest tests/test_verify_outputs.py -q`（在 `.codex\skills\knowledge-point-visualization` 下）
 Expected: FAIL，`ModuleNotFoundError` / `No module named 'verify_outputs'`（脚本尚不存在）。
 
 - [ ] **Step 3: 实现 `scripts/verify_outputs.py`**
@@ -268,11 +268,8 @@ REGISTRY_RE = re.compile(r'register\(\s*"([^"]+)"\s*,')
 
 DEFAULT_BROWSERS = [
     os.environ.get("KPV_BROWSER", ""),
-    r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-    r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
-    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-    "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/msedge",
+    # 其余候选由环境变量（%ProgramFiles% 系列）与 shutil.which 推导，
+    # 不硬编码程序安装目录（见 AGENTS.md「路径与可迁移性」）。
 ]
 
 
@@ -424,8 +421,8 @@ git commit -m "feat(kpv): 新增 verify_outputs.py 交付门（6 项校验 + 浏
 ### Task 2: 交互演示库 `assets/interactive-components.js`
 
 **Files:**
-- Create: `G:\Idea\.codex\skills\knowledge-point-visualization\assets\interactive-components.js`
-- Test: `G:\Idea\.codex\skills\knowledge-point-visualization\tests\interactive-components.test.js`
+- Create: `.codex\skills\knowledge-point-visualization\assets\interactive-components.js`
+- Test: `.codex\skills\knowledge-point-visualization\tests\interactive-components.test.js`
 
 **Interfaces:**
 - Consumes: 无（独立库）。
@@ -805,7 +802,7 @@ git commit -m "feat(kpv): 新增离线交互演示库 interactive-components.js�
 ### Task 3: 推导页标准模板 `assets/derivation-template.html`
 
 **Files:**
-- Create: `G:\Idea\.codex\skills\knowledge-point-visualization\assets\derivation-template.html`
+- Create: `.codex\skills\knowledge-point-visualization\assets\derivation-template.html`
 
 **Interfaces:**
 - Consumes: Task 2 的 `interactive-components.js`（模板引用 `data-demo="gradient-descent"`）。
@@ -995,8 +992,8 @@ git commit -m "feat(kpv): 新增推导页标准模板 derivation-template.html�
 ### Task 4: 更新 SKILL.md 与 agents/openai.yaml
 
 **Files:**
-- Modify: `G:\Idea\.codex\skills\knowledge-point-visualization\SKILL.md`
-- Modify: `G:\Idea\.codex\skills\knowledge-point-visualization\agents\openai.yaml`
+- Modify: `.codex\skills\knowledge-point-visualization\SKILL.md`
+- Modify: `.codex\skills\knowledge-point-visualization\agents\openai.yaml`
 
 **Interfaces:**
 - Consumes: Task 1（校验命令）、Task 2/3（模板与组件库路径）。
@@ -1086,8 +1083,8 @@ git commit -m "docs(kpv): SKILL.md 增加第 5.5 步推导页与第 7 步校验�
 ### Task 5: 验收 —— 用 PGD.md 完整重跑新流程
 
 **Files:**
-- 参考: `G:\Idea\MinerU-Skill\PGD_07b060\PGD.md`（论文源）、同目录现有 JSON 产物。
-- 产出: `G:\Idea\MinerU-Skill\PGD_07b060\derivation.html`（按新规范重写）、`interactive-components.js`、`mathjax/tex-svg.js`。
+- 参考: `<MinerU-Skill>\PGD_07b060\PGD.md`（论文源）、同目录现有 JSON 产物。
+- 产出: `<MinerU-Skill>\PGD_07b060\derivation.html`（按新规范重写）、`interactive-components.js`、`mathjax/tex-svg.js`。
 
 **Interfaces:**
 - Consumes: Task 1 的 `verify_outputs.py`、Task 2/3 的资产、Task 4 的 SKILL.md 内容规范。
@@ -1100,13 +1097,13 @@ git commit -m "docs(kpv): SKILL.md 增加第 5.5 步推导页与第 7 步校验�
 - [ ] **Step 2: 拷贝资产到输出目录**
 
 ```bash
-Copy-Item assets/interactive-components.js G:\Idea\MinerU-Skill\PGD_07b060\
-Copy-Item assets/mathjax/tex-svg.js G:\Idea\MinerU-Skill\PGD_07b060\mathjax\tex-svg.js
+Copy-Item assets/interactive-components.js <MinerU-Skill>\PGD_07b060\
+Copy-Item assets/mathjax/tex-svg.js <MinerU-Skill>\PGD_07b060\mathjax\tex-svg.js
 ```
 
 - [ ] **Step 3: 运行完整校验**
 
-Run: `python scripts/verify_outputs.py G:\Idea\MinerU-Skill\PGD_07b060\PGD.md G:\Idea\MinerU-Skill\PGD_07b060 --browser-check`
+Run: `python scripts/verify_outputs.py <MinerU-Skill>\PGD_07b060\PGD.md <MinerU-Skill>\PGD_07b060 --browser-check`
 Expected: `VERIFY PASSED ... browser-render`。
 
 - [ ] **Step 4: 修复循环直到全绿**

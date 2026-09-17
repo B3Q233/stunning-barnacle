@@ -21,11 +21,11 @@ PyYAML、matplotlib（仅出图）；不新增第三方依赖。
 
 - 注释中文；来源标注 `[paper]/[ai]/[unreported]/[官方代码]`；配置键四要素（为什么 /
   是什么 / 公式或出处 / 取值举例）。
-- 环境 `G:\Idea\.venv\Scripts\python.exe`；测试 stdlib unittest；**不新增第三方依赖**。
-- 测试命令（工作目录 `G:\Idea\TPA`）：主测试
-  `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_xxx -v`；pre 层测试
-  `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_xxx -v`。
-- 全量回归：`G:\Idea\.venv\Scripts\python.exe -m unittest discover -s tests -t . -v`
+- 环境 `<repo>\.venv\Scripts\python.exe`；测试 stdlib unittest；**不新增第三方依赖**。
+- 测试命令（工作目录 `TPA`）：主测试
+  `<repo>\.venv\Scripts\python.exe -m unittest tests.test_xxx -v`；pre 层测试
+  `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_xxx -v`。
+- 全量回归：`<repo>\.venv\Scripts\python.exe -m unittest discover -s tests -t . -v`
   （Task 0 记录基线，交付前必须全绿）。
 - 提交规范：Conventional Commits `type(scope): 中文描述`；只用 `git add <明确路径>`，
   禁止 `git add -f` 与 `git add -A`。
@@ -101,8 +101,8 @@ TPA/pre/configs/default.yaml              deletion_seed / 预算双归一化 / �
 
 - [ ] **Step 1: 记录回归基线**（写入本次会话记录，后续每次提交前对比）
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest discover -s tests -t . -v`
-（工作目录 `G:\Idea\TPA`）
+Run: `<repo>\.venv\Scripts\python.exe -m unittest discover -s tests -t . -v`
+（工作目录 `TPA`）
 Expected: 全部通过（上一轮基线 268 通过；若已有历史失败项，先逐条记录，避免与本次引入的
 失败混淆）
 
@@ -161,7 +161,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 3: 运行确认失败**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_protocol -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_protocol -v`
 Expected: FAIL（`ModuleNotFoundError: No module named 'pre.protocol'`）
 
 - [ ] **Step 4: 实现 `TPA/pre/protocol.py`**
@@ -282,7 +282,7 @@ def manifest_fields(cfg: Dict[str, Any], *, dataset: str, victim_model: str,
 
 - [ ] **Step 5: 运行确认通过**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_protocol -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_protocol -v`
 Expected: PASS（4 个用例）
 
 - [ ] **Step 6: 写 runbook 骨架 `TPA/pre/docs/SERVER_RUNBOOK.md`**
@@ -442,7 +442,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: 运行确认失败**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_targets -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_targets -v`
 Expected: FAIL（`ImportError: cannot import name 'exposure_from_scores'`）
 
 - [ ] **Step 3: 重构 `exposure.py`** —— 把打分逻辑抽成纯函数，并补 `ndcg@k`
@@ -603,11 +603,11 @@ def verify_frozen_fingerprint(frozen: Dict[str, Any], meta_path: Path) -> Dict[s
 
 - [ ] **Step 6: 运行确认通过 + 生成三数据集冻结文件**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_targets -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_targets -v`
 Expected: PASS
 
-Run（每个数据集一次，工作目录 `G:\Idea\TPA`）：
-`G:\Idea\.venv\Scripts\python.exe pre/run.py --mode targets --tag targets-ml100k`
+Run（每个数据集一次，工作目录 `TPA`）：
+`<repo>\.venv\Scripts\python.exe pre/run.py --mode targets --tag targets-ml100k`
 并先在 `pre/configs/default.yaml` 里改 `dataset` 与 `pre.targets.min_interactions: 180`
 （或临时复制 `pre/configs/<dataset>.yaml`，见 Task 3 Step 6）。
 Expected: `TPA/pre/targets/{ml100k,gowalla,amazon-book}.json` 生成，ml100k 恰为 5 个物品、
@@ -678,7 +678,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: 运行确认失败**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_degrade_guards -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_degrade_guards -v`
 Expected: FAIL（`ImportError: cannot import name 'assert_unique_pairs'`）
 
 - [ ] **Step 3: 实现**
@@ -713,7 +713,7 @@ def assert_unique_pairs(pairs: Sequence[Tuple[int, int]], where: str) -> int:
 
 - [ ] **Step 4: 运行确认通过**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_degrade_guards pre.tests.test_pre_pipeline -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_degrade_guards pre.tests.test_pre_pipeline -v`
 Expected: PASS（含既有 17 个 pre 用例）
 
 - [ ] **Step 5: 提交**
@@ -780,19 +780,19 @@ from pre.runners.common import (attack_dir, cond_dir, degraded_data_dir,  # noqa
 
 class TestPathRules(unittest.TestCase):
     def test_new_layout_paths(self):
-        exp = Path("X:/exp")
+        exp = Path("outputs/exp")
         self.assertEqual(original_dir(exp, "lightgcn", 42).as_posix(),
-                         "X:/exp/raw/original/lightgcn/seed_42/clean")
+                         "outputs/exp/raw/original/lightgcn/seed_42/clean")
         self.assertEqual(degraded_model_dir(exp, "lightgcn", 16, 0.5, 43).as_posix(),
-                         "X:/exp/raw/degraded/lightgcn/seed_43/item_00016/ratio_50")
+                         "outputs/exp/raw/degraded/lightgcn/seed_43/item_00016/ratio_50")
         self.assertEqual(attack_dir(exp, "lightgcn", 16, "uba", 0.5, 44).as_posix(),
-                         "X:/exp/raw/attacks/lightgcn/seed_44/item_00016/uba_ratio_50")
+                         "outputs/exp/raw/attacks/lightgcn/seed_44/item_00016/uba_ratio_50")
         self.assertEqual(degraded_data_dir(exp, "lightgcn", 16, 0.5).as_posix(),
-                         "X:/exp/raw/degraded/lightgcn/item_00016/ratio_50")
+                         "outputs/exp/raw/degraded/lightgcn/item_00016/ratio_50")
 
     def test_cond_dir_omits_empty_segments(self):
-        p = cond_dir(Path("X:/exp"), "original", model_name="mf", seed=42, label="clean")
-        self.assertEqual(p.as_posix(), "X:/exp/raw/original/mf/seed_42/clean")
+        p = cond_dir(Path("outputs/exp"), "original", model_name="mf", seed=42, label="clean")
+        self.assertEqual(p.as_posix(), "outputs/exp/raw/original/mf/seed_42/clean")
         self.assertNotIn("item_", p.as_posix())
         self.assertNotIn("None", p.as_posix())
 
@@ -813,7 +813,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: 运行确认失败**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_paths -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_paths -v`
 Expected: FAIL（`ImportError: cannot import name 'attack_dir'`）
 
 - [ ] **Step 3: 在 `common.py` 实现路径助手与 seed 读取**
@@ -1001,7 +1001,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 5: 运行确认失败 → 实现 → 通过**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_paths pre.tests.test_pre_seeds -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_paths pre.tests.test_pre_seeds -v`
 Expected（实现前）: FAIL；实现后: PASS
 
 实现要点（改动清单）：
@@ -1023,8 +1023,8 @@ Expected（实现前）: FAIL；实现后: PASS
 
 - [ ] **Step 6: 端到端验证（ml100k，1 物品 1 比例 2 seed）**
 
-Run（工作目录 `G:\Idea\TPA`）：
-`G:\Idea\.venv\Scripts\python.exe pre/run.py --mode all --tag seed-check --models lightgcn --ratios 0.5 --attacks random --limit-items 1 --epochs 2 --seeds 42,43`
+Run（工作目录 `TPA`）：
+`<repo>\.venv\Scripts\python.exe pre/run.py --mode all --tag seed-check --models lightgcn --ratios 0.5 --attacks random --limit-items 1 --epochs 2 --seeds 42,43`
 Expected: `raw/original/lightgcn/seed_42/clean/` 与 `seed_43` 各一份；
 `raw/degraded/lightgcn/item_XXXXX/ratio_50/train_data/meta.pkl` 只有一份；
 两份模型权重 sha256 不同。
@@ -1125,7 +1125,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: 运行确认失败**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_uba_effect_cache -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_uba_effect_cache -v`
 Expected: FAIL（`ImportError: cannot import name 'meta_fingerprint'`）
 
 - [ ] **Step 3: 实现（`uplift.py`）**
@@ -1219,11 +1219,11 @@ def meta_fingerprint(meta: Dict[str, Any]) -> str:
 
 - [ ] **Step 5: 运行确认通过 + 真实数据验证**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_uba_effect_cache tests.test_uba_generate tests.test_uba_uplift -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_uba_effect_cache tests.test_uba_generate tests.test_uba_uplift -v`
 Expected: PASS
 
 Run（ml100k，5 目标 × 3 比例；**先备份旧缓存**）：
-`G:\Idea\.venv\Scripts\python.exe pre/run.py --mode attack --tag uba-cache-check --models lightgcn --attacks uba --ratios 0.1,0.5,0.9`
+`<repo>\.venv\Scripts\python.exe pre/run.py --mode attack --tag uba-cache-check --models lightgcn --attacks uba --ratios 0.1,0.5,0.9`
 Expected: 同一物品在不同比例下 `estimated_value` **不再相同**；`attacks/uba/data/estimate/ml100k/lightgcn/`
 下出现带指纹的新缓存文件；`target_users` 与本次请求逐元素一致（一致率 100%）。
 
@@ -1308,7 +1308,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: 运行确认失败**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_align_exclude -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_align_exclude -v`
 Expected: FAIL（`TypeError: procrustes() got an unexpected keyword argument 'exclude'`）
 
 - [ ] **Step 3: 实现**
@@ -1346,7 +1346,7 @@ def procrustes(ref: torch.Tensor, cond: torch.Tensor, mask: torch.Tensor,
 
 - [ ] **Step 4: 运行确认通过 + 全量 pre 测试**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_align_exclude pre.tests.test_pre_pipeline -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_align_exclude pre.tests.test_pre_pipeline -v`
 Expected: PASS
 
 - [ ] **Step 5: 提交**
@@ -1457,7 +1457,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: 运行确认失败**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_coverage -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_coverage -v`
 Expected: FAIL（`KeyError: 'coverage_ratio'` / coverage.json 不存在）
 
 - [ ] **Step 3: 实现状态机与覆盖率**（加在 `aggregate.py`）
@@ -1579,7 +1579,7 @@ def write_coverage(exp_dir: Path, states: List[Dict[str, Any]]) -> Dict[str, Any
 - [ ] **Step 4: 运行确认通过**
 - [ ] **Step 5: 提交**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_coverage -v` → PASS
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_coverage -v` → PASS
 
 ```bash
 git add TPA/pre/analysis/aggregate.py TPA/pre/run.py TPA/pre/tests/test_pre_coverage.py
@@ -1712,7 +1712,7 @@ def norm_recovery_legacy(z0, z_deg, z_att) -> float:
 - [ ] **Step 4: 运行确认通过**
 - [ ] **Step 5: 提交**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_decomposition -v` → PASS
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_decomposition -v` → PASS
 
 ```bash
 git add TPA/pre/analysis/decomposition.py TPA/pre/tests/test_pre_decomposition.py
@@ -1764,7 +1764,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: 运行确认失败**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_align_doc -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_align_doc -v`
 Expected: FAIL（当前 docstring 含 "0.956"）
 
 - [ ] **Step 3: 改写 docstring**（替换"为什么必须映射（问题定义）"整段）
@@ -1789,7 +1789,7 @@ Expected: FAIL（当前 docstring 含 "0.956"）
 - [ ] **Step 4: 运行确认通过**
 - [ ] **Step 5: 提交**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_align_doc -v` → PASS
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_align_doc -v` → PASS
 
 ```bash
 git add TPA/pre/analysis/align.py TPA/pre/configs/default.yaml TPA/pre/tests/test_pre_align_doc.py
@@ -1908,7 +1908,7 @@ def degraded_data_dir(exp_dir: Path, item_id: int, ratio: float) -> Path:
 
 - [ ] **Step 4: 运行确认通过 + 提交**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_shared_degrade pre.tests.test_pre_pipeline -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_shared_degrade pre.tests.test_pre_pipeline -v`
 Expected: PASS
 
 ```bash
@@ -1955,11 +1955,11 @@ class TestTpaRedirect(unittest.TestCase):
         self.assertIsNone(sig.parameters["raw_meta"].default)
 
     def test_pre_stage_kwargs_passes_degraded_meta_for_tpa(self):
-        kw = pre_stage_kwargs(ATTACK_SPECS["tpa"], Path("X:/deg/item_1/ratio_50"))
-        self.assertEqual(kw, {"raw_meta": Path("X:/deg/item_1/ratio_50")})
+        kw = pre_stage_kwargs(ATTACK_SPECS["tpa"], Path("outputs/deg/item_1/ratio_50"))
+        self.assertEqual(kw, {"raw_meta": Path("outputs/deg/item_1/ratio_50")})
 
     def test_pre_stage_kwargs_empty_for_attacks_without_pre_stage(self):
-        self.assertEqual(pre_stage_kwargs(ATTACK_SPECS["random"], Path("X:/d")), {})
+        self.assertEqual(pre_stage_kwargs(ATTACK_SPECS["random"], Path("outputs/d")), {})
 
 
 if __name__ == "__main__":
@@ -2008,10 +2008,10 @@ def pre_stage_kwargs(spec: Dict[str, str], degraded_meta: Path) -> Dict[str, Any
 - [ ] **Step 4: 运行确认通过 + TPA 闭环冒烟**
 - [ ] **Step 5: 提交**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_tpa_redirect -v` → PASS
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_tpa_redirect -v` → PASS
 
 Run（ml100k，1 物品 1 比例）：
-`G:\Idea\.venv\Scripts\python.exe pre/run.py --mode attack --tag tpa-smoke --models lightgcn --attacks tpa --ratios 0.5 --limit-items 1 --epochs 2`
+`<repo>\.venv\Scripts\python.exe pre/run.py --mode attack --tag tpa-smoke --models lightgcn --attacks tpa --ratios 0.5 --limit-items 1 --epochs 2`
 Expected: TPA 在 pre 里跑通一次闭环；`attack.json` 的 `degraded_meta` 与 path 阶段读到的
 meta 指纹一致（比对 `item_*/ratio_50/train_data/meta.pkl` 的 sha256）。
 
@@ -2048,7 +2048,7 @@ git commit -m "fix(attacks): TPA path_builder 支持 raw_meta 重定向，两阶
 
 - [ ] **Step 2: 运行确认失败**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_registry -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_batch_registry -v`
 Expected: FAIL（`AssertionError: 'advinject' not found`）
 
 - [ ] **Step 3: 实现**
@@ -2075,7 +2075,7 @@ def _register_builtin() -> None:
 - [ ] **Step 4: 运行确认通过 + 契约自查**
 - [ ] **Step 5: 提交**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_batch_registry tests.test_advinject_contract -v` → PASS
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_batch_registry tests.test_advinject_contract -v` → PASS
 
 按 AGENTS §6.5 四项自查逐条核对（config 可展开 / 三个 main 可调用 / generate 产物路径可归位 /
 fit 指标可被 aggregate 解析），把结论写进 `attacks/advinject/docs/DESIGN.md` 的"批量接入"小节。
@@ -2171,7 +2171,7 @@ if __name__ == "__main__":
 - [ ] **Step 4: 运行确认通过**
 - [ ] **Step 5: 提交**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_uba_estimate_guard tests.test_uba_generate -v` → PASS
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_uba_estimate_guard tests.test_uba_generate -v` → PASS
 
 ```bash
 git add TPA/attacks/uba/estimate.py TPA/attacks/uba/run.py TPA/tests/test_uba_estimate_guard.py
@@ -2288,7 +2288,7 @@ def write_manifest(cfg: Dict[str, Any], tag: str, exp_dir: Path,
 - [ ] **Step 4: 运行确认通过**
 - [ ] **Step 5: 提交**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_manifest -v` → PASS
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_manifest -v` → PASS
 
 ```bash
 git add TPA/pre/runners/common.py TPA/pre/run.py TPA/pre/tests/test_pre_manifest.py
@@ -2395,7 +2395,7 @@ def rr_pc(e_deg: float, e_att: float) -> float:
 - [ ] **Step 4: 运行确认通过**
 - [ ] **Step 5: 提交**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_metrics -v` → PASS
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_metrics -v` → PASS
 
 ```bash
 git add TPA/pre/analysis/metrics.py TPA/pre/tests/test_pre_metrics.py
@@ -2557,7 +2557,7 @@ def placebo_frame_check(d_ctrl_median: float, d_deg: float,
 - [ ] **Step 4: 运行确认通过**
 - [ ] **Step 5: 提交**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_placebo -v` → PASS
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_placebo -v` → PASS
 
 ```bash
 git add TPA/pre/analysis/placebo.py TPA/pre/tests/test_pre_placebo.py
@@ -2717,7 +2717,7 @@ def cos_force_audience(F: torch.Tensor, U: torch.Tensor,
 - [ ] **Step 4: 运行确认通过**
 - [ ] **Step 5: 提交**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_force -v` → PASS
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_force -v` → PASS
 
 ```bash
 git add TPA/pre/analysis/concentration.py TPA/pre/analysis/audience.py TPA/pre/tests/test_pre_force.py
@@ -2809,7 +2809,7 @@ def target_exposure(model: Any, meta: Dict[str, Any], item_id: int,
 - [ ] **Step 4: 运行确认通过**
 - [ ] **Step 5: 提交**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_target_exposure -v` → PASS
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_target_exposure -v` → PASS
 
 ```bash
 git add TPA/pre/analysis/exposure.py TPA/pre/tests/test_pre_target_exposure.py
@@ -2988,7 +2988,7 @@ tables/aggregate.csv              不带 item 的两级聚合（论文表用）
 - [ ] **Step 4: 运行确认通过**
 - [ ] **Step 5: 提交**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_aggregate -v` → PASS
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_aggregate -v` → PASS
 
 ```bash
 git add TPA/pre/analysis/aggregate.py TPA/pre/runners/common.py TPA/pre/tests/test_pre_aggregate.py
@@ -3103,7 +3103,7 @@ def plot_absolute_deviation(rows, out_dir, *, x="ratio", hue="attack"):
 - [ ] **Step 4: 运行确认通过**
 - [ ] **Step 5: 提交**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_schema pre.tests.test_pre_plots -v` → PASS
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_schema pre.tests.test_pre_plots -v` → PASS
 
 ```bash
 git add TPA/pre/analysis/schema.py TPA/pre/analysis/plots.py TPA/pre/tests/test_pre_schema.py TPA/pre/tests/test_pre_plots.py
@@ -3232,8 +3232,8 @@ if __name__ == "__main__":
   `preflight.json` 并打印表格；`run.py --mode doctor` 调用它，**任一 fail 时退出码非 0**。
 - [ ] **Step 4: 运行确认通过 + 真实 preflight**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_preflight -v` → PASS
-Run: `G:\Idea\.venv\Scripts\python.exe pre/run.py --mode doctor` →
+Run: `<repo>\.venv\Scripts\python.exe -m unittest pre.tests.test_pre_preflight -v` → PASS
+Run: `<repo>\.venv\Scripts\python.exe pre/run.py --mode doctor` →
 Expected: 打印各项状态并写 `TPA/pre/preflight.json`；三数据集目标集齐全时全绿
 
 - [ ] **Step 5: 提交**
@@ -3373,8 +3373,8 @@ git commit -m "docs(pre): 完稿服务器运行手册（preflight/GPU/续跑/Gat
 
 - [ ] **Step 1: 跑本地快速矩阵**（ml100k，1 item × 3 ratio × 5 arms × 2 seed）
 
-Run（工作目录 `G:\Idea\TPA`）：
-`G:\Idea\.venv\Scripts\python.exe pre/run.py --mode all --tag gate0a --models lightgcn --ratios 0.1,0.5,0.9 --attacks random,bandwagon,pgd,uba --limit-items 1 --seeds 42,43`
+Run（工作目录 `TPA`）：
+`<repo>\.venv\Scripts\python.exe pre/run.py --mode all --tag gate0a --models lightgcn --ratios 0.1,0.5,0.9 --attacks random,bandwagon,pgd,uba --limit-items 1 --seeds 42,43`
 Expected: 30 个条件全部产出；`coverage.json` 全 resolved；预计约 1 小时（3050）
 
 - [ ] **Step 2: L1–L3 验收**（spec §4.6）
@@ -3404,7 +3404,7 @@ git commit -m "docs(pre): 记录 Gate 0a 本地快速验收结果"
 
 - [ ] **Step 1: 跑本地全量主轴**（ml100k，5 × 6 × 5 × 3）
 
-Run: `G:\Idea\.venv\Scripts\python.exe pre/run.py --mode all --tag gate0b --models lightgcn --attacks random,bandwagon,pgd,uba --seeds 42,43,44`
+Run: `<repo>\.venv\Scripts\python.exe pre/run.py --mode all --tag gate0b --models lightgcn --attacks random,bandwagon,pgd,uba --seeds 42,43,44`
 Expected: 450 个条件；coverage 100%；本地约 16 小时（可分批 `--item-ids` 推进）
 
 - [ ] **Step 2: 验收**：L1–L3 + coverage 100% + `invalid_numeric = 0`。
@@ -3580,9 +3580,9 @@ git commit -m "feat(attacks): Batch B 三个近年攻击移植与独立矩阵"
 
 ## Task 33: 交付前全量回归
 
-- [ ] `G:\Idea\.venv\Scripts\python.exe -m unittest discover -s tests -t . -v`（工作目录
-  `G:\Idea\TPA`）全绿，与 Task 0 基线对比
-- [ ] `G:\Idea\.venv\Scripts\python.exe -m unittest discover -s pre/tests -t . -v` 全绿
+- [ ] `<repo>\.venv\Scripts\python.exe -m unittest discover -s tests -t . -v`（工作目录
+  `TPA`）全绿，与 Task 0 基线对比
+- [ ] `<repo>\.venv\Scripts\python.exe -m unittest discover -s pre/tests -t . -v` 全绿
 - [ ] `git status` / `git diff --stat` 自查：只提交与任务相关文件；`outputs/` 只含白名单资产
 - [ ] 文档同步：`pre/README.md`、`pre/docs/EXTENDING.md`、`SERVER_RUNBOOK.md`、
   `ANALYSIS_PROTOCOL.md` 与实现一致

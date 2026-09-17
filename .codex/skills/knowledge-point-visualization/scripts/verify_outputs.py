@@ -22,6 +22,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -55,13 +56,35 @@ WHY_BY_SOURCE = {
     "result": ["说明", "由哪些公式"],
 }
 
+def _program_files_candidates() -> list:
+    """从 %ProgramFiles% 系列环境变量推导浏览器路径（禁止硬编码盘符）。
+
+    为什么这样做：写入仓库的绝对路径不可迁移（换机/换盘符即失效，且泄露本机目录），
+    见 AGENTS.md「路径与可迁移性」。环境变量在所有 Windows 安装上都存在。
+    """
+    out: list = []
+    for var in ("ProgramFiles(x86)", "ProgramFiles", "ProgramW6432"):
+        base = os.environ.get(var)
+        if not base:
+            continue
+        out += [
+            os.path.join(base, "Microsoft", "Edge", "Application", "msedge.exe"),
+            os.path.join(base, "Google", "Chrome", "Application", "chrome.exe"),
+        ]
+    return out
+
+
+def _which_candidates() -> list:
+    """PATH 中可用的浏览器可执行文件（POSIX/Windows 通用，无需写死系统目录）。"""
+    names = ("google-chrome", "chromium", "msedge", "chrome")
+    return [p for p in (shutil.which(n) for n in names) if p]
+
+
+# 探测顺序：显式环境变量 → 程序安装根环境变量 → PATH（保持原有回退语义）
 DEFAULT_BROWSERS = [
     os.environ.get("KPV_BROWSER", ""),
-    r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-    r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
-    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-    "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/msedge",
+    *_program_files_candidates(),
+    *_which_candidates(),
 ]
 
 

@@ -26,18 +26,18 @@ attacks/batch/
 ## 3. 运行方式
 
 ```powershell
-cd G:\Idea\TPA
+cd TPA
 
 # 一键全流程（classify 一次 → 生成原子配置 → 逐个训练 → 整合）
-G:\Idea\.venv\Scripts\python.exe attacks/batch/run.py --mode all
+<repo>\.venv\Scripts\python.exe attacks/batch/run.py --mode all
 
 # 只生成配置（不训练）
-G:\Idea\.venv\Scripts\python.exe attacks/batch/run.py --mode generate --dry-run
+<repo>\.venv\Scripts\python.exe attacks/batch/run.py --mode generate --dry-run
 
 # 分步：先 generate，再 run，最后 aggregate
-G:\Idea\.venv\Scripts\python.exe attacks/batch/run.py --mode generate
-G:\Idea\.venv\Scripts\python.exe attacks/batch/run.py --mode run
-G:\Idea\.venv\Scripts\python.exe attacks/batch/run.py --mode aggregate
+<repo>\.venv\Scripts\python.exe attacks/batch/run.py --mode generate
+<repo>\.venv\Scripts\python.exe attacks/batch/run.py --mode run
+<repo>\.venv\Scripts\python.exe attacks/batch/run.py --mode aggregate
 ```
 
 可选参数：

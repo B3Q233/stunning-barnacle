@@ -1,6 +1,6 @@
 # 项目默认规范（AGENTS.md）
 
-本文件是 G:\Idea 仓库的默认规范，所有 agent 与协作者开工前必读。
+本文件是 <repo> 仓库的默认规范，所有 agent 与协作者开工前必读。
 仓库文档与提交信息默认使用中文，默认读取时采用UTF-8编码进行读取。
 
 ## 1. 项目概述
@@ -25,7 +25,7 @@ evaluation / tests）；论文资料见 `papers/`；流程文档见
 
 ## 3. 代码与工程规范（必须）
 
-- 环境：使用仓库根 `.venv`（`G:\Idea\.venv\Scripts\python.exe`）；依赖锁定
+- 环境：使用仓库根 `.venv`（`<repo>\.venv\Scripts\python.exe`）；依赖锁定
   在 `requirements.txt`（Python 3.12 + PyTorch 2.5；测试不新增第三方依赖）。
 - 目录：`TPA/{attacks, models, training, evaluation, tests}`。每个攻击/模型
   目录配齐 `config.yaml`（唯一配置入口）、`registry.py`、
@@ -52,7 +52,7 @@ evaluation / tests）；论文资料见 `papers/`；流程文档见
   `evaluation.metrics` 启用后自动同步；history.json 统一为
   `{history: [...], best: {...}}`。新复现模型/攻击必须遵守。
 - 测试：stdlib unittest，测试文件放 `TPA/tests/test_*.py`；运行命令
-  `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_* -v`；改动必须
+  `<repo>\.venv\Scripts\python.exe -m unittest tests.test_* -v`；改动必须
   运行相关测试，交付前全量回归通过。
 - 只改与任务相关的文件，保留他人的改动。
 
@@ -63,8 +63,8 @@ evaluation / tests）；论文资料见 `papers/`；流程文档见
   保证克隆后可复现；新增/更新数据集时同步提交。
 - 以下内容一律不入库（.gitignore 已定义，禁止 `git add -f` 绕过）：
   `attacks/*/data/`（poisoned / rec_freq 等实验产物）、`outputs/`、`checkpoints/`、
-  `*.pt / *.pth / *.png / *.log`、`.venv/`、`tmp/`、`papers/`、`MinerU-Skill/`、
-  `.claude/`、`.codex/`。
+`*.pt / *.pth / *.png / *.log`、`.venv/`、`tmp/`、`papers/`、`MinerU-Skill/`、
+`.claude/`、`.codex/`（`.codex/skills/**` 为技能白名单，按 `.gitignore` 保持入库）。
 - 中间过程文件放 `tmp/` 或 `.superpowers/sdd/` 会话目录，不入库。
 
 ## 5. Git 与提交规范（必须）
@@ -209,3 +209,28 @@ evaluation / tests）；论文资料见 `papers/`；流程文档见
 - [TPA 目录](TPA/)
 - [specs](docs/superpowers/specs/) / [plans](docs/superpowers/plans/)
 - 各模块用法：`TPA/attacks/*/docs/USAGE.md`、`TPA/models/*/docs/USAGE.md`
+
+## 9. 路径与可迁移性（必须，2026-09-17 新增）
+
+- 入库文件（代码 / 注释 / 配置 / 文档 / spec / plan / USAGE / DESIGN / 测试 / 技能）
+  **禁止出现绝对路径**：Windows 盘符路径（盘符 + 冒号 + 分隔符，含反斜杠、正斜杠、
+  大小写、双反斜杠转义）、UNC 路径、POSIX 绝对路径（`/home`、`/Users`、`/root`、
+  `/mnt`、`/usr`），以及任何本机程序安装目录或用户名目录。
+  唯一例外：脚本 shebang 行（`#!` 开头）里的解释器路径——它依赖 PATH 解析，属可移植写法。
+- **禁止引用仓库根之外的本地文件**。入库文件只允许两类写法：
+  ① **仓库内相对路径**（相对仓库根），如 `TPA/models/lightgcn/config.yaml`；
+  ② **占位符或环境变量**：`<repo>`（仓库根）、`<papers>`、`<MinerU-Skill>`、
+  `%TEMP%`、`%ProgramFiles%`、`$TPA_DATA_ROOT` 等。
+- 未入库资产（`.gitignore` 中的 `papers/`、`MinerU-Skill/`、`.claude/`）一律写占位符，
+  不得写成真实绝对路径。
+- 命令示例：`python -m unittest ...`，或 `<repo>\.venv\Scripts\python.exe -m unittest ...`
+  （POSIX：`<repo>/.venv/bin/python`）；工作目录标注与命令必须自洽。
+  训练/攻击/技能脚本同理，仓库内文件一律写相对仓库根的路径。
+- 代码禁止硬编码盘符或用户目录：一律用 `Path(__file__)` / `PROJECT_ROOT` 推导；
+  程序安装路径走 `%ProgramFiles%` 拼接或 `shutil.which`；数据/权重/输出路径走配置 + 相对根解析。
+- 注释里的位置标记（原先的本机仓库根字样）改为"仓库 TPA 根"这类无绝对路径的表述；
+  日志与报错信息同样不得拼接本机绝对路径。
+- 强制校验：`TPA/tests/test_no_absolute_paths.py` 扫描全部 git 跟踪文本文件，命中即失败；
+  允许清单必须逐条写明原因，且必须保留"运行时拼接样例"的反向用例保证检测器可证伪。
+- 提交前自查（任一非空即需修复）：
+  `git grep -n -E "(^|[^A-Za-z0-9])[A-Za-z]:[\\/]" -- . ":(exclude)*.js" ":(exclude)*.pdf"`

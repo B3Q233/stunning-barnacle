@@ -12,7 +12,7 @@ mineru-document-extractor 技能的默认输出规则是
 `~/MinerU-Skill/<name>_<hash>/`（hash = 源路径 MD5 前 6 位），与仓库既有的
 论文存放约定不一致：
 
-- `paper-pipeline` 技能固定输出到 `g:/Idea/papers/{paper_name}/`，md 与
+- `paper-pipeline` 技能固定输出到 `<papers>/{paper_name}/`，md 与
   原始 PDF 同目录；
 - `papers/indirect_ad/` 已经是"文件夹 = 论文名，内含 md + pdf"的结构；
 - 而 `papers/PGD.pdf` 与 `MinerU-Skill/PGD_07b060/PGD.md` 是散落的例外。
@@ -26,8 +26,8 @@ mineru-document-extractor 技能的默认输出规则是
 
 修改以下文件的 Agent rules 中默认输出目录一条：
 
-- `G:\Idea\.codex\skills\mineru-document-extractor\SKILL.md`
-- `G:\Idea\.claude\skills\mineru-document-extractor-0.1.29\SKILL.md`
+- `.codex\skills\mineru-document-extractor\SKILL.md`
+- `.claude\skills\mineru-document-extractor-0.1.29\SKILL.md`
 
 旧规则：
 
@@ -38,7 +38,7 @@ mineru-document-extractor 技能的默认输出规则是
 新规则：
 
 > When user does NOT specify `-o`, default to the project `papers/` directory
-> (e.g. `g:/Idea/papers/`): create a folder named after the source file
+> (e.g. `<papers>/`): create a folder named after the source file
 > (without extension), and save the extracted Markdown together with the
 > original source file (e.g. the PDF) in that folder — matching the
 > paper-pipeline `{paper_name}/` convention. Run
@@ -46,9 +46,9 @@ mineru-document-extractor 技能的默认输出规则是
 
 ### 2.2 当前 PGD 产物归位（移动，非复制）
 
-- 新建 `g:/Idea/papers/PGD/`
-- `g:/Idea/papers/PGD.pdf` → `g:/Idea/papers/PGD/PGD.pdf`
-- `g:/Idea/MinerU-Skill/PGD_07b060/PGD.md` → `g:/Idea/papers/PGD/PGD.md`
+- 新建 `<papers>/PGD/`
+- `<papers>/PGD.pdf` → `<papers>/PGD/PGD.pdf`
+- `<MinerU-Skill>/PGD_07b060/PGD.md` → `<papers>/PGD/PGD.md`
 - 旧 `MinerU-Skill/PGD_07b060/` 目录保留其余 KPV 测试文件
   （html/json/mathjax），不删除。
 
@@ -60,7 +60,7 @@ mineru-document-extractor 技能的默认输出规则是
 
 - 两处技能副本的默认输出规则均指向 `papers/<name>/`，且说明 md 与原文件
   同目录。
-- `g:/Idea/papers/PGD/` 下存在 `PGD.md` 与 `PGD.pdf`。
+- `<papers>/PGD/` 下存在 `PGD.md` 与 `PGD.pdf`。
 - 旧目录 `MinerU-Skill/PGD_07b060/` 除 PGD.md 外其余文件未受影响。
 - 未改动任何历史文档与代码。
 

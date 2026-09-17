@@ -15,7 +15,7 @@
 
 - 注释中文，来源标注沿用 `[paper] / [ai] / [unreported] / [官方代码]`；配置每个键都要写"为什么/是什么/公式或出处/取值举例"。
 - 只用仓库既有 canonical 键 + 新增 `attack.uba.*`；新增键必须同步写入 `TPA/docs/config-template.unified.yaml`，否则 `test_config_canonical.py` 失败。
-- 运行命令统一：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_xxx -v`（工作目录 `G:\Idea\TPA`）。
+- 运行命令统一：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_xxx -v`（工作目录 `TPA`）。
 - 实验隔离：数据 `attacks/uba/data/poisoned/{dataset}/{model}/{tag}/`，输出 `attacks/uba/outputs/{dataset}/{model}/{tag}/`，均写 config.yaml 快照；data 阶段写 `latest.json`。
 - 不改 `models/*` 代码；模型选择一律经 `models/registry.py`。
 - 不新增第三方依赖（`requirements.txt` 已有 torch/numpy/scipy/yaml）。
@@ -27,8 +27,8 @@
 **Files:** 无（只读验证）
 
 - [ ] 确认 `.venv`、ml100k 预处理产物与干净 checkpoint 存在：
-      `G:\Idea\.venv\Scripts\python.exe -c "import torch;print(torch.cuda.is_available())"`
-- [ ] 记录回归基线：`G:\Idea\.venv\Scripts\python.exe -m unittest discover -s tests -t . -v`（记录通过数量）
+      `<repo>\.venv\Scripts\python.exe -c "import torch;print(torch.cuda.is_available())"`
+- [ ] 记录回归基线：`<repo>\.venv\Scripts\python.exe -m unittest discover -s tests -t . -v`（记录通过数量）
 - [ ] 允许失败（已有历史失败项要先记录，避免与本次引入的失败混淆）
 
 ## Task 1: uplift.py 纯算法层（DP + 三跳路径 + 目标用户选择 + 分配策略）

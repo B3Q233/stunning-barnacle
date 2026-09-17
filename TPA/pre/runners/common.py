@@ -35,8 +35,8 @@ from typing import Any, Dict, List, Sequence, Tuple
 import numpy as np
 import torch
 
-TPA_ROOT = Path(__file__).resolve().parents[2]        # G:\Idea\TPA
-REPO_ROOT = TPA_ROOT.parent                           # G:\Idea
+TPA_ROOT = Path(__file__).resolve().parents[2]        # TPA
+REPO_ROOT = TPA_ROOT.parent                           # <repo>
 if str(TPA_ROOT) not in sys.path:
     sys.path.insert(0, str(TPA_ROOT))
 

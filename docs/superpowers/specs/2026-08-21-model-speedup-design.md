@@ -77,6 +77,6 @@
 
 ## 6. 验收标准
 
-- 全量回归：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_* -v` 全部通过。
+- 全量回归：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_* -v` 全部通过。
 - 基准复测：gowalla 单 epoch 训练耗时从 ~10.9 分钟降到 ~2 分钟量级；评估单次从 ~11.4 s 降到 ~2 s 量级。
 - 逐位一致性单测通过（见第 4 节）。

@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- 使用仓库根 `.venv`：`G:\Idea\.venv\Scripts\python.exe`。
+- 使用仓库根 `.venv`：`<repo>\.venv\Scripts\python.exe`。
 - 只修改 AdvInject 相关代码、注册表、测试和同步文档。
 - 所有攻击产物写入 `TPA/attacks/advinject/data/` 或 `outputs/`，不入库。
 - 通过 `TPA/models/registry.py` 解析 victim/surrogate model，不重复实现 victim model。

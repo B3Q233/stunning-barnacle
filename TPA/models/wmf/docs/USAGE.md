@@ -29,7 +29,7 @@ models/wmf/
 使用仓库根虚拟环境（已含 numpy / scipy / torch / pandas / matplotlib / pyyaml）：
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe -m pip install -r G:\Idea\requirements.txt
+<repo>\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
 ## 3. 数据集准备
@@ -44,7 +44,7 @@ train.txt + test.txt），无需下载。若换数据集：把新数据放入
 ## 4. 复现完整流程
 
 ```powershell
-cd G:\Idea\TPA
+cd TPA
 
 # ① 数据处理（生成 models/wmf/data/processed/ml100k/meta.pkl）
 ..\.venv\Scripts\python.exe models\wmf\scripts\preprocess.py --dataset ml100k

@@ -2,7 +2,7 @@
 
 - 日期：2026-08-08
 - 状态：已批准（brainstorming 完成，等待用户审阅本 spec）
-- 涉及技能：`G:\Idea\.codex\skills\knowledge-point-visualization`
+- 涉及技能：`.codex\skills\knowledge-point-visualization`
 
 ## 1. 背景与问题
 
@@ -103,7 +103,7 @@
 
 ## 10. 测试验收
 
-用现有 `G:\Idea\MinerU-Skill\PGD_07b060\PGD.md` 作为验收样例：
+用现有 `<MinerU-Skill>\PGD_07b060\PGD.md` 作为验收样例：
 
 1. 完整跑一遍新流程，`verify_outputs.py --browser-check` 必须全绿；
 2. 无头 Edge 打开 `derivation.html`：断言 MathJax 真的排版出 SVG（不再是裸 LaTeX）、`__KPV_READY__` 标记为 true、所有 demo 初始化成功；

@@ -15,8 +15,8 @@ model_cls(config, num_users, num_items, edge_index=None)
 ## 运行
 
 ```powershell
-cd G:\Idea\TPA
-G:\Idea\.venv\Scripts\python.exe models/cml/main.py --config models/cml/config.yaml
+cd TPA
+<repo>\.venv\Scripts\python.exe models/cml/main.py --config models/cml/config.yaml
 ```
 
 默认数据来自 `models/wmf/data/processed/ml100k/meta.pkl`，产物写入 `models/cml/outputs/{dataset}/{run_tag}/`。

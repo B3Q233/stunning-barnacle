@@ -270,7 +270,7 @@ if __name__ == "__main__":
 - [ ] **Step 2: 运行测试确认失败**
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_attack_eval -v
+<repo>\.venv\Scripts\python.exe -m unittest tests.test_attack_eval -v
 ```
 
 Expected: FAIL / ModuleNotFoundError（`evaluation.attack_eval` 不存在）。
@@ -575,7 +575,7 @@ def save_report(report: Dict[str, Any], out_dir: Path, name: str = "attack",
 - [ ] **Step 4: 运行测试确认通过**
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_attack_eval -v
+<repo>\.venv\Scripts\python.exe -m unittest tests.test_attack_eval -v
 ```
 
 Expected: 全部 PASS。
@@ -602,8 +602,8 @@ docstring 分别替换为：`PGD 攻击效果评估`、`Bandwagon 攻击效果�
 - [ ] **Step 6: 语法检查 + 全量回归**
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe -m py_compile G:\Idea\TPA\evaluation\attack_eval.py G:\Idea\TPA\tests\test_attack_eval.py G:\Idea\TPA\attacks\tpa\evaluate.py G:\Idea\TPA\attacks\pgd\evaluate.py G:\Idea\TPA\attacks\bandwagon\evaluate.py G:\Idea\TPA\attacks\random\evaluate.py
-G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_training_metrics tests.test_modes tests.test_attack_eval -v
+<repo>\.venv\Scripts\python.exe -m py_compile TPA\evaluation\attack_eval.py TPA\tests\test_attack_eval.py TPA\attacks\tpa\evaluate.py TPA\attacks\pgd\evaluate.py TPA\attacks\bandwagon\evaluate.py TPA\attacks\random\evaluate.py
+<repo>\.venv\Scripts\python.exe -m unittest tests.test_training_metrics tests.test_modes tests.test_attack_eval -v
 ```
 
 Expected: 无语法错误；全部 PASS。
@@ -611,8 +611,8 @@ Expected: 无语法错误；全部 PASS。
 - [ ] **Step 7: Commit**
 
 ```bash
-git -C G:\Idea add TPA/evaluation/attack_eval.py TPA/tests/test_attack_eval.py TPA/attacks/tpa/evaluate.py TPA/attacks/pgd/evaluate.py TPA/attacks/bandwagon/evaluate.py TPA/attacks/random/evaluate.py
-git -C G:\Idea commit -m "feat(eval): 共享攻击评估层 attack_eval.py 与薄壳化 + 单测"
+git -C <repo> add TPA/evaluation/attack_eval.py TPA/tests/test_attack_eval.py TPA/attacks/tpa/evaluate.py TPA/attacks/pgd/evaluate.py TPA/attacks/bandwagon/evaluate.py TPA/attacks/random/evaluate.py
+git -C <repo> commit -m "feat(eval): 共享攻击评估层 attack_eval.py 与薄壳化 + 单测"
 ```
 
 ---
@@ -789,8 +789,8 @@ def train_poisoned_model(cfg: TrainingConfig, poisoned_meta: Dict[str, Any],
 - [ ] **Step 7: 语法检查 + 回归测试**
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe -m py_compile G:\Idea\TPA\attacks\tpa\fit.py G:\Idea\TPA\attacks\pgd\fit.py G:\Idea\TPA\attacks\bandwagon\fit.py G:\Idea\TPA\attacks\random\fit.py
-G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_training_metrics tests.test_modes tests.test_attack_eval -v
+<repo>\.venv\Scripts\python.exe -m py_compile TPA\attacks\tpa\fit.py TPA\attacks\pgd\fit.py TPA\attacks\bandwagon\fit.py TPA\attacks\random\fit.py
+<repo>\.venv\Scripts\python.exe -m unittest tests.test_training_metrics tests.test_modes tests.test_attack_eval -v
 ```
 
 Expected: 无语法错误；全部 PASS。
@@ -798,8 +798,8 @@ Expected: 无语法错误；全部 PASS。
 - [ ] **Step 8: Commit**
 
 ```bash
-git -C G:\Idea add TPA/attacks/tpa/fit.py TPA/attacks/tpa/config.yaml TPA/attacks/pgd/fit.py TPA/attacks/pgd/config.yaml TPA/attacks/bandwagon/fit.py TPA/attacks/bandwagon/config.yaml TPA/attacks/random/fit.py TPA/attacks/random/config.yaml
-git -C G:\Idea commit -m "feat(attacks): fit.py 接入目标物品选优（4 攻击 + config）"
+git -C <repo> add TPA/attacks/tpa/fit.py TPA/attacks/tpa/config.yaml TPA/attacks/pgd/fit.py TPA/attacks/pgd/config.yaml TPA/attacks/bandwagon/fit.py TPA/attacks/bandwagon/config.yaml TPA/attacks/random/fit.py TPA/attacks/random/config.yaml
+git -C <repo> commit -m "feat(attacks): fit.py 接入目标物品选优（4 攻击 + config）"
 ```
 
 ---
@@ -981,7 +981,7 @@ evaluation:
 - [ ] **Step 7: 语法检查**
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe -m py_compile G:\Idea\.codex\skills\paper-code-implementation\assets\attack-imp-direct-poison\evaluate.py G:\Idea\.codex\skills\paper-code-implementation\assets\attack-imp-direct-poison\fit.py
+<repo>\.venv\Scripts\python.exe -m py_compile .codex\skills\paper-code-implementation\assets\attack-imp-direct-poison\evaluate.py .codex\skills\paper-code-implementation\assets\attack-imp-direct-poison\fit.py
 ```
 
 Expected: 无语法错误。
@@ -989,8 +989,8 @@ Expected: 无语法错误。
 - [ ] **Step 8: Commit**
 
 ```bash
-git -C G:\Idea add -- .codex/skills/paper-code-implementation
-git -C G:\Idea commit -m "feat(skill): paper-code-implementation 模板同步目标物品选优"
+git -C <repo> add -- .codex/skills/paper-code-implementation
+git -C <repo> commit -m "feat(skill): paper-code-implementation 模板同步目标物品选优"
 ```
 
 ---
@@ -1036,10 +1036,10 @@ pgd / bandwagon / random 的 USAGE.md 结构相同，按同名标题定位插入
 1) 复制 tpa config 到临时文件：
 
 ```powershell
-Copy-Item -LiteralPath 'G:\Idea\TPA\attacks\tpa\config.yaml' -Destination 'G:\Idea\tmp\smoke_tpa_fit.yaml'
+Copy-Item -LiteralPath 'TPA\attacks\tpa\config.yaml' -Destination 'tmp\smoke_tpa_fit.yaml'
 ```
 
-2) 用 apply_patch 对 `G:\Idea\tmp\smoke_tpa_fit.yaml` 做三处修改：
+2) 用 apply_patch 对 `tmp\smoke_tpa_fit.yaml` 做三处修改：
 
 ```yaml
 run_tag: smoke-target-metrics
@@ -1059,15 +1059,15 @@ output:
 3) 生成中毒数据 + 训练（白盒模式，路径缓存已存在）：
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\tpa\run.py --config G:\Idea\tmp\smoke_tpa_fit.yaml --mode data
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\tpa\run.py --config G:\Idea\tmp\smoke_tpa_fit.yaml --mode model
+<repo>\.venv\Scripts\python.exe TPA\attacks\tpa\run.py --config tmp\smoke_tpa_fit.yaml --mode data
+<repo>\.venv\Scripts\python.exe TPA\attacks\tpa\run.py --config tmp\smoke_tpa_fit.yaml --mode model
 ```
 
 4) 验证产物：
 
 ```powershell
-Get-ChildItem 'G:\Idea\tmp\smoke-outputs\ml100k\lightgcn\smoke-target-metrics\checkpoints' | Select-Object Name
-Get-Content 'G:\Idea\tmp\smoke-outputs\ml100k\lightgcn\smoke-target-metrics\history.json' -Encoding UTF8 | Select-String 'target_ndcg@10|"targets"'
+Get-ChildItem 'tmp\smoke-outputs\ml100k\lightgcn\smoke-target-metrics\checkpoints' | Select-Object Name
+Get-Content 'tmp\smoke-outputs\ml100k\lightgcn\smoke-target-metrics\history.json' -Encoding UTF8 | Select-String 'target_ndcg@10|"targets"'
 ```
 
 Expected:
@@ -1079,7 +1079,7 @@ Expected:
 5) `--skip-train` 加载链验证：
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\tpa\fit.py --config G:\Idea\tmp\smoke_tpa_fit.yaml --skip-train
+<repo>\.venv\Scripts\python.exe TPA\attacks\tpa\fit.py --config tmp\smoke_tpa_fit.yaml --skip-train
 ```
 
 Expected: 日志显示
@@ -1088,10 +1088,10 @@ Expected: 日志显示
 6) 清理冒烟产物（先确认路径，再删除）：
 
 ```powershell
-Remove-Item -LiteralPath 'G:\Idea\tmp\smoke_tpa_fit.yaml' -Force
-Remove-Item -LiteralPath 'G:\Idea\tmp\smoke-outputs' -Recurse -Force
-Remove-Item -LiteralPath 'G:\Idea\TPA\attacks\tpa\data\poisoned\ml100k\lightgcn\smoke-target-metrics' -Recurse -Force
-Remove-Item -LiteralPath 'G:\Idea\TPA\attacks\tpa\data\poisoned\ml100k\lightgcn\latest.json' -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath 'tmp\smoke_tpa_fit.yaml' -Force
+Remove-Item -LiteralPath 'tmp\smoke-outputs' -Recurse -Force
+Remove-Item -LiteralPath 'TPA\attacks\tpa\data\poisoned\ml100k\lightgcn\smoke-target-metrics' -Recurse -Force
+Remove-Item -LiteralPath 'TPA\attacks\tpa\data\poisoned\ml100k\lightgcn\latest.json' -Force -ErrorAction SilentlyContinue
 ```
 
 （白盒 smoke 的 data 阶段会在 `poisoned/ml100k/lightgcn/` 写 `latest.json`
@@ -1100,8 +1100,8 @@ Remove-Item -LiteralPath 'G:\Idea\TPA\attacks\tpa\data\poisoned\ml100k\lightgcn\
 - [ ] **Step 4: 总体验收**
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe -m py_compile G:\Idea\TPA\attacks\tpa\fit.py G:\Idea\TPA\attacks\pgd\fit.py G:\Idea\TPA\attacks\bandwagon\fit.py G:\Idea\TPA\attacks\random\fit.py G:\Idea\TPA\evaluation\attack_eval.py
-G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_training_metrics tests.test_modes tests.test_attack_eval -v
+<repo>\.venv\Scripts\python.exe -m py_compile TPA\attacks\tpa\fit.py TPA\attacks\pgd\fit.py TPA\attacks\bandwagon\fit.py TPA\attacks\random\fit.py TPA\evaluation\attack_eval.py
+<repo>\.venv\Scripts\python.exe -m unittest tests.test_training_metrics tests.test_modes tests.test_attack_eval -v
 ```
 
 Expected: 无语法错误；全部 PASS。
@@ -1109,6 +1109,6 @@ Expected: 无语法错误；全部 PASS。
 - [ ] **Step 5: Commit**
 
 ```bash
-git -C G:\Idea add TPA/attacks/tpa/docs/USAGE.md TPA/attacks/tpa/docs/DESIGN.md TPA/attacks/pgd/docs/USAGE.md TPA/attacks/bandwagon/docs/USAGE.md TPA/attacks/random/docs/USAGE.md
-git -C G:\Idea commit -m "docs: 更新攻击 USAGE/DESIGN 说明"
+git -C <repo> add TPA/attacks/tpa/docs/USAGE.md TPA/attacks/tpa/docs/DESIGN.md TPA/attacks/pgd/docs/USAGE.md TPA/attacks/bandwagon/docs/USAGE.md TPA/attacks/random/docs/USAGE.md
+git -C <repo> commit -m "docs: 更新攻击 USAGE/DESIGN 说明"
 ```

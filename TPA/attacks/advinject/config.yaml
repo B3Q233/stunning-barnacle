@@ -10,7 +10,7 @@
 #   train_surrogate.py（functional_itemae / functional_wmf / mult_ce_loss）；
 #   论文与上游数值来源见 docs/DESIGN.md 与 IMPLEMENTATION_DOCS.md。
 # 使用举例：
-#   G:\Idea\.venv\Scripts\python.exe -m attacks.advinject.run --config attacks/advinject/config.yaml --mode data
+#   <repo>\.venv\Scripts\python.exe -m attacks.advinject.run --config attacks/advinject/config.yaml --mode data
 #   （classify / model / all 同理；run_tag 缺省自动按当前时间生成）
 dataset: ml100k
 mode: all

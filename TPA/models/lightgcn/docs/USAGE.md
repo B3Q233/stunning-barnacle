@@ -35,7 +35,7 @@ TPA/
 
 ## 2. 环境准备
 
-项目使用仓库根共享虚拟环境（如 Windows 下 `G:\Idea\.venv`，Linux 下 `.venv/bin/python`）。首次使用：
+项目使用仓库根共享虚拟环境（如 Windows 下 `<repo>\.venv`，Linux 下 `.venv/bin/python`）。首次使用：
 
 ```bash
 # 激活环境（Linux: source .venv/bin/activate）

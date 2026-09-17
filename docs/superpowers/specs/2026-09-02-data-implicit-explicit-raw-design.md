@@ -97,7 +97,7 @@ def raw_data_root(interaction: str) -> Path:
 
 - `TPA/tests/test_portable_paths.py`：`DEFAULT_RAW_DIR` 断言更新为新 implicit
   根；新增对 `raw_data_dir()` / `raw_data_root()` 的用例（含未知数据集报错）。
-- 全量回归命令：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_* -v`
+- 全量回归命令：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_* -v`
 
 ### 4.4 文档（仓库内）
 

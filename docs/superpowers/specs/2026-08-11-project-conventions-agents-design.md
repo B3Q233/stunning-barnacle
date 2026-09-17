@@ -2,12 +2,12 @@
 
 - 日期：2026-08-11
 - 状态：设计已确认，待实现
-- 范围：在仓库根目录 `G:\Idea` 新增 `AGENTS.md`
+- 范围：在仓库根目录 `<repo>` 新增 `AGENTS.md`
 - 流程技能：using-superpowers → brainstorming → writing-plans
 
 ## 1. 背景与目标
 
-`G:\Idea` 仓库目前没有一份统一的"项目默认规范"文件（不存在
+`<repo>` 仓库目前没有一份统一的"项目默认规范"文件（不存在
 AGENTS.md / CLAUDE.md / GEMINI.md，`README.md` 仅为占位）。agent 每次开工
 只能靠浏览代码和文档自行推断约定，容易产生不一致。
 
@@ -44,7 +44,7 @@ AGENTS.md / CLAUDE.md / GEMINI.md，`README.md` 仅为占位）。agent 每次�
 
 ### 3.3 代码与工程规范（必须）
 
-- 环境：仓库根 `.venv`（`G:\Idea\.venv\Scripts\python.exe`），依赖锁定在
+- 环境：仓库根 `.venv`（`<repo>\.venv\Scripts\python.exe`），依赖锁定在
   `requirements.txt`（Python 3.12 + PyTorch 2.5；测试不新增第三方依赖）。
 - 目录：`TPA/{attacks, models, training, evaluation, tests}`；每个攻击/模型
   目录配齐 `config.yaml`（唯一配置入口）、`registry.py`、
@@ -52,7 +52,7 @@ AGENTS.md / CLAUDE.md / GEMINI.md，`README.md` 仅为占位）。agent 每次�
 - 实验隔离：run_tag 机制，数据与输出按 `{dataset}/{model}/{tag}/` 分层，
   随实验保存 config.yaml 快照。
 - 测试：stdlib unittest；运行命令
-  `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_* -v`；改动必须跑
+  `<repo>\.venv\Scripts\python.exe -m unittest tests.test_* -v`；改动必须跑
   相关测试，交付前全量回归通过。
 
 ### 3.4 数据与产物卫生（必须）
@@ -101,7 +101,7 @@ AGENTS.md / CLAUDE.md / GEMINI.md，`README.md` 仅为占位）。agent 每次�
 
 ## 5. 成功标准
 
-- `G:\Idea\AGENTS.md` 存在，中文，精简（目标 100 行内）。
+- `AGENTS.md` 存在，中文，精简（目标 100 行内）。
 - 所有"必须"条目均可在仓库中找到实证（见第 4 节映射表）。
 - "建议"条目明确标注待确认，不与现状冲突。
 - 文件使用 agent 可自动识别的根目录约定文件名（AGENTS.md）。

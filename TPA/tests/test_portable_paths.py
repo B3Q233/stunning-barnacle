@@ -1,12 +1,13 @@
-"""跨平台路径回归测试：仓库代码/配置中不得硬编码 Windows 盘符绝对路径。
+"""跨平台路径回归测试：仓库代码/配置中不得硬编码盘符绝对路径。
 
-背景：此前 dataset.py / preprocess.py 硬编码 ``g:/Idea/TPA/...``，攻击 config
-硬编码 ``G:\\Idea\\TPA\\...``；在 Linux 上运行时会在 CWD 下创建 ``g:/Idea/...``
-目录、或找不到数据/checkpoint。本测试锁定所有数据与 checkpoint 路径都基于
-TPA 项目根做相对解析。
+背景：此前 dataset.py / preprocess.py 与攻击 config 把"盘符 + 冒号 + 仓库目录"
+写进代码；在 Linux 上运行时会在当前目录下创建同名目录、或找不到数据/checkpoint。
+本测试锁定所有数据与 checkpoint 路径都基于 TPA 项目根做相对解析，且产出路径
+不含盘符前缀（断言用正则描述形态，不写具体本机路径）。
 """
 import builtins
 import io
+import re
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -15,6 +16,9 @@ import yaml
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]  # TPA 项目根
+
+# 盘符绝对路径形态；用于断言产出路径不含盘符前缀（AGENTS.md「路径与可迁移性」）
+ABS_DRIVE_RE = re.compile(r"(?<![A-Za-z0-9])[A-Za-z]:[\\/]")
 
 
 def _fake_meta():
@@ -54,7 +58,8 @@ class DatasetMetaPathTest(unittest.TestCase):
             / "ml100k" / "meta.pkl"
         )
         self.assertEqual(Path(path), expected)
-        self.assertNotIn("g:/idea", path.lower())
+        # 路径必须由项目根派生（而不是硬编码其他位置）
+        self.assertTrue(Path(path).is_relative_to(ds.PROJECT_ROOT))
 
     def test_lightgcn_meta_path_derived_from_project_root(self):
         import models.lightgcn.dataset as ds
@@ -65,7 +70,7 @@ class DatasetMetaPathTest(unittest.TestCase):
             / "gowalla" / "meta.pkl"
         )
         self.assertEqual(Path(path), expected)
-        self.assertNotIn("g:/idea", path.lower())
+        self.assertTrue(Path(path).is_relative_to(ds.PROJECT_ROOT))
 
 
 class PreprocessDefaultPathTest(unittest.TestCase):
@@ -82,7 +87,8 @@ class PreprocessDefaultPathTest(unittest.TestCase):
         )
         for p in (module.DEFAULT_RAW_DIR, module.DEFAULT_OUT_DIR):
             self.assertTrue(p.is_absolute(), f"默认目录应为绝对路径: {p}")
-            self.assertNotIn("g:/idea", str(p).lower())
+            # 绝对路径是允许的，但必须落在项目根之下（由 __file__ 推导，非硬编码）
+            self.assertTrue(p.is_relative_to(PROJECT_ROOT))
 
     def test_mf_preprocess_defaults(self):
         import models.mf.scripts.preprocess as pre
@@ -174,7 +180,7 @@ class AttackConfigPathTest(unittest.TestCase):
                     value, r"^[A-Za-z]:[\\/]",
                     f"{name}: {label} 含盘符: {value}",
                 )
-                self.assertNotIn("g:/idea", value.lower())
+                self.assertNotRegex(value.lower(), ABS_DRIVE_RE)
 
 
 class ResolveFromRootTest(unittest.TestCase):

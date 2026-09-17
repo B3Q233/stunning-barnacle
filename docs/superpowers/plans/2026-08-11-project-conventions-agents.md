@@ -13,7 +13,7 @@
 
 ## Global Constraints
 
-- 文件位置：仓库根 `G:\Idea\AGENTS.md`（agent 可自动识别的约定文件名）。
+- 文件位置：仓库根 `AGENTS.md`（agent 可自动识别的约定文件名）。
 - 语言：中文；目标 ≤ 100 行。
 - 详略：精简硬性规范 + 链接；有仓库依据的写"必须"，无依据的写"建议（待确认）"。
 - 不改动 .gitignore、现有代码、现有文档；不创建 CLAUDE.md / GEMINI.md 副本。
@@ -21,25 +21,25 @@
 
 ---
 
-### Task 1: 创建并校验 `G:\Idea\AGENTS.md`
+### Task 1: 创建并校验 `AGENTS.md`
 
 **Files:**
-- Create: `G:\Idea\AGENTS.md`
+- Create: `AGENTS.md`
 - Test: 无新测试文件；验证步骤见下（git 抽查、目录/文档抽查、行数检查）
 
 **Interfaces:**
 - Consumes: `docs/superpowers/specs/2026-08-11-project-conventions-agents-design.md`
   （第 3 章结构、第 4 章实证映射、第 7 章范围外）
-- Produces: `G:\Idea\AGENTS.md`（后续所有 agent 的入口规范）
+- Produces: `AGENTS.md`（后续所有 agent 的入口规范）
 
 - [ ] **Step 1: 创建 AGENTS.md 全文**
 
-按以下内容创建 `G:\Idea\AGENTS.md`：
+按以下内容创建 `AGENTS.md`：
 
 ````markdown
 # 项目默认规范（AGENTS.md）
 
-本文件是 G:\Idea 仓库的默认规范，所有 agent 与协作者开工前必读。
+本文件是 <repo> 仓库的默认规范，所有 agent 与协作者开工前必读。
 仓库文档与提交信息默认使用中文。
 
 ## 1. 项目概述
@@ -64,7 +64,7 @@ evaluation / tests）；论文资料见 `papers/`；流程文档见
 
 ## 3. 代码与工程规范（必须）
 
-- 环境：使用仓库根 `.venv`（`G:\Idea\.venv\Scripts\python.exe`）；依赖锁定
+- 环境：使用仓库根 `.venv`（`<repo>\.venv\Scripts\python.exe`）；依赖锁定
   在 `requirements.txt`（Python 3.12 + PyTorch 2.5；测试不新增第三方依赖）。
 - 目录：`TPA/{attacks, models, training, evaluation, tests}`。每个攻击/模型
   目录配齐 `config.yaml`（唯一配置入口）、`registry.py`、
@@ -73,7 +73,7 @@ evaluation / tests）；论文资料见 `papers/`；流程文档见
 - 实验隔离：使用 run_tag 机制，数据与输出按 `{dataset}/{model}/{tag}/`
   分层，随实验保存 config.yaml 快照。
 - 测试：stdlib unittest，测试文件放 `TPA/tests/test_*.py`；运行命令
-  `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_* -v`；改动必须
+  `<repo>\.venv\Scripts\python.exe -m unittest tests.test_* -v`；改动必须
   运行相关测试，交付前全量回归通过。
 - 只改与任务相关的文件，保留他人的改动。
 
@@ -120,7 +120,7 @@ evaluation / tests）；论文资料见 `papers/`；流程文档见
 
 Run:
 ```powershell
-git -C G:\Idea log --pretty=format:'%s' | Select-Object -First 20
+git -C <repo> log --pretty=format:'%s' | Select-Object -First 20
 ```
 
 Expected: 提交信息均为 `type(scope): 中文描述` 格式，type ∈
@@ -132,10 +132,10 @@ feat/fix/docs/chore/refactor/impl，scope ∈ attacks/eval/models/tpa/skill/docs
 
 Run:
 ```powershell
-Get-ChildItem G:\Idea\TPA\attacks\pgd -Name
-Get-Content G:\Idea\TPA\tests\test_attack_eval.py -TotalCount 6
-Get-Content G:\Idea\.gitignore -Raw
-Get-Content G:\Idea\TPA\attacks\pgd\docs\USAGE.md -TotalCount 40
+Get-ChildItem TPA\attacks\pgd -Name
+Get-Content TPA\tests\test_attack_eval.py -TotalCount 6
+Get-Content .gitignore -Raw
+Get-Content TPA\attacks\pgd\docs\USAGE.md -TotalCount 40
 ```
 
 Expected:
@@ -150,7 +150,7 @@ Expected:
 
 Run:
 ```powershell
-(Get-Content G:\Idea\AGENTS.md).Count
+(Get-Content AGENTS.md).Count
 ```
 
 Expected: 行数 ≤ 100；"必须"与"建议（待确认）"标注齐全；第 7 节链接目标
@@ -159,6 +159,6 @@ Expected: 行数 ≤ 100；"必须"与"建议（待确认）"标注齐全；第 
 - [ ] **Step 5: 提交**
 
 ```powershell
-git -C G:\Idea add -- AGENTS.md
-git -C G:\Idea commit -m "docs: 新增项目默认规范 AGENTS.md"
+git -C <repo> add -- AGENTS.md
+git -C <repo> commit -m "docs: 新增项目默认规范 AGENTS.md"
 ```

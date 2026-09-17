@@ -38,27 +38,27 @@ description: >
 | 类型 | 示例 |
 |------|------|
 | arXiv URL | `https://arxiv.org/pdf/2511.05845` |
-| 本地 PDF | `g:/Idea/papers/indirect_ad/2511.05845.pdf` |
+| 本地 PDF | `<papers>/indirect_ad/2511.05845.pdf` |
 | 其他 URL | 指向 PDF 的 HTTP/HTTPS 链接 |
 
 ### 执行
 
 ```bash
 # 创建输出目录
-mkdir -p g:/Idea/papers/{paper_name}/
+mkdir -p <papers>/{paper_name}/
 
 # 小文件（<10MB, <20页）：使用 flash-extract（免 token）
-mineru-open-api flash-extract "{pdf_path_or_url}" --language en -o "g:/Idea/papers/{paper_name}/"
+mineru-open-api flash-extract "{pdf_path_or_url}" --language en -o "<papers>/{paper_name}/"
 
 # 大文件：先用 curl 下载 PDF，再用 extract（需 token）
-curl -L --ssl-no-revoke -o "g:/Idea/papers/{paper_name}/{paper_name}.pdf" "{url}"
-mineru-open-api extract "g:/Idea/papers/{paper_name}/{paper_name}.pdf" -o "g:/Idea/papers/{paper_name}/" -f md
+curl -L --ssl-no-revoke -o "<papers>/{paper_name}/{paper_name}.pdf" "{url}"
+mineru-open-api extract "<papers>/{paper_name}/{paper_name}.pdf" -o "<papers>/{paper_name}/" -f md
 ```
 
 ### 输出
 
 ```
-g:/Idea/papers/{paper_name}/
+<papers>/{paper_name}/
 ├── {paper_name}.pdf    ← 原始 PDF（从 URL 下载时）
 └── {paper_name}.md     ← MinerU 提取的 Markdown
 ```
@@ -69,15 +69,15 @@ MinerU 提取时图片被替换为 `<!-- image-->` 占位符。如果论文包�
 
 ```bash
 # 扫描 Markdown 中丢失的图片位置
-grep -n '<!-- image-->' "g:/Idea/papers/{paper_name}/{paper_name}.md"
+grep -n '<!-- image-->' "<papers>/{paper_name}/{paper_name}.md"
 
 # 对架构图所在页面光栅化（假设第 3-4 页）
-pdftoppm -jpeg -r 150 -f 3 -l 4 "g:/Idea/papers/{paper_name}/{paper_name}.pdf" "g:/Idea/papers/{paper_name}/page"
+pdftoppm -jpeg -r 150 -f 3 -l 4 "<papers>/{paper_name}/{paper_name}.pdf" "<papers>/{paper_name}/page"
 # 产出: page-3.jpg, page-4.jpg
 ```
 
 **注意**：当前模型可能不支持多模态视觉输入。如果无法直接查看提取的图片，在这一步终止，提示用户：
-> 以下页面包含架构图/关键图表，请人工查看后继续步骤二：[页码列表]。图片已保存至 `g:/Idea/papers/{paper_name}/page-*.jpg`。
+> 以下页面包含架构图/关键图表，请人工查看后继续步骤二：[页码列表]。图片已保存至 `<papers>/{paper_name}/page-*.jpg`。
 
 ### 验证
 
@@ -92,7 +92,7 @@ pdftoppm -jpeg -r 150 -f 3 -l 4 "g:/Idea/papers/{paper_name}/{paper_name}.pdf" "
 ### 前置条件
 
 - 步骤一产出（或用户已有的）Markdown 文件
-- `paper-understanding` skill 的模板文件：`g:/Idea/.codex/skills/paper-understanding/references/template.md`
+- `paper-understanding` skill 的模板文件：`.codex/skills/paper-understanding/references/template.md`
 
 ### 输入
 
@@ -138,7 +138,7 @@ pdftoppm -jpeg -r 150 -f 3 -l 4 "g:/Idea/papers/{paper_name}/{paper_name}.pdf" "
 ### 输出
 
 ```
-g:/Idea/papers/{paper_name}/
+<papers>/{paper_name}/
 ├── {paper_name}.pdf
 ├── {paper_name}.md
 ├── {paper_name}_understanding.md   ← 结构化理解文档（最终产物）

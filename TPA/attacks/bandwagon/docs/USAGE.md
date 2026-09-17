@@ -5,10 +5,10 @@
 使用项目虚拟环境（已安装 torch 等依赖）：
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe --version
+<repo>\.venv\Scripts\python.exe --version
 ```
 
-所有命令在任意目录执行均可（脚本内部已处理项目根目录 `G:\Idea\TPA` 的路径）。
+所有命令在任意目录执行均可（脚本内部已处理项目根目录 `TPA` 的路径）。
 
 ## 2. 快速开始
 
@@ -18,7 +18,7 @@ G:\Idea\.venv\Scripts\python.exe --version
 普通（5%~40%）/ 冷门（其余）**，结果缓存后供目标选择和 filler 采样使用：
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\bandwagon\run.py --mode classify
+<repo>\.venv\Scripts\python.exe TPA\attacks\bandwagon\run.py --mode classify
 ```
 
 产出：
@@ -33,7 +33,7 @@ attacks/bandwagon/data/rec_freq/{dataset}/lightgcn_top20.json
 ### 只生成中毒数据（不建模型）
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\bandwagon\run.py --mode data
+<repo>\.venv\Scripts\python.exe TPA\attacks\bandwagon\run.py --mode data
 ```
 
 产出：
@@ -49,13 +49,13 @@ attacks/bandwagon/data/poisoned/{dataset}/
 
 ```powershell
 # 先有中毒数据（上一步），然后：
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\bandwagon\run.py --mode model
+<repo>\.venv\Scripts\python.exe TPA\attacks\bandwagon\run.py --mode model
 ```
 
 或在配置中设 `mode: all`，一条命令串联分类 + 数据生成 + 训练评估：
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\bandwagon\run.py --mode all
+<repo>\.venv\Scripts\python.exe TPA\attacks\bandwagon\run.py --mode all
 ```
 
 产出（`attacks/bandwagon/outputs/{output.dir}/{dataset}/`）：
@@ -72,7 +72,7 @@ G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\bandwagon\run.py --mode all
 训练过但想调整评估或换指标时，跳过训练直接评估：
 
 ```powershell
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\attacks\bandwagon\fit.py --config <配置> --skip-train
+<repo>\.venv\Scripts\python.exe TPA\attacks\bandwagon\fit.py --config <配置> --skip-train
 ```
 
 ## 3. 配置文件详解（`attacks/bandwagon/config.yaml`）

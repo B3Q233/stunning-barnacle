@@ -14,7 +14,7 @@
 - 目录层级固定：`TPA/data/{implicit|explicit}/raw/{dataset}/`。
 - 当前数据集 gowalla / amazon-book / yelp2018 / ml100k 全部归 implicit；explicit 只建占位 README。
 - 路径一律基于 TPA 项目根相对解析，禁止盘符硬编码；`--raw_dir`/`--raw-root` 覆盖能力保留。
-- 全量回归命令：`G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_* -v`（测试不新增第三方依赖）。
+- 全量回归命令：`<repo>\.venv\Scripts\python.exe -m unittest tests.test_* -v`（测试不新增第三方依赖）。
 - 提交信息用 Conventional Commits 中文描述；只 `git add` 明确路径。
 - 对应 skill 更新范围仅 `.codex/skills/paper-code-implementation`（.claude 无命中）。
 
@@ -67,7 +67,7 @@ class RawDataResolverTest(unittest.TestCase):
 
 - [ ] **Step 2: 运行确认失败**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_portable_paths.RawDataResolverTest -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_portable_paths.RawDataResolverTest -v`
 Expected: FAIL（`ImportError: cannot import name 'raw_data_root'`）
 
 - [ ] **Step 3: 最小实现**（追加到 `TPA/training/paths.py`）
@@ -108,7 +108,7 @@ def raw_data_dir(dataset: str) -> Path:
 
 - [ ] **Step 4: 运行确认通过**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_portable_paths.RawDataResolverTest -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_portable_paths.RawDataResolverTest -v`
 Expected: PASS（4 个用例）
 
 - [ ] **Step 5: 提交**
@@ -236,14 +236,14 @@ self.assertEqual(module.DEFAULT_RAW_DIR, PROJECT_ROOT / "data" / "implicit" / "r
 
 - [ ] **Step 5: 运行相关测试**
 
-Run: `G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_portable_paths -v`
+Run: `<repo>\.venv\Scripts\python.exe -m unittest tests.test_portable_paths -v`
 Expected: PASS
 
 - [ ] **Step 6: 冒烟：临时目录跑 wmf preprocess**
 
 ```powershell
 $env:TMPOUT = Join-Path $env:TEMP ("legup-smoke-" + [guid]::NewGuid())
-G:\Idea\.venv\Scripts\python.exe G:\Idea\TPA\models\wmf\scripts\preprocess.py --dataset ml100k --out_dir $env:TMPOUT
+<repo>\.venv\Scripts\python.exe TPA\models\wmf\scripts\preprocess.py --dataset ml100k --out_dir $env:TMPOUT
 ```
 Expected: 打印 `=== ml100k 预处理 ===` 且 `预处理完成 -> {TMPOUT}/ml100k/`。
 
@@ -349,7 +349,7 @@ mkdir -p data/implicit/raw data/explicit/raw data/processed
 
 - [ ] **Step 5: 自查无旧路径残留（skill 范围）**
 
-Run: `rg -n "data/raw" G:\Idea\.codex\skills\paper-code-implementation`
+Run: `rg -n "data/raw" .codex\skills\paper-code-implementation`
 Expected: 无命中（`data/processed` 相关行保留）
 
 - [ ] **Step 6: 提交**
@@ -367,7 +367,7 @@ git commit -m "docs(skill): 数据目录模板同步隐式/显式 raw 分层"
 
 - [ ] **Step 1: 全量测试**
 
-Run: `cd G:\Idea\TPA; G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_* -v`
+Run: `cd TPA; <repo>\.venv\Scripts\python.exe -m unittest tests.test_* -v`
 Expected: 全部 PASS
 
 - [ ] **Step 2: 仓库级自查**

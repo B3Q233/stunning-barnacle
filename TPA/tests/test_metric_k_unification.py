@@ -11,7 +11,7 @@
 - L3 攻击侧（registry / fit / 兜底指标）一致性；
 - L4 模型入口与报告的守卫（禁止内联展平与硬编码指标名回流）。
 
-运行：``G:\\Idea\\.venv\\Scripts\\python.exe -m unittest tests.test_metric_k_unification -v``
+运行（工作目录 `TPA`）：``..\\.venv\\Scripts\\python.exe -m unittest tests.test_metric_k_unification -v``
 """
 from __future__ import annotations
 

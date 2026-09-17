@@ -7,8 +7,8 @@
 ## 运行
 
 ```powershell
-cd G:\Idea\TPA
-G:\Idea\.venv\Scripts\python.exe -m attacks.advinject.run --config attacks/advinject/config.yaml --mode all
+cd TPA
+<repo>\.venv\Scripts\python.exe -m attacks.advinject.run --config attacks/advinject/config.yaml --mode all
 ```
 
 建议先使用 `--mode data` 检查目标和伪用户数据，再执行完整流程。结果按 `outputs/{dataset}/{victim}/{run_tag}/` 隔离。

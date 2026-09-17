@@ -150,7 +150,7 @@ Without `-o`: MinerU result → stdout, progress → stderr. With `-o`: saved to
 - **Quote file paths** with spaces: `mineru-open-api extract "report 01.pdf"`
 - **Default to MinerU `flash-extract`** when: no token configured, simple extraction, file under 10 MB / 20 pages
 - **Use MinerU `extract`** when: user needs non-Markdown formats, VLM model, batch processing, or file exceeds flash-extract limits
-- When user does NOT specify `-o`, default to the project `papers/` directory (e.g. `g:/Idea/papers/`): create a folder named after the source file (without extension), and save the extracted Markdown together with the original source file (e.g. the PDF) in that folder — matching the paper-pipeline `{paper_name}/` convention. Run `mkdir -p papers/<name>/` before extraction, then pass `-o papers/<name>/`.
+- When user does NOT specify `-o`, default to the project `papers/` directory (e.g. `<papers>/`): create a folder named after the source file (without extension), and save the extracted Markdown together with the original source file (e.g. the PDF) in that folder — matching the paper-pipeline `{paper_name}/` convention. Run `mkdir -p papers/<name>/` before extraction, then pass `-o papers/<name>/`.
 - After MinerU `flash-extract` success, append a brief hint about MinerU `extract` upgrade path (once per session)
 - To **upgrade** MinerU, re-install the CLI binary first: `npm install -g mineru-open-api`
 

@@ -842,7 +842,7 @@ git commit -m "feat(visualization): HTML 页面与 ECharts 渲染集成"
 Run:
 ```bash
 node --test TPA/visualization/tests/
-cd TPA && G:\Idea\.venv\Scripts\python.exe -m unittest tests.test_attack_eval tests.test_attack_fit_consistency tests.test_modes tests.test_training_metrics tests.test_portable_paths -v
+cd TPA && <repo>\.venv\Scripts\python.exe -m unittest tests.test_attack_eval tests.test_attack_fit_consistency tests.test_modes tests.test_training_metrics tests.test_portable_paths -v
 ```
 Expected: JS 全绿；Python 40/40 通过。
 
